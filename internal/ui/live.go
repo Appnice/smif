@@ -133,7 +133,7 @@ func (m *Model) sessionStateCell(sv *api.SessionView, now time.Time) string {
 	case kWorking:
 		return stLive.Render("▶ " + elapsed(now.Sub(workingSince(sv, now))))
 	case kNew:
-		return stAccent.Render("● new")
+		return stNew.Render("● new")
 	}
 	if sv.Turn == "idle" {
 		return stDim.Render("○ idle")
@@ -150,7 +150,7 @@ func (m *Model) sessionLabel(sv *api.SessionView, now time.Time) string {
 	case kWorking:
 		return stLive.Render("▶ WORKING " + elapsed(now.Sub(workingSince(sv, now))))
 	case kNew:
-		return stAccent.Render("● NEW ANSWER")
+		return stNew.Render("● NEW ANSWER")
 	}
 	if sv.Turn == "idle" {
 		return stOK.Render("○ IDLE")

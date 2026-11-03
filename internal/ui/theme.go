@@ -20,6 +20,7 @@ var (
 	stDel       lipgloss.Style
 	stHunk      lipgloss.Style
 	stLive      lipgloss.Style // a working session (also marked ▶)
+	stNew       lipgloss.Style // a new answer (also marked ●)
 
 	// The home screen.
 	stBadge   lipgloss.Style // the "mailroom" name in the top line
@@ -37,9 +38,25 @@ func init() { applyTheme(true) }
 // carries is also in the text: "DAEMON DOWN", "ERROR", the "▶" focus mark,
 // the "> " cursor, "[1 RECORD]" for the open tab, "+"/"-" in a diff.
 //
-// No ANSI 12 (blue) or 13 (magenta): many dark themes draw them navy and
-// purple, too dark to read. Accents use fixed 256-colour shades instead:
-// 153 pale blue (keys, new, the focused frame), 180 tan (tool names).
+// The colours are Gruvbox dark (github.com/morhetz/gruvbox), picked by the
+// user from five eye-friendly palettes on 2026-11-03: warm, muted, each
+// text colour at least 4.5:1 on Gruvbox's #282828. Terminals without true
+// colour get the nearest 256 colours (Lip Gloss downsamples). No ANSI blue
+// or magenta: many dark themes draw them navy and purple, too dark to read.
+const (
+	gbFg     = "#ebdbb2" // light1: assistant text
+	gbGray   = "#a89984" // light4: faint text
+	gbRed    = "#fb4934" // errors, dead letters
+	gbGreen  = "#b8bb26" // ok, done, diff additions
+	gbYellow = "#fabd2f" // a new answer, the name badge
+	gbBlue   = "#83a598" // keys, the focused frame, tool names
+	gbAqua   = "#8ec07c" // a working session, code
+	gbOrange = "#fe8019" // waits for you, warnings
+	gbBg0    = "#282828" // dark0: text on the badge
+	gbBg1    = "#3c3836" // dark1: the selected row
+	gbBg2    = "#504945" // dark2: frames
+)
+
 func applyTheme(color bool) {
 	fg := func(s lipgloss.Style, c string) lipgloss.Style {
 		if color {
@@ -51,32 +68,34 @@ func applyTheme(color bool) {
 	stTitle = bold
 	stFocus = lipgloss.NewStyle().Bold(true).Reverse(true)
 	stDim = lipgloss.NewStyle().Faint(true)
-	stBad = fg(bold, "9")
-	stWarn = fg(bold, "11")
+	stBad = fg(bold, gbRed)
+	stWarn = fg(bold, gbOrange)
 	stCursor = lipgloss.NewStyle().Reverse(true)
 	stHeading = lipgloss.NewStyle().Underline(true)
 
-	stAssistant = fg(bold, "153")
-	stTool = fg(bold, "180")
-	stOK = fg(bold, "10")
-	stAdd = fg(lipgloss.NewStyle(), "10")
-	stDel = fg(lipgloss.NewStyle(), "9")
-	stHunk = fg(lipgloss.NewStyle(), "14")
-	stLive = fg(bold, "14")
+	stAssistant = fg(bold, gbFg)
+	stTool = fg(bold, gbBlue)
+	stOK = fg(bold, gbGreen)
+	stAdd = fg(lipgloss.NewStyle(), gbGreen)
+	stDel = fg(lipgloss.NewStyle(), gbRed)
+	stHunk = fg(lipgloss.NewStyle(), gbAqua)
+	stLive = fg(bold, gbAqua)
+	stNew = fg(bold, gbYellow)
 	if !color {
 		stHunk = lipgloss.NewStyle().Faint(true)
 	}
 
 	stBadge = lipgloss.NewStyle().Bold(true).Reverse(true)
 	stTabOn = lipgloss.NewStyle().Bold(true).Underline(true)
-	stAccent = fg(lipgloss.NewStyle(), "153")
+	stAccent = fg(lipgloss.NewStyle(), gbBlue)
 	stSelRow = lipgloss.NewStyle().Bold(true)
 	stFrame = lipgloss.NewStyle().Faint(true)
-	stFrameOn = fg(lipgloss.NewStyle(), "153")
+	stFrameOn = fg(lipgloss.NewStyle(), gbBlue)
 	if color {
-		stBadge = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(lipgloss.Color("153"))
-		stSelRow = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color("236"))
-		stFrame = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+		stDim = lipgloss.NewStyle().Foreground(lipgloss.Color(gbGray))
+		stBadge = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gbBg0)).Background(lipgloss.Color(gbYellow))
+		stSelRow = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color(gbBg1))
+		stFrame = lipgloss.NewStyle().Foreground(lipgloss.Color(gbBg2))
 	}
 }
 

@@ -7,8 +7,9 @@ import re
 import sys
 from xml.sax.saxutils import escape
 
-BG, FG, MUTED, FRAME = "#0f1117", "#d6d9de", "#7d8590", "#484f58"
-AMBER, CYAN, PALE, GREEN, RED, TAN = "#e3b341", "#56d4dd", "#a5d6ff", "#3fb950", "#f85149", "#d7af87"
+# Gruvbox dark, as internal/ui/theme.go.
+BG, FG, MUTED, FRAME = "#282828", "#ebdbb2", "#a89984", "#504945"
+AMBER, CYAN, PALE, GREEN, RED, BLUE = "#fe8019", "#8ec07c", "#fabd2f", "#b8bb26", "#fb4934", "#83a598"
 CW, LH, PAD = 7.8, 18, 20  # cell width, line height, padding (px)
 
 # (pattern, colour, bold): the first match wins for each character.
@@ -21,7 +22,7 @@ RULES = [
     (r"● NEW ANSWER|● new|\d+ new\b", PALE, True),
     (r"● live|◆ answer|✓", GREEN, True),
     (r"⚑ \d+ asks you|✗ \d+ dead|⚑|✗|NEEDS YOU|DEAD", RED, True),
-    (r"› you → fork|› you", PALE, False),
+    (r"› you → fork|› you", BLUE, False),
     (r"SESSIONS · \d+|RUNNING · \d+|QUEUED · \d+|DONE TODAY · \d+", FG, True),
     (r"○ idle|\d+ quiet|≈ \$[\d.]+ at API prices today|working on · .*|now · .*|steps so far|"
      r"a copy of this session.*|\d+ tools|\d+[smhd]$|~?/r/\S+|ttys\d+", MUTED, False),

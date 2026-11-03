@@ -559,7 +559,7 @@ func (m *Model) homeTop(w int) string {
 		parts = append(parts, stWarn.Render(fmt.Sprintf("%d waiting", c[kWaiting])))
 	}
 	if c[kNew] > 0 {
-		parts = append(parts, stAccent.Render(fmt.Sprintf("%d new", c[kNew])))
+		parts = append(parts, stNew.Render(fmt.Sprintf("%d new", c[kNew])))
 	}
 	if c[kWorking] > 0 {
 		parts = append(parts, stLive.Render(fmt.Sprintf("%d working", c[kWorking])))
@@ -787,7 +787,7 @@ func (m *Model) homeRowLine(r homeRow, selected bool, w int, now time.Time) stri
 	}
 	dot := " "
 	if r.unread {
-		dot = stAccent.Render("•")
+		dot = stNew.Render("•")
 	}
 	age := now.Sub(x.UpdatedAt)
 	if r.run != nil {
