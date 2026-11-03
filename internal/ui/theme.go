@@ -36,6 +36,10 @@ func init() { applyTheme(true) }
 // attributes (bold, faint, underline, reverse). Every meaning a colour
 // carries is also in the text: "DAEMON DOWN", "ERROR", the "▶" focus mark,
 // the "> " cursor, "[1 RECORD]" for the open tab, "+"/"-" in a diff.
+//
+// No ANSI 12 (blue) or 13 (magenta): many dark themes draw them navy and
+// purple, too dark to read. Accents use fixed 256-colour shades instead:
+// 153 pale blue (keys, new, the focused frame), 180 tan (tool names).
 func applyTheme(color bool) {
 	fg := func(s lipgloss.Style, c string) lipgloss.Style {
 		if color {
@@ -52,8 +56,8 @@ func applyTheme(color bool) {
 	stCursor = lipgloss.NewStyle().Reverse(true)
 	stHeading = lipgloss.NewStyle().Underline(true)
 
-	stAssistant = fg(bold, "12")
-	stTool = fg(bold, "13")
+	stAssistant = fg(bold, "153")
+	stTool = fg(bold, "180")
 	stOK = fg(bold, "10")
 	stAdd = fg(lipgloss.NewStyle(), "10")
 	stDel = fg(lipgloss.NewStyle(), "9")
@@ -65,12 +69,12 @@ func applyTheme(color bool) {
 
 	stBadge = lipgloss.NewStyle().Bold(true).Reverse(true)
 	stTabOn = lipgloss.NewStyle().Bold(true).Underline(true)
-	stAccent = fg(lipgloss.NewStyle(), "12")
+	stAccent = fg(lipgloss.NewStyle(), "153")
 	stSelRow = lipgloss.NewStyle().Bold(true)
 	stFrame = lipgloss.NewStyle().Faint(true)
-	stFrameOn = fg(lipgloss.NewStyle(), "12")
+	stFrameOn = fg(lipgloss.NewStyle(), "153")
 	if color {
-		stBadge = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(lipgloss.Color("12"))
+		stBadge = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(lipgloss.Color("153"))
 		stSelRow = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color("236"))
 		stFrame = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	}
