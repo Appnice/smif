@@ -94,13 +94,17 @@ func TestHomeNavigation(t *testing.T) {
 	if !strings.Contains(view(m), "WORKER · LIVE") || !strings.Contains(view(m), "Read  src/lesson/CheckoutView.kt") {
 		t.Fatalf("no live card for the running item:\n%s", view(m))
 	}
-	key(m, "tab") // QUEUED
-	if got := m.HomeSelected(); got != "01JMSG0000000000000000WAI1" {
+	key(m, "tab") // the next row that needs you: the dead letter
+	if got := m.HomeSelected(); got != "01JMSG0000000000000000DLQ1" {
 		t.Fatalf("tab went to %q", got)
 	}
-	key(m, "tab", "tab") // DONE TODAY, DEAD
+	key(m, "tab") // round the list: the question
+	if got := m.HomeSelected(); got != "01JMSG000000000000000NEED1" {
+		t.Fatalf("second tab went to %q", got)
+	}
+	key(m, "shift+tab")
 	if got := m.HomeSelected(); got != "01JMSG0000000000000000DLQ1" {
-		t.Fatalf("tab tab went to %q", got)
+		t.Fatalf("shift+tab went to %q", got)
 	}
 	if strings.Contains(view(m), "yesterday") {
 		t.Fatal("a message done yesterday shows under DONE TODAY")

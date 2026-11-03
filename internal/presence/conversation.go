@@ -60,24 +60,58 @@ func LastAnswer(turns []Turn) (string, time.Time) {
 	return "", time.Time{}
 }
 
+// Step is one tool call of the newest answer: the tool, what it works on
+// (a command, a file, a question) and whether its result came back.
+type Step struct {
+	ID     string    `json:"-"`
+	Tool   string    `json:"tool"`
+	Target string    `json:"target,omitempty"`
+	At     time.Time `json:"at"`
+	Done   bool      `json:"done"`
+}
+
+// Activity is what the newest exchange is doing: the human's prompt it
+// answers and the tool calls since, oldest first (the last MaxSteps).
+// Pending is the oldest call without a result: the tool that runs now, or
+// the permission or question a waiting session shows in its tab.
+type Activity struct {
+	Prompt   string
+	PromptAt time.Time
+	Tools    int
+	Steps    []Step
+	Pending  *Step
+}
+
+// MaxSteps caps Activity.Steps.
+const MaxSteps = 12
+
 // Conversation reads the last limit turns of a session from its
 // transcript. Tool results, subagent (sidechain) records, meta records and
 // system text (it starts with "<", such as <system-reminder>) are left out.
 func Conversation(path string, limit int) []Turn {
+	turns, _ := Read(path, limit)
+	return turns
+}
+
+// Read is Conversation plus the newest exchange's activity.
+func Read(path string, limit int) ([]Turn, Activity) {
+	var act Activity
 	if path == "" || filepath.Ext(path) != ".jsonl" || limit <= 0 {
-		return nil
+		return nil, act
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return nil
+		return nil, act
 	}
 	defer f.Close()
 	if st, err := f.Stat(); err == nil && st.Size() > conversationTail {
 		if _, err := f.Seek(st.Size()-conversationTail, io.SeekStart); err != nil {
-			return nil
+			return nil, act
 		}
 	}
 	var turns []Turn
+	var steps []Step
+	done := map[string]bool{}
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 64<<10), 16<<20)
 	for sc.Scan() {
@@ -109,8 +143,12 @@ func Conversation(path string, limit int) []Turn {
 			text = append(text, s)
 		} else {
 			var blocks []struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
+				Type      string          `json:"type"`
+				Text      string          `json:"text"`
+				ID        string          `json:"id"`
+				Name      string          `json:"name"`
+				Input     json.RawMessage `json:"input"`
+				ToolUseID string          `json:"tool_use_id"`
 			}
 			if json.Unmarshal(rec.Message.Content, &blocks) != nil {
 				continue
@@ -119,7 +157,12 @@ func Conversation(path string, limit int) []Turn {
 				switch b.Type {
 				case "text":
 					text = append(text, b.Text)
+				case "tool_result":
+					done[b.ToolUseID] = true
 				case "tool_use":
+					if rec.Type == "assistant" {
+						steps = append(steps, Step{ID: b.ID, Tool: toolName(b.Name), Target: stepTarget(b.Name, b.Input), At: rec.Timestamp})
+					}
 					tools++
 					if j := strings.TrimSpace(strings.Join(text, "\n\n")); len([]rune(j)) > len([]rune(pre)) && !strings.HasPrefix(j, "<") {
 						pre = j
@@ -138,6 +181,8 @@ func Conversation(path string, limit int) []Turn {
 		if rec.Type == "user" {
 			if body != "" {
 				turns = append(turns, Turn{Role: "you", Text: body, At: rec.Timestamp})
+				act = Activity{Prompt: body, PromptAt: rec.Timestamp}
+				steps, done = nil, map[string]bool{}
 			}
 			continue
 		}
@@ -165,6 +210,21 @@ func Conversation(path string, limit int) []Turn {
 		}
 		turns = append(turns, Turn{Role: "claude", Text: body, At: rec.Timestamp, Tools: tools, longest: pre})
 	}
+	act.Tools = len(steps)
+	for i := range steps {
+		steps[i].Done = done[steps[i].ID]
+		if !steps[i].Done && act.Pending == nil {
+			p := steps[i]
+			act.Pending = &p
+		}
+	}
+	if len(steps) > MaxSteps {
+		steps = steps[len(steps)-MaxSteps:]
+	}
+	act.Steps = steps
+	if r := []rune(act.Prompt); len(r) > maxTurnRunes {
+		act.Prompt = string(r[:maxTurnRunes-1]) + "…"
+	}
 	if len(turns) > limit {
 		turns = turns[len(turns)-limit:]
 	}
@@ -176,5 +236,56 @@ func Conversation(path string, limit int) []Turn {
 			turns[i].Text = "…" + string(r[len(r)-maxTurnRunes+1:])
 		}
 	}
-	return turns
+	return turns, act
+}
+
+// toolName is a tool's short name: an MCP tool (mcp__server__tool) loses
+// its server prefix.
+func toolName(name string) string {
+	if strings.HasPrefix(name, "mcp__") {
+		if i := strings.LastIndex(name, "__"); i > 0 {
+			return name[i+2:]
+		}
+	}
+	return name
+}
+
+// maxTargetRunes caps a step's target.
+const maxTargetRunes = 300
+
+// stepTarget is what a tool call works on, one line: the command, the
+// file, the pattern, the question.
+func stepTarget(name string, input json.RawMessage) string {
+	var in map[string]any
+	if json.Unmarshal(input, &in) != nil {
+		return ""
+	}
+	pick := ""
+	switch name {
+	case "AskUserQuestion":
+		if qs, ok := in["questions"].([]any); ok && len(qs) > 0 {
+			if q, ok := qs[0].(map[string]any); ok {
+				pick, _ = q["question"].(string)
+			}
+		}
+	case "ExitPlanMode":
+		pick = "a plan to approve"
+	case "TodoWrite":
+		pick = "the to-do list"
+	}
+	for _, k := range []string{"command", "file_path", "notebook_path", "path", "pattern", "url", "query", "description", "skill", "prompt"} {
+		if pick != "" {
+			break
+		}
+		if v, ok := in[k].(string); ok {
+			pick = strings.TrimSpace(v)
+		}
+	}
+	if i := strings.IndexByte(pick, '\n'); i >= 0 {
+		pick = strings.TrimSpace(pick[:i]) + " …"
+	}
+	if r := []rune(pick); len(r) > maxTargetRunes {
+		pick = string(r[:maxTargetRunes-1]) + "…"
+	}
+	return pick
 }

@@ -1,40 +1,40 @@
- mailroom   All 7  cafe ⚑ 3  observability 2  web 2                                                        ● $1.75 today
-╭────────────────────────────────────────────────────╮ ╭───────────────────────────────────────────────────────────────╮
-│ NEEDS YOU · 1                                      │ │ ⚑ NEEDS YOU  web → cafe · ask store.release · 4m ago          │
-│ ▌ ⚑ cafe ← web Ship?                            4m │ │                                                               │
-│                                                    │ │ Ship?                                                         │
-│ SESSIONS · 0                                       │ │                                                               │
-│                                                    │ │ THE WORKER ASKS                                               │
-│ RUNNING · 1                                        │ │ Ship 1.0.2 now or wait for review?                            │
-│   ◉ cafe ← observability NPE in CheckoutView    1m │ │                                                               │
-│                                                    │ │ MESSAGE                                                       │
-│ QUEUED · 2                                         │ │ Store review passed for 1.0.2. Decide if we ship now.         │
-│   ◌ web ← observability ANR on cart screen      3m │ │ #fake:result=needs_human                                      │
-│   ◌ web ← cafe retry · Icons for the dark mode  1m │ │                                                               │
-│                                                    │ │ THREAD · 1 messages · 1 runs                                  │
-│ DONE TODAY · 2 · 1 unread (e marks read)           │ │ ▸ 13:05  web → cafe  ask  Ship?                               │
-│  •✓ observability ← human harness run mailroom… 2h │ │                                                               │
-│   ✓ cafe ← web Is Cafe live?                    5h │ │ [a] answer   [enter] open   [c] cancel                        │
-│                                                    │ │                                                               │
-│ DEAD · 1                                           │ │                                                               │
-│   ✗ observability ← cafe crash.report          10m │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-│                                                    │ │                                                               │
-╰────────────────────────────────────────────────────╯ ╰───────────────────────────────────────────────────────────────╯
+ mailroom   ⚑ 1 asks you  ✗ 1 dead                                                  ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                            │ │ ⚑ NEEDS YOU  web → cafe · ask store.release · 4m ago    │
+│ ▌ ⚑ cafe ← web Ship?                                  4m │ │                                                         │
+│                                                          │ │ Ship?                                                   │
+│ RUNNING · 1                                              │ │                                                         │
+│   ◉ cafe ← observability NPE in CheckoutView          1m │ │ THE WORKER ASKS                                         │
+│                                                          │ │ Ship 1.0.2 now or wait for review?                      │
+│ QUEUED · 2                                               │ │                                                         │
+│   ◌ web ← observability ANR on cart screen            3m │ │ MESSAGE                                                 │
+│   ◌ web ← cafe retry · Icons for the dark mode        1m │ │ Store review passed for 1.0.2. Decide if we ship now.   │
+│                                                          │ │ #fake:result=needs_human                                │
+│ DONE TODAY · 2 · 1 unread (e marks read)                 │ │                                                         │
+│  •✓ observability ← human harness run mailroom-ui: g… 2h │ │ THREAD · 1 messages · 1 runs                            │
+│   ✓ cafe ← web Is Cafe live?                          5h │ │ ▸ 13:05  web → cafe  ask  Ship?                         │
+│                                                          │ │                                                         │
+│ DEAD · 1                                                 │ │ [a] answer   [enter] open   [c] cancel                  │
+│   ✗ observability ← cafe crash.report                10m │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
 ↑↓ move · enter open · a answer · c cancel · e mark read · : command · [ ] agent · / filter · ? help · q quit

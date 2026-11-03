@@ -1,9 +1,7 @@
- mailroom   All 7  cafe ⚑ 3  observability 2  web 2                ● $1.75 today
+ mailroom   ⚑ 1 asks you  ✗ 1 dead          ● live · ≈ $1.75 at API prices today
 ╭──────────────────────────────────────────────────────────────────────────────╮
 │ NEEDS YOU · 1                                                                │
 │ ▌ ⚑ cafe ← web Ship?                                                      4m │
-│                                                                              │
-│ SESSIONS · 0                                                                 │
 │                                                                              │
 │ RUNNING · 1                                                                  │
 │   ◉ cafe ← observability NPE in CheckoutView                              1m │
@@ -18,6 +16,8 @@
 │                                                                              │
 │ DEAD · 1                                                                     │
 │   ✗ observability ← cafe crash.report                                    10m │
+│                                                                              │
+│                                                                              │
 │                                                                              │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯

@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"errors"
+	"os"
 	"sort"
 	"strings"
 	"syscall"
@@ -66,7 +67,11 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 	v := api.SessionView{Agent: agentForRepo(cfg, p.Repo), SessionID: p.SessionID, Repo: p.Repo, Turn: p.Turn,
 		TurnAt: p.TurnAt, LastSeen: p.LastSeen, TTY: p.TTY, Term: p.Term,
 		Title: p.Title, LastPrompt: p.LastPrompt}
-	v.LastAnswer, v.LastAnswerAt = d.answers.get(p.SessionID)
+	ti := d.answers.get(p.SessionID)
+	v.LastAnswer, v.LastAnswerAt = ti.answer, ti.answerAt
+	if ti.ok {
+		v.Activity = activityView(ti, p.Cwd)
+	}
 	if v.Turn == "" {
 		v.Turn = "unknown"
 	}
@@ -87,6 +92,35 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 		v.CanPrompt = true
 	}
 	return v
+}
+
+// activityView is the API form of a transcript's activity, with paths
+// under the session's folder written relative to it and the home folder
+// as ~.
+func activityView(ti transcriptInfo, cwd string) *api.SessionActivity {
+	home, _ := os.UserHomeDir()
+	short := func(s string) string {
+		if cwd != "" && cwd != "/" {
+			s = strings.ReplaceAll(s, cwd+"/", "")
+		}
+		if home != "" {
+			s = strings.ReplaceAll(s, home+"/", "~/")
+		}
+		return oneLine(s, 300)
+	}
+	a := ti.act
+	out := &api.SessionActivity{Prompt: a.Prompt, PromptAt: a.PromptAt, Tools: a.Tools, WroteAt: ti.wroteAt}
+	step := func(s presence.Step) api.SessionStep {
+		return api.SessionStep{Tool: s.Tool, Target: short(s.Target), At: s.At, Done: s.Done}
+	}
+	for _, s := range a.Steps {
+		out.Steps = append(out.Steps, step(s))
+	}
+	if a.Pending != nil {
+		n := step(*a.Pending)
+		out.Now = &n
+	}
+	return out
 }
 
 func (d *Daemon) sessionList() ([]api.SessionView, error) {

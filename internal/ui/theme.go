@@ -19,6 +19,7 @@ var (
 	stAdd       lipgloss.Style
 	stDel       lipgloss.Style
 	stHunk      lipgloss.Style
+	stLive      lipgloss.Style // a working session (also marked ▶)
 
 	// The home screen.
 	stBadge   lipgloss.Style // the "mailroom" name in the top line
@@ -57,6 +58,7 @@ func applyTheme(color bool) {
 	stAdd = fg(lipgloss.NewStyle(), "10")
 	stDel = fg(lipgloss.NewStyle(), "9")
 	stHunk = fg(lipgloss.NewStyle(), "14")
+	stLive = fg(bold, "14")
 	if !color {
 		stHunk = lipgloss.NewStyle().Faint(true)
 	}

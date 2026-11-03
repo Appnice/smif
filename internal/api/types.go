@@ -234,6 +234,33 @@ type SessionView struct {
 	// says what is missing otherwise.
 	CanPrompt bool   `json:"can_prompt"`
 	Why       string `json:"why,omitempty"`
+	// Activity is what the newest exchange does now, from the transcript
+	// (nil when there is none).
+	Activity *SessionActivity `json:"activity,omitempty"`
+}
+
+// SessionActivity is the newest exchange of a session: the human's prompt
+// it answers, its tool calls so far (the last few, oldest first) and Now,
+// the call without a result yet: the tool that runs, or the permission or
+// question a waiting session shows in its tab. WroteAt is when the
+// transcript last changed: a busy session that has not written for
+// minutes may be stuck.
+type SessionActivity struct {
+	Prompt   string        `json:"prompt,omitempty"`
+	PromptAt time.Time     `json:"prompt_at,omitzero"`
+	Tools    int           `json:"tools"`
+	Steps    []SessionStep `json:"steps,omitempty"`
+	Now      *SessionStep  `json:"now,omitempty"`
+	WroteAt  time.Time     `json:"wrote_at,omitzero"`
+}
+
+// SessionStep is one tool call: the tool, what it works on (a command, a
+// file, a question), when, and whether its result came back.
+type SessionStep struct {
+	Tool   string    `json:"tool"`
+	Target string    `json:"target,omitempty"`
+	At     time.Time `json:"at"`
+	Done   bool      `json:"done"`
 }
 
 // SessionPromptParams is session.prompt: the human's text typed into an

@@ -1,0 +1,40 @@
+ mailroom   1 waiting  1 quiet  ⚑ 1 asks you  ✗ 1 dead                              ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                            │ │ ! WAITING 2m  web  /r/web · ttys004                     │
+│   ⚑ cafe ← web Ship?                                  4m │ │                                                         │
+│                                                          │ │ it stopped on a permission prompt in its tab            │
+│ SESSIONS · 2                                             │ │   │ Bash  go test -run TestCheckout -count 20 ./cart/   │
+│   /r/cafe · 1                                            │ │   │ asked 13:09 · nothing has run since                 │
+│     ○ idle   release  Yes, 1.0.2 is live in both sto… 0s │ │                                                         │
+│   /r/web · 1                                             │ │ working on · you asked 13:07                            │
+│   ▌ ! 2m     web      Bash  go test -run Test… needs you │ │   fix the flaky test                                    │
+│                                                          │ │                                                         │
+│ RUNNING · 1                                              │ │ before it asked ─────────────────────────────── 3 tools │
+│   ◉ cafe ← observability NPE in CheckoutView          1m │ │   13:07  Read  cart/cart_test.go                        │
+│                                                          │ │   13:08  Edit  cart/cart.go                             │
+│ QUEUED · 2                                               │ │                                                         │
+│   ◌ web ← observability ANR on cart screen            3m │ │ › you → fork 13:09                                      │
+│   ◌ web ← cafe retry · Icons for the dark mode        1m │ │   which test was it?                                    │
+│                                                          │ │ ◇ fork ───────────────── a copy of this session · 13:09 │
+│ DONE TODAY · 2 · 1 unread (e marks read)                 │ │                                                         │
+│  •✓ observability ← human harness run mailroom-ui: g… 2h │ │   TestCheckout in cart_test.go.                         │
+│   ✓ cafe ← web Is Cafe live?                          5h │ │                                                         │
+│                                                          │ │                                                         │
+│ DEAD · 1                                                 │ │                                                         │
+│   ✗ observability ← cafe crash.report                10m │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │ o bring its tab to the front and answer there           │
+│                                                          │ │ Mailroom never answers a permission prompt for you. s … │
+╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
+Terminal shows release.
+o answer in its tab · ↑↓ move · tab next that needs you · enter chat · s ask a fork · / filter · ? help · q quit

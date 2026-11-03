@@ -146,19 +146,6 @@ func (m *Model) newAnswer(sv *api.SessionView) bool {
 	return ok && sv.LastAnswer != "" && sv.LastAnswerAt.After(seen)
 }
 
-// newAnswers counts the sessions with a new answer.
-func (m *Model) newAnswers() int {
-	n := 0
-	if m.snap != nil {
-		for i := range m.snap.Sessions {
-			if sv := &m.snap.Sessions[i]; sv.Turn != "busy" && m.newAnswer(sv) {
-				n++
-			}
-		}
-	}
-	return n
-}
-
 var (
 	mdBold   = regexp.MustCompile(`\*\*([^*]+)\*\*`)
 	mdCode   = regexp.MustCompile("`([^`]+)`")
@@ -412,13 +399,13 @@ func lastExchange(turns []api.SessionTurn) (earlier []api.SessionTurn, you, answ
 	return earlier, you, answer
 }
 
-// promptLabel is "› you", "› you → worker" or "› web asks".
+// promptLabel is "› you", "› you → fork" or "› web asks a fork".
 func promptLabel(t *api.SessionTurn) string {
 	switch {
 	case t.Role == "ask" && t.From != "" && t.From != "you":
-		return stAccent.Render("› " + t.From + " asks a worker")
+		return stAccent.Render("› " + t.From + " asks a fork")
 	case t.Role == "ask":
-		return stAccent.Render("› you → worker")
+		return stAccent.Render("› you → fork")
 	}
 	return stAccent.Render("› you")
 }
@@ -429,11 +416,11 @@ func answerLines(you, answer *api.SessionTurn, w int, now time.Time) []string {
 	if answer.Role == "worker" {
 		switch {
 		case answer.State == "queued" || answer.State == "running" || answer.State == "accepted" || answer.State == "retry_wait":
-			return []string{rule(stWarn.Render(spinner(now)+" worker"), "a copy of this session · "+answer.State, w)}
+			return []string{rule(stLive.Render(spinner(now)+" fork"), "a copy of this session · "+answer.State, w)}
 		case answer.State != "ok" && answer.State != "":
-			return []string{rule(stBad.Render("✗ worker"), answer.State, w), "  " + stBad.Render(answer.Text)}
+			return []string{rule(stBad.Render("✗ fork"), answer.State, w), "  " + stBad.Render(answer.Text)}
 		}
-		out := []string{rule(stTool.Render("◇ worker"), "a copy of this session · "+answerMeta(you, answer, now), w), ""}
+		out := []string{rule(stLive.Render("◇ fork"), "a copy of this session · "+answerMeta(you, answer, now), w), ""}
 		for _, l := range mdLines(answer.Text, w-2) {
 			out = append(out, "  "+l)
 		}
@@ -472,46 +459,72 @@ func answerMeta(you, answer *api.SessionTurn, now time.Time) string {
 	return strings.Join(parts, " · ")
 }
 
-// sessionRowLine is one session row: mark, name, then the first line of
-// the last answer (or "working · 18s"), age.
+// sessionRowLine is one session row: the state (! 4m, ▶ 2m14s, ● new,
+// ○ idle), the name, then what it does now (the step that runs, or what
+// it asks for) or the first line of its last answer, and on the right the
+// tool count, "silent 6m" or the answer's age.
 func (m *Model) sessionRowLine(r homeRow, selected bool, w int, now time.Time) string {
 	sv := r.sess
-	fresh := m.newAnswer(sv) && sv.Turn != "busy"
+	kind := m.sessionKind(sv)
 	name := sessionName(sv)
 	if sv.Title == "" && m.home.agent != "" {
 		name = "session " + api.ShortSession(sv.SessionID)
 	}
 	nw := m.sessionNameWidth()
 	shown := ansi.Truncate(name, nw, "…")
-	if fresh {
+	if kind == kNew || kind == kWaiting {
 		shown = stTitle.Render(shown)
 	}
-	head := " " + m.sessionMark(sv, now) + " " + shown
-	head += strings.Repeat(" ", max(2, nw+5-ansi.StringWidth(head)))
-	var what string
-	switch {
-	case sv.Turn == "waiting":
-		what = stBad.Render("waits for you in its tab")
-	case sv.Turn == "busy":
-		what = stWarn.Render("working · " + dur(now.Sub(sv.TurnAt)))
-	case sv.LastAnswer != "" && fresh:
-		what = stTitle.Render(plainFirstLine(sv.LastAnswer))
-	case sv.LastAnswer != "":
-		what = stDim.Render(plainFirstLine(sv.LastAnswer))
-	case sv.LastPrompt != "":
-		what = stDim.Render("› " + sv.LastPrompt)
+	state := m.sessionStateCell(sv, now)
+	head := " " + state + strings.Repeat(" ", max(1, 9-ansi.StringWidth(state))) + shown
+	head += strings.Repeat(" ", max(2, nw+12-ansi.StringWidth(head)))
+	var what, tail string
+	switch kind {
+	case kWaiting:
+		if s := nowStep(sv); s != nil {
+			what = stepLabel(s, stWarn)
+		} else {
+			what = "waits for you in its tab"
+		}
+		tail = stWarn.Render("needs you")
+	case kWorking:
+		switch s := nowStep(sv); {
+		case s != nil:
+			what = stepLabel(s, stLive)
+		case sv.Activity != nil && sv.Activity.Tools > 0:
+			what = stDim.Render("thinking")
+		default:
+			what = stDim.Render("starting")
+		}
+		var t []string
+		if a := sv.Activity; a != nil && a.Tools > 0 {
+			t = append(t, stDim.Render(fmt.Sprintf("%d tools", a.Tools)))
+		}
+		if d := silentFor(sv, now); d > 0 {
+			t = append(t, stWarn.Render("silent "+ago(d)))
+		}
+		tail = strings.Join(t, stDim.Render(" · "))
 	default:
-		what = stDim.Render(sessionState(sv))
+		switch {
+		case sv.LastAnswer != "" && kind == kNew:
+			what = stTitle.Render(plainFirstLine(sv.LastAnswer))
+		case sv.LastAnswer != "":
+			what = stDim.Render(plainFirstLine(sv.LastAnswer))
+		case sv.LastPrompt != "":
+			what = stDim.Render("› " + sv.LastPrompt)
+		default:
+			what = stDim.Render(sessionState(sv))
+		}
+		at := sv.LastAnswerAt
+		if at.IsZero() {
+			at = r.msg.UpdatedAt
+		}
+		tail = stDim.Render(ago(now.Sub(at)))
 	}
-	at := sv.LastAnswerAt
-	if sv.Turn == "busy" || at.IsZero() {
-		at = r.msg.UpdatedAt
-	}
-	ageS := stDim.Render(ago(now.Sub(at)))
 	w--
-	room := w - ansi.StringWidth(head) - ansi.StringWidth(ageS) - 1
+	room := w - ansi.StringWidth(head) - ansi.StringWidth(tail) - 1
 	line := head + ansi.Truncate(what, max(0, room), "…")
-	line += strings.Repeat(" ", max(1, w-ansi.StringWidth(line)-ansi.StringWidth(ageS))) + ageS
+	line += strings.Repeat(" ", max(1, w-ansi.StringWidth(line)-ansi.StringWidth(tail))) + tail
 	if selected {
 		return stSelRow.Render("▌" + line)
 	}
@@ -546,97 +559,88 @@ func (m *Model) sessionNameWidth() int {
 	return min(w, 16)
 }
 
-// sessionHeader is the first preview line: state, name, agent, tty, time.
+// sessionHeader is the first preview line: the state, the name, the
+// folder, the tty and how long it has been idle.
 func (m *Model) sessionHeader(sv *api.SessionView, w int, now time.Time) string {
-	label := map[string]string{"idle": stOK.Render("○ IDLE"), "busy": stWarn.Render("◉ WORKING"),
-		"waiting": stBad.Render("! WAITS FOR YOU")}[sv.Turn]
-	if label == "" {
-		label = stDim.Render("· OPEN")
-	}
-	var meta []string
-	if sv.Agent != "" {
-		meta = append(meta, sv.Agent)
-	} else {
-		meta = append(meta, shortHome(sv.Repo))
-	}
+	meta := []string{shortHome(sv.Repo)}
 	if sv.TTY != "" {
 		meta = append(meta, strings.TrimPrefix(sv.TTY, "/dev/"))
 	}
-	switch {
-	case sv.Turn == "busy" && !sv.TurnAt.IsZero():
-		meta = append(meta, "for "+dur(now.Sub(sv.TurnAt)))
-	case !sv.LastAnswerAt.IsZero():
-		meta = append(meta, "answered "+ago(now.Sub(sv.LastAnswerAt))+" ago")
+	if sv.Turn == "idle" {
+		at := sv.LastAnswerAt
+		if at.IsZero() {
+			at = sv.TurnAt
+		}
+		if !at.IsZero() {
+			meta = append(meta, "idle "+ago(now.Sub(at)))
+		}
 	}
-	return ansi.Truncate(label+"  "+stTitle.Render(sessionName(sv))+stDim.Render(" · "+strings.Join(meta, " · ")), w, "…")
+	return ansi.Truncate(m.sessionLabel(sv, now)+"  "+stTitle.Render(sessionName(sv))+stDim.Render("  "+strings.Join(meta, " · ")), w, "…")
 }
 
-// sessionBody is the last exchange: earlier answers as one line each, your
-// prompt, then the final answer (or one working line). full: the whole
-// answer, else what fits in h (cut with a pointer to enter).
+// wrapLines wraps s to w, indented by two, at most n lines (0: all).
+func wrapLines(s string, w, n int) []string {
+	ls := strings.Split(ansi.Wrap(s, max(10, w-2), ""), "\n")
+	if n > 0 && len(ls) > n {
+		ls = append(ls[:n-1], "…")
+	}
+	for i := range ls {
+		ls[i] = "  " + ls[i]
+	}
+	return ls
+}
+
+// stepRows are done steps as "15:00  Edit  path", faint.
+func stepRows(steps []api.SessionStep, w int, now time.Time) []string {
+	var out []string
+	for _, s := range steps {
+		out = append(out, ansi.Truncate(stDim.Render(fmt.Sprintf("  %-5s  %-5s %s", clock(s.At, now), s.Tool, s.Target)), w, "…"))
+	}
+	return out
+}
+
+// sessionBody is the preview of one session. Working: the prompt it works
+// on, the step that runs now, the steps so far, its last answer. Waiting:
+// what it asks for in its tab, the prompt, the steps before it asked. Idle:
+// your last prompt and the final answer to it (full: the whole answer,
+// else what fits in h, cut with a pointer to enter).
 func (m *Model) sessionBody(sv *api.SessionView, w, h int, full bool) []string {
 	now := m.now()
 	turns, err := m.sessionTurns(sv)
+	kind := m.sessionKind(sv)
+	if kind == kWorking || kind == kWaiting {
+		return m.liveBody(sv, turns, w, now)
+	}
 	if len(turns) == 0 {
 		var out []string
 		if err != nil {
 			out = append(out, stWarn.Render("Cannot read the conversation: "+oneLine(rpcMessage(err))))
 		} else if sv.LastPrompt != "" {
-			out = append(out, stAccent.Render("› you"), "  "+sv.LastPrompt)
+			out = append(out, stDim.Render("you asked"), "  "+sv.LastPrompt)
 		} else {
 			out = append(out, stDim.Render("No conversation yet."))
 		}
 		return out
 	}
-	earlier, you, answer := lastExchange(turns)
-	if (sv.Turn == "busy" || sv.Turn == "waiting") && answer != nil && answer.Role == "claude" && you != nil && you.Role == "you" {
-		answer = nil // the answer to this prompt is not done yet
-	}
+	_, you, answer := lastExchange(turns)
 	var out []string
-	if !full {
-		if len(earlier) > 2 {
-			earlier = earlier[len(earlier)-2:]
-		}
-	}
-	for _, t := range earlier {
-		out = append(out, ansi.Truncate(stDim.Render(clock(t.At, now)+" · "+plainFirstLine(t.Text)), w, "…"))
-	}
-	if len(earlier) > 0 {
-		out = append(out, "")
-	}
 	if you != nil {
-		out = append(out, promptLabel(you)+" "+stDim.Render(clock(you.At, now)))
-		ys := strings.Split(ansi.Wrap(you.Text, max(10, w-2), ""), "\n")
-		if !full && len(ys) > 4 {
-			ys = append(ys[:3], "…")
+		label := stDim.Render("you asked · " + clock(you.At, now))
+		if you.Role == "ask" {
+			label = promptLabel(you) + " " + stDim.Render(clock(you.At, now))
 		}
-		for _, l := range ys {
-			out = append(out, "  "+l)
+		n := 4
+		if full {
+			n = 0
 		}
+		out = append(out, label)
+		out = append(out, wrapLines(you.Text, w, n)...)
 		out = append(out, "")
 	}
 	switch {
-	case answer != nil && answer.Role == "worker":
-		body := answerLines(you, answer, w, now)
-		if !full && h > 0 && len(out)+len(body) > h {
-			body = append(body[:max(0, h-len(out)-1)], stDim.Render("… enter shows the whole answer"))
-		}
-		out = append(out, body...)
 	case you != nil && you.Role == "ask" && answer == nil:
-		out = append(out, rule(stWarn.Render(spinner(now)+" worker"), "a copy of this session", w))
-	case sv.Turn == "waiting":
-		out = append(out, rule(stBad.Render("! waits for you"), "for "+dur(now.Sub(sv.TurnAt)), w), "",
-			"  It asks for a permission or a question in its tab. o shows the tab.")
-	case sv.Turn == "busy":
-		meta := "for " + dur(now.Sub(sv.TurnAt))
-		if answer == nil {
-			if n := len(turns); n > 0 && turns[n-1].Role == "claude" && turns[n-1].Tools > 0 {
-				meta += fmt.Sprintf(" · %d tools so far", turns[n-1].Tools)
-			}
-		}
-		out = append(out, rule(stWarn.Render(spinner(now)+" working"), meta, w), "",
-			stDim.Render("  The answer shows here when it is done."))
-	case answer == nil || answer.Text == "":
+		out = append(out, rule(stLive.Render(spinner(now)+" fork"), "a copy of this session answers", w))
+	case answer == nil || answer.Text == "" && answer.Role == "claude":
 		out = append(out, stDim.Render("No answer yet."))
 	default:
 		body := answerLines(you, answer, w, now)
@@ -648,6 +652,86 @@ func (m *Model) sessionBody(sv *api.SessionView, w, h int, full bool) []string {
 	return out
 }
 
+// liveBody is the preview of a working or waiting session.
+func (m *Model) liveBody(sv *api.SessionView, turns []api.SessionTurn, w int, now time.Time) []string {
+	a := sv.Activity
+	if a == nil {
+		a = &api.SessionActivity{}
+	}
+	var out []string
+	cur := nowStep(sv)
+	if sv.Turn == "waiting" {
+		out = append(out, stWarn.Render(waitReason(sv)))
+		if cur != nil {
+			out = append(out, "  "+stWarn.Render("│")+" "+ansi.Truncate(stepLabel(cur, stWarn), w-4, "…"))
+			out = append(out, "  "+stWarn.Render("│")+" "+stDim.Render("asked "+clock(cur.At, now)+" · nothing has run since"))
+		} else {
+			out = append(out, "  "+stDim.Render("o brings its tab to the front"))
+		}
+		out = append(out, "")
+	}
+	if a.Prompt != "" {
+		out = append(out, stDim.Render("working on · you asked "+clock(a.PromptAt, now)))
+		out = append(out, wrapLines(a.Prompt, w, 4)...)
+		out = append(out, "")
+	}
+	var done []api.SessionStep
+	for _, s := range a.Steps {
+		if s.Done {
+			done = append(done, s)
+		}
+	}
+	if sv.Turn == "busy" {
+		switch {
+		case cur != nil:
+			out = append(out, stDim.Render("now · for "+elapsed(now.Sub(cur.At))))
+			out = append(out, "  "+stLive.Render("│")+" "+ansi.Truncate(stepLabel(cur, stLive), w-4, "…"))
+		default:
+			out = append(out, stDim.Render("now"), "  "+stLive.Render("│")+" "+stDim.Render("thinking"))
+		}
+		if d := silentFor(sv, now); d > 0 {
+			out = append(out, "  "+stWarn.Render("silent "+ago(d)+": nothing written since; a long command, or stuck"))
+		}
+		out = append(out, "")
+		if len(done) > 5 {
+			done = done[len(done)-5:]
+		}
+		if len(done) > 0 {
+			out = append(out, rule(stDim.Render("steps so far"), fmt.Sprintf("%d tools", a.Tools), w))
+			out = append(out, stepRows(done, w, now)...)
+			out = append(out, "")
+		}
+	} else if len(done) > 0 {
+		if len(done) > 3 {
+			done = done[len(done)-3:]
+		}
+		out = append(out, rule(stDim.Render("before it asked"), fmt.Sprintf("%d tools", a.Tools), w))
+		out = append(out, stepRows(done, w, now)...)
+		out = append(out, "")
+	}
+	// Asks to its fork while it works, and their answers.
+	for i := range turns {
+		t := &turns[i]
+		if !t.At.Before(a.PromptAt) && (t.Role == "ask" || t.Role == "worker") {
+			if t.Role == "ask" {
+				out = append(out, promptLabel(t)+" "+stDim.Render(clock(t.At, now)))
+				out = append(out, wrapLines(t.Text, w, 3)...)
+				if i == len(turns)-1 {
+					out = append(out, rule(stLive.Render(spinner(now)+" fork"), "a copy of this session answers", w))
+				}
+				continue
+			}
+			out = append(out, answerLines(nil, t, w, now)...)
+			out = append(out, "")
+		}
+	}
+	if sv.LastAnswer != "" && sv.LastAnswerAt.Before(a.PromptAt) {
+		out = append(out, rule(stDim.Render("last answer"), clock(sv.LastAnswerAt, now), w))
+		out = append(out, ansi.Truncate(stDim.Render("  "+plainFirstLine(sv.LastAnswer)), w, "…"))
+	}
+	return out
+}
+
 // canFocus reports a terminal whose tab or pane Mailroom can bring to the
 // front (session.focus).
 func canFocus(term string) bool {
@@ -655,43 +739,41 @@ func canFocus(term string) bool {
 }
 
 // canWrite reports whether the human can write to the session now: typed
-// in when idle, or to a worker with its context when busy or waiting (the
-// worker needs an agent that owns the session's folder).
+// in when idle, or to a fork with its context when busy or waiting (the
+// fork needs an agent that owns the session's folder).
 func canWrite(sv *api.SessionView) bool {
 	return sv.CanPrompt || (sv.Turn == "busy" || sv.Turn == "waiting") && sv.Agent != ""
 }
 
 // writeHint says where the text goes.
 func writeHint(sv *api.SessionView) string {
+	switch {
+	case sv.CanPrompt:
+		return "It is idle: what you write is typed into its tab."
+	case canWrite(sv) && sv.Turn == "waiting":
+		return "Mailroom never answers a permission prompt for you. s asks a fork instead, without touching the prompt."
+	case canWrite(sv):
+		return "It is busy: a fork of this session answers from what it knows. Nothing is typed into its tab."
+	case sv.Turn == "busy" || sv.Turn == "waiting":
+		return "It is busy, and no agent owns its folder, so no fork can answer: write when it is idle."
+	}
+	return "Cannot write now: " + sv.Why
+}
+
+// routeShort is the line over the chat's box: where enter sends the text.
+func routeShort(sv *api.SessionView) string {
 	name := sessionName(sv)
 	switch {
 	case sv.CanPrompt:
-		return "enter types it into " + name
+		return "to " + name + " · it is idle, so enter types into its tab"
 	case canWrite(sv):
-		return name + " is working: enter asks a worker that knows this session (read only); nothing is typed into it"
-	case sv.Turn == "busy" || sv.Turn == "waiting":
-		return name + " is working, and no agent owns its folder: write when it is idle"
+		return "to " + name + " · it is busy, so a fork answers"
 	}
-	return "cannot write now: " + sv.Why
+	return "to " + name + " · cannot write now"
 }
 
-// sessionKeys is the key line under a session preview.
-func sessionKeys(sv *api.SessionView) string {
-	var ks []string
-	switch {
-	case sv.CanPrompt:
-		ks = append(ks, stAccent.Render("[s]")+" reply")
-	case canWrite(sv):
-		ks = append(ks, stAccent.Render("[s]")+" ask a worker")
-	}
-	ks = append(ks, stAccent.Render("[enter]")+" chat")
-	if sv.TTY != "" && canFocus(sv.Term) {
-		ks = append(ks, stAccent.Render("[o]")+" show its tab")
-	}
-	return strings.Join(ks, "   ")
-}
-
-// sessionPreview is the right pane for a session row.
+// sessionPreview is the right pane for a session row: the body, then the
+// box (or where s would send the text).
 func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 	sv := r.sess
 	out := []string{m.sessionHeader(sv, w, m.now()), ""}
@@ -699,11 +781,20 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 	switch {
 	case m.home.typing:
 		bottom = append([]string{""}, m.home.draft.boxLines(stAccent.Render("› "), w, 6)...)
-		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" · esc cancel", w, "…")))
-	case !canWrite(sv):
-		bottom = []string{"", stDim.Render(ansi.Truncate(writeHint(sv)+".", w, "…")), sessionKeys(sv)}
+		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" esc cancels.", w, "…")))
+	case sv.Turn == "waiting" && sv.TTY != "" && canFocus(sv.Term):
+		bottom = []string{"", stWarn.Render("o") + " bring its tab to the front and answer there"}
+		if canWrite(sv) {
+			bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv), w, "…")))
+		}
+	case canWrite(sv):
+		what := "reply…"
+		if !sv.CanPrompt {
+			what = "ask while it works…"
+		}
+		bottom = []string{"", stAccent.Render("s") + " " + stDim.Render(what), stDim.Render(ansi.Truncate(writeHint(sv), w, "…"))}
 	default:
-		bottom = []string{"", sessionKeys(sv)}
+		bottom = []string{"", stDim.Render(ansi.Truncate(writeHint(sv), w, "…"))}
 	}
 	out = append(out, m.sessionBody(sv, w, h-len(out)-len(bottom), false)...)
 	keep := h - len(bottom)
@@ -717,7 +808,7 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 }
 
 // chatBody is the whole conversation, oldest first: each prompt (typed in,
-// or an ask to a worker) and its final answer.
+// or an ask to a fork) and its final answer, then what it does now.
 func (m *Model) chatBody(sv *api.SessionView, w int) []string {
 	now := m.now()
 	turns, err := m.sessionTurns(sv)
@@ -733,9 +824,7 @@ func (m *Model) chatBody(sv *api.SessionView, w int) []string {
 				out = append(out, "")
 			}
 			out = append(out, promptLabel(t)+" "+stDim.Render(clock(t.At, now)))
-			for _, l := range strings.Split(ansi.Wrap(t.Text, max(10, w-2), ""), "\n") {
-				out = append(out, "  "+l)
-			}
+			out = append(out, wrapLines(t.Text, w, 0)...)
 			you = t
 			continue
 		}
@@ -746,12 +835,11 @@ func (m *Model) chatBody(sv *api.SessionView, w int) []string {
 		out = append(out, answerLines(you, t, w, now)...)
 		you = nil
 	}
-	switch {
-	case sv.Turn == "waiting":
-		out = append(out, "", rule(stBad.Render("! waits for you"), "for "+dur(now.Sub(sv.TurnAt)), w),
-			"  It asks for a permission or a question in its tab. ctrl+o shows the tab.")
-	case sv.Turn == "busy":
-		out = append(out, "", rule(stWarn.Render(spinner(now)+" "+sessionName(sv)+" is working"), "for "+dur(now.Sub(sv.TurnAt)), w))
+	if n := len(turns); n > 0 && turns[n-1].Role == "ask" {
+		out = append(out, "", rule(stLive.Render(spinner(now)+" fork"), "a copy of this session answers", w))
+	}
+	if l := m.liveLine(sv, w, now); l != "" {
+		out = append(out, "", l)
 	}
 	if len(out) == 0 {
 		out = []string{stDim.Render("No conversation yet. Write below.")}
@@ -760,12 +848,18 @@ func (m *Model) chatBody(sv *api.SessionView, w int) []string {
 }
 
 // sessionFullLines is the chat with the selected session (enter on a
-// session): the conversation, newest at the bottom, and the box to write.
-// m.home.fullScroll counts lines up from the bottom.
+// session): the conversation, newest at the bottom, where the text goes,
+// and the box. m.home.fullScroll counts lines up from the bottom.
 func (m *Model) sessionFullLines(sv *api.SessionView, w, h int) []string {
 	m.markAnswerRead(sv)
-	head := []string{m.sessionHeader(sv, w, m.now()), ""}
-	bottom := append([]string{""}, m.home.draft.boxLines(stAccent.Render("› "), w, 8)...)
+	now := m.now()
+	header := stDim.Render("esc back  ") + m.sessionHeader(sv, w, now)
+	if n := m.othersNeedYou(sv); n > 0 {
+		header = ansi.Truncate(header, max(0, w-24), "…") + "  " + stWarn.Render(fmt.Sprintf("%d need you · tab", n))
+	}
+	head := []string{ansi.Truncate(header, w, "…"), ""}
+	bottom := []string{"", stDim.Render(ansi.Truncate(routeShort(sv), w, "…"))}
+	bottom = append(bottom, m.home.draft.boxLines(stAccent.Render("› "), w, 8)...)
 	bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv), w, "…")))
 	body := m.chatBody(sv, w)
 	room := max(1, h-len(head)-len(bottom))
@@ -800,6 +894,17 @@ func (m *Model) chatKey(r *homeRow, k string) (tea.Cmd, bool) {
 		m.home.fullScroll -= page
 	case "ctrl+o":
 		return m.focusSession(r.sess), true
+	case "tab", "shift+tab":
+		step := 1
+		if k == "shift+tab" {
+			step = -1
+		}
+		if !m.homeNextAttention(step, true) {
+			m.setStatus("No other session needs you.", false)
+			return nil, true
+		}
+		m.home.fullScroll = 0
+		return m.loadPreview(true), true
 	default:
 		return nil, false
 	}

@@ -222,8 +222,8 @@ func (d *Daemon) mergeSessions(cfg *config.Config, rows []store.Presence, found 
 	return out
 }
 
-// answerCache keeps each session's last answer, read again only when its
-// transcript changes (session.list runs on every UI refresh).
+// answerCache keeps each session's last answer and activity, read again
+// only when its transcript changes (session.list runs on every UI refresh).
 type answerCache struct {
 	mu sync.Mutex
 	m  map[string]answerEntry
@@ -233,13 +233,22 @@ type answerEntry struct {
 	path      string
 	size      int64
 	mod       time.Time
-	text      string
-	at        time.Time
+	info      transcriptInfo
 	checkedAt time.Time
 }
 
-// get returns the final message of the session's newest answer.
-func (c *answerCache) get(sessionID string) (string, time.Time) {
+// transcriptInfo is what session.list shows from a transcript.
+type transcriptInfo struct {
+	answer   string
+	answerAt time.Time
+	act      presence.Activity
+	wroteAt  time.Time
+	ok       bool // a transcript was read
+}
+
+// get returns the final message of the session's newest answer and what
+// the newest exchange does now.
+func (c *answerCache) get(sessionID string) transcriptInfo {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.m == nil || len(c.m) > 512 {
@@ -251,19 +260,21 @@ func (c *answerCache) get(sessionID string) (string, time.Time) {
 	}
 	if e.path == "" {
 		c.m[sessionID] = e
-		return "", time.Time{}
+		return transcriptInfo{}
 	}
 	st, err := os.Stat(e.path)
 	if err != nil {
 		delete(c.m, sessionID)
-		return "", time.Time{}
+		return transcriptInfo{}
 	}
 	if st.Size() != e.size || !st.ModTime().Equal(e.mod) {
 		e.size, e.mod = st.Size(), st.ModTime()
-		e.text, e.at = presence.LastAnswer(presence.Conversation(e.path, 4))
+		turns, act := presence.Read(e.path, 4)
+		text, at := presence.LastAnswer(turns)
+		e.info = transcriptInfo{answer: text, answerAt: at, act: act, wroteAt: st.ModTime(), ok: true}
 	}
 	c.m[sessionID] = e
-	return e.text, e.at
+	return e.info
 }
 
 // gitRoot is the nearest folder at or above dir that holds .git (a folder

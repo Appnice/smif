@@ -92,7 +92,7 @@ func (m *Model) onPrompted(msg promptedMsg) tea.Cmd {
 	m.home.fullScroll = 0
 	switch {
 	case msg.sent != nil && msg.sent.Mode == "worker":
-		m.setStatus(msg.agent+" is working, so a worker with its context answers here.", false)
+		m.setStatus(msg.agent+" is busy, so a fork of it answers here.", false)
 	case msg.sent != nil:
 		m.setStatus("Typed into "+msg.agent+". It is working now.", false)
 	default:
@@ -165,21 +165,6 @@ func (m *Model) onTail(msg tailMsg) {
 		return
 	}
 	e.tail, e.err = msg.tail, nil
-}
-
-func (m *Model) sessionMark(sv *api.SessionView, now time.Time) string {
-	if sv.Turn != "busy" && m.newAnswer(sv) {
-		return stAccent.Render("●")
-	}
-	switch sv.Turn {
-	case "waiting":
-		return stBad.Render("!")
-	case "idle":
-		return stOK.Render("○")
-	case "busy":
-		return stWarn.Render(spinner(now))
-	}
-	return stDim.Render("·")
 }
 
 func sessionState(sv *api.SessionView) string {

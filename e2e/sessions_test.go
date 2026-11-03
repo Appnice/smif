@@ -284,4 +284,22 @@ func TestSessionDiscovery(t *testing.T) {
 	if s := list()["tail-session-01"]; s.LastAnswer != "Yes, it is live." || s.LastAnswerAt.IsZero() {
 		t.Fatalf("last answer: %+v", s)
 	}
+	// ... and what the newest exchange does now: the prompt, the steps, the
+	// call without a result (paths in the session's folder relative to it).
+	more := strings.Join([]string{
+		`{"type":"user","timestamp":"2026-11-03T09:00:00Z","message":{"content":"push the fix"}}`,
+		`{"type":"assistant","timestamp":"2026-11-03T09:00:01Z","message":{"content":[{"type":"tool_use","id":"e1","name":"Edit","input":{"file_path":"` + e.Repos["app"] + `/cart/cart.go"}}]}}`,
+		`{"type":"user","timestamp":"2026-11-03T09:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"e1","content":"ok"}]}}`,
+		`{"type":"assistant","timestamp":"2026-11-03T09:00:03Z","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"git push origin main"}}]}}`,
+	}, "\n") + "\n"
+	if err := os.WriteFile(filepath.Join(pdir, "tail-session-01.jsonl"), []byte(transcript+more), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	write(os.Getpid(), "tail-session-01", "interactive", "waiting", time.Now().UnixMilli())
+	s := list()["tail-session-01"]
+	if a := s.Activity; s.Turn != "waiting" || a == nil || a.Prompt != "push the fix" || a.Tools != 2 || len(a.Steps) != 2 ||
+		a.Steps[0].Target != "cart/cart.go" || !a.Steps[0].Done || a.Now == nil || a.Now.Tool != "Bash" ||
+		a.Now.Target != "git push origin main" || a.WroteAt.IsZero() {
+		t.Fatalf("activity: %+v %+v", s, s.Activity)
+	}
 }

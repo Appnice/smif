@@ -57,6 +57,7 @@ type homeState struct {
 	seenFile   string                // where seen is kept ("" = memory only)
 	full       bool                  // the selected session's whole answer fills the screen
 	fullScroll int
+	hideQuiet  bool // z: idle sessions whose answer was read are hidden
 }
 
 // previewEntry caches the thread of a previewed message.
@@ -114,6 +115,9 @@ func (m *Model) homeRows() []homeRow {
 	}
 	add(grpNeeds, s.NeedsYou)
 	for i := range s.Sessions {
+		if m.home.hideQuiet && m.sessionKind(&s.Sessions[i]) == kQuiet {
+			continue
+		}
 		rows = append(rows, sessionRow(&s.Sessions[i]))
 	}
 	add(grpRunning, s.Running)
@@ -126,8 +130,11 @@ func (m *Model) homeRows() []homeRow {
 		if m.home.agent != "" && r.msg.To != m.home.agent {
 			continue
 		}
-		if q != "" && !strings.Contains(strings.ToLower(strings.Join([]string{r.msg.To, r.msg.From.Agent, r.msg.Intent,
-			r.msg.Subject, r.msg.Summary, r.msg.HumanQuestion}, " ")), q) {
+		hay := []string{r.msg.To, r.msg.From.Agent, r.msg.Intent, r.msg.Subject, r.msg.Summary, r.msg.HumanQuestion}
+		if r.sess != nil {
+			hay = append(hay, sessionName(r.sess), shortHome(r.sess.Repo), r.sess.LastAnswer)
+		}
+		if q != "" && !strings.Contains(strings.ToLower(strings.Join(hay, " ")), q) {
 			continue
 		}
 		out = append(out, r)
@@ -386,10 +393,23 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.homeMove(-1 << 20)
 	case "end", "G":
 		return m.homeMove(1 << 20)
-	case "tab":
-		return m.homeJumpGroup(1)
-	case "shift+tab":
-		return m.homeJumpGroup(-1)
+	case "tab", "shift+tab":
+		// The next row that needs you (a waiting session, a new answer, a
+		// question, a dead letter); with none, the next group.
+		step := 1
+		if k == "shift+tab" {
+			step = -1
+		}
+		if m.homeNextAttention(step, false) {
+			return m.loadPreview(false)
+		}
+		return m.homeJumpGroup(step)
+	case "z":
+		m.home.hideQuiet = !m.home.hideQuiet
+		if m.home.hideQuiet {
+			m.setStatus("Idle sessions you have read are hidden; z shows them.", false)
+		}
+		return m.loadPreview(false)
 	case "]", "right", "l":
 		return m.homeCycleAgent(1)
 	case "[", "left", "h":
@@ -530,44 +550,33 @@ func (m *Model) homeMarkRead() tea.Cmd {
 	}
 }
 
-// homeTop is the one-line header: the name, the agent tabs, the health.
+// homeTop is the one-line header: the name, the session counts by state,
+// what asks for you, the agent filter, and whether the view is live.
 func (m *Model) homeTop(w int) string {
-	left := stBadge.Render(" mailroom ") + " "
-	rows := m.homeRowsAll()
-	counts, needs := map[string]int{}, map[string]bool{}
-	for _, r := range rows {
-		if r.sess != nil {
-			continue // the tabs count messages
+	parts := []string{stBadge.Render(" mailroom ")}
+	c := m.sessionCounts()
+	if c[kWaiting] > 0 {
+		parts = append(parts, stWarn.Render(fmt.Sprintf("%d waiting", c[kWaiting])))
+	}
+	if c[kNew] > 0 {
+		parts = append(parts, stAccent.Render(fmt.Sprintf("%d new", c[kNew])))
+	}
+	if c[kWorking] > 0 {
+		parts = append(parts, stLive.Render(fmt.Sprintf("%d working", c[kWorking])))
+	}
+	if c[kQuiet] > 0 {
+		parts = append(parts, stDim.Render(fmt.Sprintf("%d quiet", c[kQuiet])))
+	}
+	if m.snap != nil {
+		if n := len(m.snap.NeedsYou); n > 0 {
+			parts = append(parts, stBad.Render(fmt.Sprintf("⚑ %d asks you", n)))
 		}
-		counts[r.msg.To]++
-		if r.group == grpNeeds {
-			needs[r.msg.To] = true
+		if n := len(m.snap.DLQ); n > 0 {
+			parts = append(parts, stBad.Render(fmt.Sprintf("✗ %d dead", n)))
 		}
 	}
-	tab := func(label string, on bool) string {
-		if on {
-			return stTabOn.Render(" " + label + " ")
-		}
-		return " " + label + " "
-	}
-	all := 0
-	for _, n := range counts {
-		all += n
-	}
-	tabs := []string{tab(fmt.Sprintf("All %d", all), m.home.agent == "")}
-	for _, id := range m.homeAgents() {
-		label := id
-		if needs[id] {
-			label += " " + stBad.Render("⚑")
-		}
-		if n := counts[id]; n > 0 {
-			label += " " + itoa(n)
-		}
-		if counts[id] == 0 && m.home.agent != id {
-			tabs = append(tabs, stDim.Render(" "+label+" "))
-			continue
-		}
-		tabs = append(tabs, tab(label, m.home.agent == id))
+	if m.home.agent != "" {
+		parts = append(parts, stTabOn.Render("agent "+m.home.agent)+stDim.Render(" ([ ] 0)"))
 	}
 	right := ""
 	switch {
@@ -578,13 +587,18 @@ func (m *Model) homeTop(w int) string {
 		for _, a := range m.snap.Status.Agents {
 			spent += a.SpentUSD
 		}
-		mark := stOK.Render("●")
-		if !m.snap.Status.Daemon.ClaudeOK {
-			mark = stWarn.Render("● claude unavailable ·")
+		right = stOK.Render("● live")
+		if age := m.now().Sub(m.snap.At); !m.snap.At.IsZero() && age > 5*time.Second+3*m.interval {
+			right = stWarn.Render("● " + ago(age) + " old")
 		}
-		right = mark + stDim.Render(" "+money(spent)+" today")
+		if !m.snap.Status.Daemon.ClaudeOK {
+			right = stWarn.Render("● claude unavailable")
+		}
+		if spent > 0 {
+			right += stDim.Render(" · ≈ " + money(spent) + " at API prices today")
+		}
 	}
-	line := left + strings.Join(tabs, "")
+	line := strings.Join(parts, "  ")
 	gap := w - ansi.StringWidth(line) - ansi.StringWidth(right)
 	if gap < 1 {
 		return ansi.Truncate(line, max(0, w-ansi.StringWidth(right)-1), "…") + " " + right
@@ -613,7 +627,7 @@ func (m *Model) homeLines(w, avail int) []string {
 	// Narrow terminals get the list alone; enter opens the item.
 	listW := w
 	if w >= 90 {
-		listW = max(44, w*45/100)
+		listW = max(44, w/2)
 	}
 	list := m.homeList(rows, sel, listW-4, avail-2)
 	out := box(m.homeListTitle(), list, listW, avail, !m.home.typing)
@@ -662,6 +676,9 @@ func (m *Model) homeList(rows []homeRow, sel, w, h int) []string {
 	now := m.now()
 	for g := homeGroup(0); g < numGroups; g++ {
 		idx := byGroup[g]
+		if len(idx) == 0 && !(g == grpSessions && m.home.hideQuiet) {
+			continue // an empty group takes no room
+		}
 		head := fmt.Sprintf("%s · %d", groupNames[g], len(idx))
 		if g == grpDone {
 			unread := 0
@@ -674,11 +691,9 @@ func (m *Model) homeList(rows []homeRow, sel, w, h int) []string {
 				head += stDim.Render(fmt.Sprintf(" · %d unread (e marks read)", unread))
 			}
 		}
-		if g == grpSessions {
-			if n := m.newAnswers(); n == 1 {
-				head += stDim.Render(" · 1 new answer")
-			} else if n > 1 {
-				head += stDim.Render(fmt.Sprintf(" · %d new answers", n))
+		if g == grpSessions && m.home.hideQuiet {
+			if n := m.sessionCounts()[kQuiet]; n > 0 {
+				head += stDim.Render(fmt.Sprintf(" · %d quiet hidden (z)", n))
 			}
 		}
 		if len(lines) > 0 {
@@ -1028,9 +1043,9 @@ func (m *Model) homeKeys() string {
 	if m.home.typing {
 		if r := m.homeSelected(); r != nil && r.sess != nil {
 			if m.home.full {
-				return "type to write · enter send · ↑↓ pgup pgdn scroll · ctrl+o show tab · esc back · ctrl+c quit"
+				return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · esc back · ctrl+c quit"
 			}
-			return "enter sends it to the session · esc cancel · ctrl+c quit"
+			return "enter sends it (typed in when idle, else to a fork) · esc cancel · ctrl+c quit"
 		}
 		return "enter send · alt+enter new line · esc cancel · ctrl+c quit"
 	}
@@ -1042,17 +1057,28 @@ func (m *Model) homeKeys() string {
 	}
 	if r := m.homeSelected(); r != nil && r.sess != nil {
 		if m.home.full {
-			return "type to write · enter send · ↑↓ pgup pgdn scroll · ctrl+o show tab · esc back"
+			return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · esc back"
 		}
-		ks := []string{"↑↓ move"}
-		if canWrite(r.sess) {
+		var ks []string
+		focus := r.sess.TTY != "" && canFocus(r.sess.Term)
+		if focus && r.sess.Turn == "waiting" {
+			ks = append(ks, "o answer in its tab")
+		}
+		ks = append(ks, "↑↓ move", "tab next that needs you", "enter chat")
+		switch {
+		case r.sess.CanPrompt:
 			ks = append(ks, "s write")
+		case canWrite(r.sess):
+			ks = append(ks, "s ask a fork")
 		}
-		ks = append(ks, "enter chat")
-		if r.sess.TTY != "" && canFocus(r.sess.Term) {
-			ks = append(ks, "o show tab")
+		if focus && r.sess.Turn != "waiting" {
+			ks = append(ks, "o its tab")
 		}
-		return strings.Join(append(ks, ": command", "[ ] agent", "/ filter", "v dashboard", "? help", "q quit"), " · ")
+		quiet := "z hide quiet"
+		if m.home.hideQuiet {
+			quiet = "z show quiet"
+		}
+		return strings.Join(append(ks, "/ filter", quiet, ": command", "v dashboard", "? help", "q quit"), " · ")
 	}
 	ks := []string{"↑↓ move", "enter open"}
 	if r := m.homeSelected(); r != nil {

@@ -1,7 +1,6 @@
- mailroom   All 7  cafe ⚑ 3  observability 2  web 2                                                        ● $1.75 today
+ mailroom   1 working  1 quiet  ⚑ 1 asks you  ✗ 1 dead                              ● live · ≈ $1.75 at API prices today
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ○ IDLE  release · cafe · ttys003 · answered 10m ago                                                                  │
-│                                                                                                                      │
+│ esc back  ○ IDLE  release  /r/cafe · ttys003 · idle 10m                                                              │
 │                                                                                                                      │
 │                                                                                                                      │
 │                                                                                                                      │
@@ -34,7 +33,8 @@
 │   • App Store: READY_FOR_SALE                                                                                        │
 │   • Google Play: production, 100% rollout                                                                            │
 │                                                                                                                      │
+│ to release · it is idle, so enter types into its tab                                                                 │
 │ ›                                                                                                                    │
-│ enter types it into release                                                                                          │
+│ It is idle: what you write is typed into its tab.                                                                    │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-type to write · enter send · ↑↓ pgup pgdn scroll · ctrl+o show tab · esc back · ctrl+c quit
+type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · esc back · ctrl+c quit

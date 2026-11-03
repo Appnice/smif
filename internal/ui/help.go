@@ -20,24 +20,25 @@ func section(name string) helpEntry { return helpEntry{"#", name} }
 // helpText lists every key of every screen. TestHelpListsEveryKey keeps
 // it in step with the key handlers.
 var helpText = []helpEntry{
-	section("KEYS: HOME (the start screen: needs you, sessions, running, queued, done today, dead)"),
+	section("KEYS: HOME (the start screen: what asks you, sessions with their state, then workers; empty groups hide)"),
 	{"↑/k, ↓/j", "move through the list; the preview on the right follows"},
 	{"g/home, G/end", "first row, last row"},
-	{"tab, shift+tab", "jump to the next or previous group"},
-	{"[ ], ←/h →/l", "previous or next agent tab"},
+	{"tab, shift+tab", "the next or previous row that needs you (a waiting session, a new answer, a question, a dead letter); with none, the next group"},
+	{"[ ], ←/h →/l", "show only one agent's rows (the top line names it), previous or next"},
 	{"0, 1-9", "all agents, or the agent with that number"},
 	{"/", "filter by text (enter keeps it, esc clears it)"},
 	{":", "command prompt: ask, tell, prompt, answer, retry, cancel, open, agent, filter, read, inbox, digest, dashboard, help, quit; " +
 		"tab completes commands, agents and intents, ↑/↓ choose, enter runs, esc closes"},
-	{"esc", "clear the agent tab and the filter"},
+	{"esc", "clear the agent and the filter"},
+	{"z", "hide or show the quiet sessions (idle, answer read)"},
 	{"enter", "open the thread of the message, the run of a running item, or the chat with a session: type and enter sends " +
-		"(typed into it when idle, else to a worker with its context); ↑↓ pgup pgdn scroll, ctrl+o its tab, esc back"},
+		"(typed into it when idle, else a fork of the session answers); ↑↓ pgup pgdn scroll, tab the next session that needs you, ctrl+o its tab, esc back"},
 	{"a", "answer a needs-you item in the box under the preview (enter sends, alt+enter new line)"},
 	{"c", "cancel the selected item; asks y/N first"},
 	{"t", "retry a dead letter; asks y/N first"},
 	{"e", "mark the handled items read (the • dot)"},
-	{"s", "on a session: write to it under the preview (idle: typed in, Terminal.app; busy: a worker with its context answers)"},
-	{"o", "on a session: bring its Terminal tab to the front"},
+	{"s", "on a session: write to it under the preview (idle: typed into its tab; busy or waiting: a fork of the session answers, nothing is typed)"},
+	{"o", "on a session: bring its terminal tab to the front (a waiting session: answer its permission prompt or question there)"},
 	{"v", "dashboard: the six-panel overview (agents, events); v or esc there comes back"},
 	{"i, d, r, ?, q", "inbox, digest, refresh, this help, quit"},
 

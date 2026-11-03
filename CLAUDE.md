@@ -56,6 +56,7 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   claude pid must pass first; e2e uses `daemon.terminal = "log:<file>"`. Only the human token sets a session's tty/pid/turn.
   `session.list` also reads Claude Code's `~/.claude/sessions/<pid>.json` (`discover.go`; e2e uses `$CLAUDE_CONFIG_DIR`).
   Answers: `presence.Conversation` keeps only the text after the last tool call; the UI draws it in `internal/ui/answer.go`.
+  What a session does now: `presence.Read` → `SessionView.Activity` (steps, pending call); state cells, counts, `tab` in `internal/ui/live.go` (ADR-0014).
   Busy sessions: `session.send` / an ask to a session's name → a fork worker (`session_ask.go`, ADR-0013); `go test -run TestSessionAsk ./e2e/`.
 - macOS Unix socket paths max 104 bytes: tests use `/tmp/mr-*` and `MAILROOM_SOCKET`.
 - Hooks must print nothing and exit 0 fast; the status line must stay under ~300 ms.

@@ -1,0 +1,40 @@
+ mailroom   1 working  1 quiet  ⚑ 1 asks you  ✗ 1 dead                              ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                            │ │ ▶ WORKING 3m00s  web  /r/web · ttys004                  │
+│   ⚑ cafe ← web Ship?                                  4m │ │                                                         │
+│                                                          │ │ working on · you asked 13:07                            │
+│ SESSIONS · 2                                             │ │   fix the flaky test                                    │
+│   /r/cafe · 1                                            │ │                                                         │
+│     ○ idle   release  Yes, 1.0.2 is live in both st… 10m │ │ now · for 20s                                           │
+│   /r/web · 1                                             │ │   │ Bash  go test -run TestCheckout -count 20 ./cart/   │
+│   ▌ ▶ 3m00s  web      Bash  go test -run TestCh… 3 tools │ │                                                         │
+│                                                          │ │ steps so far ────────────────────────────────── 3 tools │
+│ RUNNING · 1                                              │ │   13:07  Read  cart/cart_test.go                        │
+│   ◉ cafe ← observability NPE in CheckoutView          1m │ │   13:08  Edit  cart/cart.go                             │
+│                                                          │ │                                                         │
+│ QUEUED · 2                                               │ │ › you → fork 13:09                                      │
+│   ◌ web ← observability ANR on cart screen            3m │ │   which test was it?                                    │
+│   ◌ web ← cafe retry · Icons for the dark mode        1m │ │ ◇ fork ───────────────── a copy of this session · 13:09 │
+│                                                          │ │                                                         │
+│ DONE TODAY · 2 · 1 unread (e marks read)                 │ │   TestCheckout in cart_test.go.                         │
+│  •✓ observability ← human harness run mailroom-ui: g… 2h │ │                                                         │
+│   ✓ cafe ← web Is Cafe live?                          5h │ │                                                         │
+│                                                          │ │                                                         │
+│ DEAD · 1                                                 │ │                                                         │
+│   ✗ observability ← cafe crash.report                10m │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │ s ask while it works…                                   │
+│                                                          │ │ It is busy: a fork of this session answers from what i… │
+╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
+Typed into release. It is working now.
+↑↓ move · tab next that needs you · enter chat · s ask a fork · o its tab · / filter · z hide quiet · ? help · q quit
