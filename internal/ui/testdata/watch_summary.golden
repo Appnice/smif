@@ -1,0 +1,10 @@
+== 13:10:05 · daemon v0.1.0 pid 4242 up 2h03m · claude 2.1.316 ok · queue 2 · running 1 · needs you 1 · dead letters 1
+   agent          queued  running  needs you  dead  spent today  budget left  session
+   cafe           2       1        1          0     $0.25        $2.75        interactive
+   observability  0       0        0          1     $0.00        -            -
+   web            0       0        0          0     $1.50        -$0.50       -
+   running 00AAAAAAAA cafe worker/triage attempt 1 1m05s msg 000000RUN1
+   needs you 00000NEED1 cafe from web 4m00s: Ship 1.0.2 now or wait for review?
+   dead 000000DLQ1 observability from cafe crash.report 10m00s: timeout after 2 attempts
+   event 13:06:05 #41 message.transition cafe msg 00000NEED1 running→needs_human human_question="Ship 1.0.2 now or wait for review?"
+   event 13:09:00 #42 run.started cafe msg 000000RUN1 run 00AAAAAAAA attempt=1 handler=worker profile=triage

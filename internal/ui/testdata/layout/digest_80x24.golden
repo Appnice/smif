@@ -1,0 +1,24 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · claude 2.1.316 ok · updated 13:10:05
+queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok
+────────────────────────────────────────────────────────────────────────────────
+ DIGEST · 2 unread handled items · cafe, web 
+  m marks these items read (the read cursor moves past them); `mailroom digest`…
+  MESSAGE     HANDLED     AGENT  FROM  KIND  INTENT        STATE        SUMMARY
+> 000000DONE  30m00s ago  cafe   web   tell  x.y           done         fake ha…
+  00000NEED1  4m00s ago   cafe   web   ask   store.relea…  needs_human  asks: S…
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+↑/↓ move · enter open thread · m mark all shown read · ? help · q quit

@@ -1,0 +1,13 @@
+# Template. `mailroom install` writes the real unit to ~/.config/systemd/user/mailroom.service
+# with the absolute binary path and a PATH that contains claude and git.
+[Unit]
+Description=Mailroom daemon (messaging between Claude Code sessions)
+
+[Service]
+ExecStart=%h/.local/bin/mailroom daemon
+Restart=on-failure
+RestartSec=5
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target

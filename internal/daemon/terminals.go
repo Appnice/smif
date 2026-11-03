@@ -1,0 +1,363 @@
+package daemon
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/appnice/mailroom/internal/store"
+)
+
+// Terminals (ADR-0012). Mailroom types the human's prompt into the terminal
+// a session runs in, and brings that terminal to the front: Terminal.app
+// and iTerm2 by AppleScript (macOS), tmux by send-keys (any OS). A tab or
+// pane is found by the session's tty. Text and Enter go separately: text
+// with its newline in one piece lands in the Claude Code input as a paste
+// and is not sent (docs/compat.md).
+
+// terminal types text into the terminal a session runs in.
+type terminal interface {
+	// Ready checks that the session's claude process still owns the
+	// foreground of its terminal, so the text cannot land in a shell.
+	Ready(p store.Presence) error
+	// Type types text, then Enter as a separate key press.
+	Type(ctx context.Context, p store.Presence, text string) error
+	// Supports says why this terminal cannot reach the session ("" = it can).
+	Supports(p store.Presence) string
+	// Focus brings the session's tab or pane to the front.
+	Focus(ctx context.Context, p store.Presence) error
+}
+
+func newTerminal(spec string) terminal {
+	switch {
+	case spec == "none":
+		return offTerminal{}
+	case strings.HasPrefix(spec, "log:"):
+		return logTerminal{path: strings.TrimPrefix(spec, "log:")}
+	}
+	return autoTerminal{}
+}
+
+// The $TERM_PROGRAM values (and "tmux") Mailroom can drive.
+const (
+	termApple = "Apple_Terminal"
+	termITerm = "iTerm.app"
+	termTmux  = "tmux"
+)
+
+// termSupport says why Mailroom cannot type into the session's terminal,
+// whatever the OS ("" = a terminal it knows).
+func termSupport(p store.Presence) string {
+	switch p.Term {
+	case termApple, termITerm, termTmux:
+		return ""
+	case "":
+		return "Mailroom does not know which terminal this session runs in"
+	}
+	return "prompts work in Terminal.app, iTerm2 and tmux; this session runs in " + p.Term
+}
+
+type offTerminal struct{}
+
+func (offTerminal) Ready(store.Presence) error {
+	return errors.New("prompts are off (daemon.terminal = \"none\")")
+}
+func (offTerminal) Type(context.Context, store.Presence, string) error {
+	return errors.New("prompts are off")
+}
+func (offTerminal) Focus(context.Context, store.Presence) error {
+	return errors.New("prompts are off")
+}
+func (offTerminal) Supports(store.Presence) string {
+	return "prompts are off (daemon.terminal = \"none\")"
+}
+
+// logTerminal appends each prompt and focus to a JSONL file (tests).
+type logTerminal struct{ path string }
+
+func (logTerminal) Ready(p store.Presence) error {
+	if !processAlive(p.PID) {
+		return fmt.Errorf("process %d is gone", p.PID)
+	}
+	return nil
+}
+
+func (l logTerminal) write(v map[string]any) error {
+	f, err := os.OpenFile(l.path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	b, _ := json.Marshal(v)
+	_, err = f.Write(append(b, '\n'))
+	return err
+}
+
+func (l logTerminal) Type(_ context.Context, p store.Presence, text string) error {
+	return l.write(map[string]any{"session_id": p.SessionID, "tty": p.TTY, "pid": p.PID, "term": p.Term, "text": text})
+}
+
+func (l logTerminal) Focus(_ context.Context, p store.Presence) error {
+	return l.write(map[string]any{"session_id": p.SessionID, "tty": p.TTY, "term": p.Term, "focus": true})
+}
+
+// Supports applies the same terminal rule as the real terminals, on any OS.
+func (logTerminal) Supports(p store.Presence) string { return termSupport(p) }
+
+// autoTerminal drives the session's own terminal: Terminal.app or iTerm2
+// (macOS) or tmux.
+type autoTerminal struct{}
+
+func (autoTerminal) Supports(p store.Presence) string {
+	if why := termSupport(p); why != "" {
+		return why
+	}
+	switch p.Term {
+	case termApple, termITerm:
+		if runtime.GOOS != "darwin" {
+			return "Terminal.app and iTerm2 prompts work on macOS only"
+		}
+	case termTmux:
+		if tmuxPath() == "" {
+			return "this session runs in tmux, but the daemon cannot find the tmux command"
+		}
+	}
+	return ""
+}
+
+// Ready runs ps on the claude process: it must be alive, be claude, sit on
+// the recorded tty and be in that tty's foreground process group (+).
+func (autoTerminal) Ready(p store.Presence) error {
+	out, err := exec.Command("ps", "-o", "stat=,tty=,comm=", "-p", strconv.Itoa(p.PID)).Output()
+	if err != nil {
+		return fmt.Errorf("the claude process %d is gone", p.PID)
+	}
+	f := strings.Fields(string(out))
+	if len(f) < 3 {
+		return fmt.Errorf("cannot read process %d", p.PID)
+	}
+	stat, tty, comm := f[0], f[1], strings.Join(f[2:], " ")
+	switch {
+	case !strings.Contains(filepath.Base(comm), "claude"):
+		return fmt.Errorf("process %d is %s, not claude", p.PID, filepath.Base(comm))
+	case "/dev/"+tty != p.TTY:
+		return fmt.Errorf("process %d is on %s, not %s", p.PID, tty, p.TTY)
+	case !strings.Contains(stat, "+"):
+		return errors.New("claude is not in the foreground of its terminal")
+	}
+	return nil
+}
+
+func (autoTerminal) Type(ctx context.Context, p store.Presence, text string) error {
+	switch p.Term {
+	case termITerm:
+		return runAppleScript(ctx, "iTerm2", iTermTypeScript, p.TTY, text)
+	case termTmux:
+		return tmuxType(ctx, p.TTY, text)
+	}
+	return runAppleScript(ctx, "Terminal", appleTypeScript, p.TTY, text)
+}
+
+func (autoTerminal) Focus(ctx context.Context, p store.Presence) error {
+	switch p.Term {
+	case termITerm:
+		return runAppleScript(ctx, "iTerm2", iTermFocusScript, p.TTY)
+	case termTmux:
+		return tmuxFocus(ctx, p.TTY)
+	}
+	return runAppleScript(ctx, "Terminal", appleFocusScript, p.TTY)
+}
+
+// ---- Terminal.app ----
+
+const appleTypeScript = `on run argv
+	set want to item 1 of argv
+	tell application "Terminal"
+		repeat with w in windows
+			repeat with t in tabs of w
+				if tty of t is want then
+					do script (item 2 of argv) in t
+					delay 0.4
+					do script "" in t
+					return "ok"
+				end if
+			end repeat
+		end repeat
+	end tell
+	return "no tab"
+end run`
+
+const appleFocusScript = `on run argv
+	set want to item 1 of argv
+	tell application "Terminal"
+		repeat with w in windows
+			repeat with t in tabs of w
+				if tty of t is want then
+					set selected of t to true
+					set index of w to 1
+					activate
+					return "ok"
+				end if
+			end repeat
+		end repeat
+	end tell
+	return "no tab"
+end run`
+
+// ---- iTerm2 ----
+
+// iTerm2 keeps sessions (panes) inside tabs; `write text … newline no`
+// types without Enter, and `write text ""` is Enter.
+const iTermTypeScript = `on run argv
+	set want to item 1 of argv
+	tell application "iTerm2"
+		repeat with w in windows
+			repeat with t in tabs of w
+				repeat with s in sessions of t
+					if tty of s is want then
+						tell s to write text (item 2 of argv) newline no
+						delay 0.4
+						tell s to write text ""
+						return "ok"
+					end if
+				end repeat
+			end repeat
+		end repeat
+	end tell
+	return "no tab"
+end run`
+
+const iTermFocusScript = `on run argv
+	set want to item 1 of argv
+	tell application "iTerm2"
+		repeat with w in windows
+			repeat with t in tabs of w
+				repeat with s in sessions of t
+					if tty of s is want then
+						tell s to select
+						tell t to select
+						select w
+						activate
+						return "ok"
+					end if
+				end repeat
+			end repeat
+		end repeat
+	end tell
+	return "no tab"
+end run`
+
+// runAppleScript runs one AppleScript against app with the tab's tty (and
+// text) as arguments, never inside the script.
+func runAppleScript(ctx context.Context, app, script string, argv ...string) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	args := []string{}
+	for _, l := range strings.Split(script, "\n") {
+		args = append(args, "-e", l)
+	}
+	out, err := exec.CommandContext(ctx, "osascript", append(args, argv...)...).CombinedOutput()
+	msg := strings.TrimSpace(string(out))
+	switch {
+	case err != nil && ctx.Err() != nil:
+		return fmt.Errorf("no answer from %s in 15 s. If macOS asks whether mailroom may control %s, click OK, then try again", app, app)
+	case err != nil && strings.Contains(msg, "-1743"):
+		return fmt.Errorf("macOS does not let Mailroom control %s: allow it in System Settings → Privacy & Security → Automation", app)
+	case err != nil:
+		return fmt.Errorf("osascript: %v: %s", err, msg)
+	case msg != "ok":
+		return fmt.Errorf("no %s tab on %s", app, argv[0])
+	}
+	return nil
+}
+
+// ---- tmux ----
+
+// tmuxPath finds the tmux command: on PATH, else the usual install places
+// (the daemon runs with launchd's short PATH).
+func tmuxPath() string {
+	if p, err := exec.LookPath("tmux"); err == nil {
+		return p
+	}
+	for _, p := range []string{"/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"} {
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			return p
+		}
+	}
+	return ""
+}
+
+// tmuxPane is the pane whose tty is tty, on the default tmux server.
+func tmuxPane(ctx context.Context, tty string) (string, error) {
+	out, err := exec.CommandContext(ctx, tmuxPath(), "list-panes", "-a", "-F", "#{pane_tty} #{pane_id}").Output()
+	if err != nil {
+		return "", fmt.Errorf("tmux list-panes: %v", err)
+	}
+	if id := paneForTTY(string(out), tty); id != "" {
+		return id, nil
+	}
+	return "", fmt.Errorf("no tmux pane on %s", tty)
+}
+
+// paneForTTY reads `list-panes -F '#{pane_tty} #{pane_id}'` output.
+func paneForTTY(listing, tty string) string {
+	for _, l := range strings.Split(listing, "\n") {
+		if f := strings.Fields(l); len(f) == 2 && f[0] == tty {
+			return f[1]
+		}
+	}
+	return ""
+}
+
+// tmuxTypeArgs are the two send-keys calls: the text as literal keys, then
+// Enter.
+func tmuxTypeArgs(pane, text string) [][]string {
+	return [][]string{
+		{"send-keys", "-t", pane, "-l", "--", text},
+		{"send-keys", "-t", pane, "Enter"},
+	}
+}
+
+func tmuxType(ctx context.Context, tty, text string) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	pane, err := tmuxPane(ctx, tty)
+	if err != nil {
+		return err
+	}
+	for i, args := range tmuxTypeArgs(pane, text) {
+		if i > 0 {
+			time.Sleep(400 * time.Millisecond)
+		}
+		if out, err := exec.CommandContext(ctx, tmuxPath(), args...).CombinedOutput(); err != nil {
+			return fmt.Errorf("tmux %s: %v: %s", args[0], err, strings.TrimSpace(string(out)))
+		}
+	}
+	return nil
+}
+
+// tmuxFocus selects the pane and its window (and, when a client is
+// attached, switches it there).
+func tmuxFocus(ctx context.Context, tty string) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	pane, err := tmuxPane(ctx, tty)
+	if err != nil {
+		return err
+	}
+	for _, args := range [][]string{{"select-window", "-t", pane}, {"select-pane", "-t", pane}} {
+		if out, err := exec.CommandContext(ctx, tmuxPath(), args...).CombinedOutput(); err != nil {
+			return fmt.Errorf("tmux %s: %v: %s", args[0], err, strings.TrimSpace(string(out)))
+		}
+	}
+	_ = exec.CommandContext(ctx, tmuxPath(), "switch-client", "-t", pane).Run()
+	return nil
+}

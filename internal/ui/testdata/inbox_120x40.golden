@@ -1,0 +1,40 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
+queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ INBOX · agent: all · state: all · 2 messages 
+  MESSAGE     WHEN        FROM  TO    KIND  INTENT         STATE        SUMMARY
+> 00000NEED1  5m00s ago   web   cafe  ask   store.release  needs_human  Ship?
+  000000DONE  30m00s ago  web   cafe  tell  x.y            done         fake handled x.y (+2 coalesced)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+↑/↓ move · enter open thread · f/F agent · s/S state · x clear · r refresh · esc back · ? help · q quit

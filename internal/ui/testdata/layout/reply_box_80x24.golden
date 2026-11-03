@@ -1,0 +1,24 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · claude 2.1.316 ok · updated 13:10:05
+queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok
+────────────────────────────────────────────────────────────────────────────────
+ NEEDS YOU · 01JMSG000000000000000NEED1   needs_human
+  web → cafe · ask store.release · priority normal · attempt 1 · handler worker…
+  subject: Ship?
+
+  QUESTION FROM THE WORKER
+    Ship 1.0.2 now or wait for review?
+
+  MESSAGE BODY
+    Store review passed for 1.0.2. Decide if we ship now.
+    #fake:result=needs_human
+
+  THREAD 01JTHREAD0000000000000001 · 1 messages · 1 runs
+  ▸ 13:05:05  00000NEED1  web → cafe  ask store.release  needs_human  Ship?
+
+  RUNS
+  > 00BBBBBBBB  msg 00000NEED1  worker/triage  attempt 1  done  1m00s  $0.25  n…
+
+────────────────────────────────────────────────────────────────────────────────
+  REPLY to cafe on 00000NEED1 · the text goes back to the agent as a reply and …
+  > Ship it 
+enter send · alt+enter new line · ←/→ move · ctrl+u clear · ctrl+c quit

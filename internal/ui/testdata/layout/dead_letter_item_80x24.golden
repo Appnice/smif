@@ -1,0 +1,24 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · claude 2.1.316 ok · updated 13:10:05
+queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok
+────────────────────────────────────────────────────────────────────────────────
+ DEAD LETTER · 01JMSG0000000000000000DLQ1   dead_letter
+  cafe → observability · tell crash.report · priority - · attempt 2 · handler w…
+  subject: -
+
+  REASON
+    timeout after 2 attempts
+
+  MESSAGE BODY
+    panic in onboarding at step 3
+
+  THREAD 01JTHREAD0000000000000002 · 1 messages · 2 runs
+  ▸ 12:58:05  000000DLQ1  cafe → observability  tell crash.report  dead_letter …
+
+  RUNS
+    00CCCCCCC1  msg 000000DLQ1  worker  attempt 1  failed  8m00s  $0.00  error:…
+  > 00CCCCCCC2  msg 000000DLQ1  worker  attempt 2  failed  7m00s  $0.00  error:…
+
+
+
+
+t retry · tab/enter run · ↑/↓ scroll · r refresh · esc back · ? help · q quit

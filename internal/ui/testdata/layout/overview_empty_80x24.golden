@@ -1,0 +1,24 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · claude 2.1.316 ok · updated 13:10:05
+queue 0 · running 0 · needs you 0 · dead letters 0 · 24h: no runs
+────────────────────────────────────────────────────────────────────────────────
+▶ AGENTS (0) 
+  AGENT  QUEUED  RUNNING  NEEDS YOU  DEAD  SPENT TODAY  BUDGET LEFT  SESSION
+  (no agents in the config; add one with `mailroom init --agent id=repo-path`)
+  RUNNING (0) 
+  RUN  AGENT  HANDLER  ATTEMPT  ELAPSED  MESSAGE
+  (nothing is running)
+  NEEDS YOU (0) 
+  MESSAGE  AGENT  FROM  WAITING  QUESTION
+  (nothing needs you)
+  DEAD LETTERS (0) 
+  MESSAGE  AGENT  FROM  INTENT  AGE  REASON
+  (no dead letters)
+  RECENT ACTIVITY (0) 
+  MESSAGE  WHEN  FROM  TO  KIND  INTENT  STATE  SUMMARY
+  (no messages yet)
+  EVENTS (0) 
+  WHEN  SEQ  EVENT  AGENT  MESSAGE  RUN  DETAIL
+  (no audit events yet)
+
+
+tab panel · ↑/↓ move · i inbox · d digest · r refresh · ? help · q quit

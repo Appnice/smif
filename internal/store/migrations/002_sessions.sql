@@ -1,0 +1,6 @@
+-- ADR-0012: where an interactive session runs and whether it waits for input.
+ALTER TABLE presence ADD COLUMN turn TEXT NOT NULL DEFAULT '';
+ALTER TABLE presence ADD COLUMN turn_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE presence ADD COLUMN tty TEXT NOT NULL DEFAULT '';
+ALTER TABLE presence ADD COLUMN pid INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE presence ADD COLUMN term TEXT NOT NULL DEFAULT '';

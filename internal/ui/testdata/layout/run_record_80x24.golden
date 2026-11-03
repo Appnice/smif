@@ -1,0 +1,24 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · claude 2.1.316 ok · updated 13:10:05
+queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok
+────────────────────────────────────────────────────────────────────────────────
+ RUN · 01JRUN000000000000AAAAAAAA   done  lines 1-17 of 19
+  agent cafe · worker/fix · attempt 1 · message 000000RUN1 · started 13:09:00 ·…
+  [1 RECORD]  2 TRANSCRIPT   3 DIFF 
+  cost $0.0123 · tokens in 1200 out 340
+  session 5d1e7a40-0000-4000-8000-000000000001 (open it with: claude --resume
+  5d1e7a40-0000-4000-8000-000000000001, from
+  /home/p/.local/share/mailroom/worktrees/cafe)
+
+  BRANCH
+    mailroom/cafe/00thread01 · head 9a8b7c6d5e4f · a applies it (asks y/N), 3 s…
+     src/fix.txt | 1 +
+     1 file changed, 1 insertion(+)
+
+  RESULT
+    {
+      "status": "done",
+      "summary": "null check fixed"
+    }
+
+  TRANSCRIPT
+1 record · 2 transcript · 3 diff · ↑/↓ scroll · a apply · ? help · q quit

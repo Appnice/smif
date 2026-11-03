@@ -1,0 +1,40 @@
+ mailroom   All 7  cafe ⚑ 3  observability 2  web 2                                                        ● $1.75 today
+╭────────────────────────────────────────────────────╮ ╭───────────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                      │ │ ◉ RUNNING  observability → cafe · event crash.report · 1m ago │
+│   ⚑ cafe ← web Ship?                            4m │ │                                                               │
+│                                                    │ │ NPE in CheckoutView                                           │
+│ SESSIONS · 0                                       │ │                                                               │
+│                                                    │ │ WORKER · LIVE                                                 │
+│ RUNNING · 1                                        │ │ worker/triage · attempt 1 · 1m05s · $0.00                     │
+│ ▌ ◉ cafe ← observability NPE in CheckoutView    1m │ │   ✓ Read  src/lesson/CheckoutView.kt                          │
+│                                                    │ │   ◓ Bash  git log -5 -- src/lesson                            │
+│ QUEUED · 2                                         │ │                                                               │
+│   ◌ web ← observability ANR on cart screen      3m │ │ THREAD                                                        │
+│   ◌ web ← cafe retry · Icons for the dark mode  1m │ │ cannot load: thread 01JMSG0000000000000000RUN1 not found (co… │
+│                                                    │ │                                                               │
+│ DONE TODAY · 2 · 1 unread (e marks read)           │ │ [enter] open   [c] cancel                                     │
+│  •✓ observability ← human harness run mailroom… 2h │ │                                                               │
+│   ✓ cafe ← web Is Cafe live?                    5h │ │                                                               │
+│                                                    │ │                                                               │
+│ DEAD · 1                                           │ │                                                               │
+│   ✗ observability ← cafe crash.report          10m │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+│                                                    │ │                                                               │
+╰────────────────────────────────────────────────────╯ ╰───────────────────────────────────────────────────────────────╯
+↑↓ move · enter open · c cancel · e mark read · : command · [ ] agent · / filter · v dashboard · ? help · q quit

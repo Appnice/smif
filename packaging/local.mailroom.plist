@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Template. `mailroom install` writes the real file to ~/Library/LaunchAgents/
+     with absolute paths and a PATH that contains claude, git and gh. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>local.mailroom</string>
+  <key>ProgramArguments</key>
+  <array><string>/Users/YOU/.local/bin/mailroom</string><string>daemon</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ThrottleInterval</key><integer>5</integer>
+  <key>ProcessType</key><string>Background</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/Users/YOU/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StandardOutPath</key><string>/Users/YOU/Library/Application Support/mailroom/logs/service.log</string>
+  <key>StandardErrorPath</key><string>/Users/YOU/Library/Application Support/mailroom/logs/service.log</string>
+</dict>
+</plist>

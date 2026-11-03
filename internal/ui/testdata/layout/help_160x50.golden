@@ -1,0 +1,50 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
+queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  HELP · lines 1-45 of 101 · ↑/↓ scroll · q quit · any other key closes
+
+  KEYS: HOME (the start screen: needs you, sessions, running, queued, done today, dead)
+  ↑/k, ↓/j              move through the list; the preview on the right follows
+  g/home, G/end         first row, last row
+  tab, shift+tab        jump to the next or previous group
+  [ ], ←/h →/l          previous or next agent tab
+  0, 1-9                all agents, or the agent with that number
+  /                     filter by text (enter keeps it, esc clears it)
+  :                     command prompt: ask, tell, prompt, answer, retry, cancel, open, agent, filter, read, inbox, digest, dashboard, help, quit; tab
+                        completes commands, agents and intents, ↑/↓ choose, enter runs, esc closes
+  esc                   clear the agent tab and the filter
+  enter                 open the thread of the message, the run of a running item, or the chat with a session: type and enter sends (typed into it when idle,
+                        else to a worker with its context); ↑↓ pgup pgdn scroll, ctrl+o its tab, esc back
+  a                     answer a needs-you item in the box under the preview (enter sends, alt+enter new line)
+  c                     cancel the selected item; asks y/N first
+  t                     retry a dead letter; asks y/N first
+  e                     mark the handled items read (the • dot)
+  s                     on a session: write to it under the preview (idle: typed in, Terminal.app; busy: a worker with its context answers)
+  o                     on a session: bring its Terminal tab to the front
+  v                     dashboard: the six-panel overview (agents, events); v or esc there comes back
+  i, d, r, ?, q         inbox, digest, refresh, this help, quit
+
+  KEYS: DASHBOARD (v)
+  tab, →, l             next panel
+  shift+tab, ←, h       previous panel
+  ↑/k, ↓/j              move the cursor in the panel
+  g/home, G/end         first row, last row
+  enter                 open the row: the thread of a message (NEEDS YOU, DEAD LETTERS, RECENT ACTIVITY), a run (RUNNING), the inbox of an agent (AGENTS), the
+                        thread or run of an event (EVENTS)
+  a                     reply to the needs_human item under the cursor (NEEDS YOU)
+  c                     cancel the item under the cursor (NEEDS YOU, RUNNING); asks y/N first
+  t                     retry the dead letter under the cursor (DEAD LETTERS); asks y/N first, a retry starts a new run
+  i                     inbox: the newest 200 messages of every agent
+  d                     digest: the items handled since the read cursor
+  r                     refresh now (the screen also polls the daemon on its own)
+  ?                     this help
+  q, ctrl+c             quit (ctrl+c quits on every screen, also in the reply box)
+
+  KEYS: INBOX AND DIGEST
+  ↑/k, ↓/j              move the cursor
+  pgup, pgdown/space    move 10 rows
+  g/home, G/end         first row, last row
+  enter                 open the thread of the message
+  f/F                   inbox: next or previous agent filter
+  s/S                   inbox: next or previous state filter
+↑/↓ scroll · any other key closes the help · q quit

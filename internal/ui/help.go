@@ -1,0 +1,204 @@
+package ui
+
+import (
+	"fmt"
+	"strings"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+)
+
+// helpEntry is one line of the help screen: the keys and what they do.
+// An entry with the keys "#" starts a section. An entry without keys is a
+// note.
+type helpEntry struct {
+	keys, what string
+}
+
+func section(name string) helpEntry { return helpEntry{"#", name} }
+
+// helpText lists every key of every screen. TestHelpListsEveryKey keeps
+// it in step with the key handlers.
+var helpText = []helpEntry{
+	section("KEYS: HOME (the start screen: needs you, sessions, running, queued, done today, dead)"),
+	{"↑/k, ↓/j", "move through the list; the preview on the right follows"},
+	{"g/home, G/end", "first row, last row"},
+	{"tab, shift+tab", "jump to the next or previous group"},
+	{"[ ], ←/h →/l", "previous or next agent tab"},
+	{"0, 1-9", "all agents, or the agent with that number"},
+	{"/", "filter by text (enter keeps it, esc clears it)"},
+	{":", "command prompt: ask, tell, prompt, answer, retry, cancel, open, agent, filter, read, inbox, digest, dashboard, help, quit; " +
+		"tab completes commands, agents and intents, ↑/↓ choose, enter runs, esc closes"},
+	{"esc", "clear the agent tab and the filter"},
+	{"enter", "open the thread of the message, the run of a running item, or the chat with a session: type and enter sends " +
+		"(typed into it when idle, else to a worker with its context); ↑↓ pgup pgdn scroll, ctrl+o its tab, esc back"},
+	{"a", "answer a needs-you item in the box under the preview (enter sends, alt+enter new line)"},
+	{"c", "cancel the selected item; asks y/N first"},
+	{"t", "retry a dead letter; asks y/N first"},
+	{"e", "mark the handled items read (the • dot)"},
+	{"s", "on a session: write to it under the preview (idle: typed in, Terminal.app; busy: a worker with its context answers)"},
+	{"o", "on a session: bring its Terminal tab to the front"},
+	{"v", "dashboard: the six-panel overview (agents, events); v or esc there comes back"},
+	{"i, d, r, ?, q", "inbox, digest, refresh, this help, quit"},
+
+	section("KEYS: DASHBOARD (v)"),
+	{"tab, →, l", "next panel"},
+	{"shift+tab, ←, h", "previous panel"},
+	{"↑/k, ↓/j", "move the cursor in the panel"},
+	{"g/home, G/end", "first row, last row"},
+	{"enter", "open the row: the thread of a message (NEEDS YOU, DEAD LETTERS, RECENT ACTIVITY), a run (RUNNING), " +
+		"the inbox of an agent (AGENTS), the thread or run of an event (EVENTS)"},
+	{"a", "reply to the needs_human item under the cursor (NEEDS YOU)"},
+	{"c", "cancel the item under the cursor (NEEDS YOU, RUNNING); asks y/N first"},
+	{"t", "retry the dead letter under the cursor (DEAD LETTERS); asks y/N first, a retry starts a new run"},
+	{"i", "inbox: the newest 200 messages of every agent"},
+	{"d", "digest: the items handled since the read cursor"},
+	{"r", "refresh now (the screen also polls the daemon on its own)"},
+	{"?", "this help"},
+	{"q, ctrl+c", "quit (ctrl+c quits on every screen, also in the reply box)"},
+
+	section("KEYS: INBOX AND DIGEST"),
+	{"↑/k, ↓/j", "move the cursor"},
+	{"pgup, pgdown/space", "move 10 rows"},
+	{"g/home, G/end", "first row, last row"},
+	{"enter", "open the thread of the message"},
+	{"f/F", "inbox: next or previous agent filter"},
+	{"s/S", "inbox: next or previous state filter"},
+	{"x", "inbox: clear both filters"},
+	{"m", "digest: mark the shown items read (the read cursor moves past them, not past newer items)"},
+	{"esc, backspace", "back to the overview"},
+
+	section("KEYS: THREAD (a message, its thread and its runs)"),
+	{"↑/k, ↓/j", "scroll one line"},
+	{"pgup, pgdown/space", "scroll 10 lines"},
+	{"g/home, G/end", "top, bottom"},
+	{"tab, shift+tab", "select the next or previous run"},
+	{"enter", "open the selected run"},
+	{"a", "reply (only on a needs_human item)"},
+	{"c", "cancel the item; asks y/N first"},
+	{"t", "retry a dead letter; asks y/N first"},
+	{"esc, backspace, ←, h", "back one screen"},
+
+	section("KEYS: REPLY BOX"),
+	{"enter", "send the reply; the worker continues the thread"},
+	{"alt+enter", "new line"},
+	{"←, ctrl+b", "move the text cursor left"},
+	{"→, ctrl+f", "move the text cursor right"},
+	{"home, ctrl+a", "go to the start of the text"},
+	{"end, ctrl+e", "go to the end of the text"},
+	{"backspace", "delete the character before the text cursor"},
+	{"delete, ctrl+d", "delete the character under the text cursor"},
+	{"ctrl+u", "delete from the start of the text to the text cursor"},
+	{"ctrl+k", "delete from the text cursor to the end of the text"},
+	{"ctrl+w", "delete the word before the text cursor"},
+	{"esc", "close the box (the text stays for the next a)"},
+
+	section("KEYS: RUN (record, transcript, diff of the worker branch)"),
+	{"1, 2, 3", "record, transcript, diff"},
+	{"tab, →, l / shift+tab, ←, h", "next, previous tab"},
+	{"↑/k, ↓/j, pgup, pgdown/space", "scroll"},
+	{"g/home, G/end", "top, bottom; G on the transcript follows new lines"},
+	{"a", "apply: merge the worker branch into the main checkout; asks y/N first"},
+	{"c", "cancel the run while it is in progress; asks y/N first"},
+	{"esc, backspace", "back one screen"},
+
+	section("KEYS: QUESTIONS AND THIS HELP"),
+	{"y", "yes to a question; any other key is no"},
+	{"↑/k, ↓/j, pgup, pgdown/space, g, G", "scroll this help"},
+	{"q", "quit; any other key closes this help"},
+
+	section("PANELS"),
+	{"AGENTS", "queued, running, needs you and dead letter counts, spend today, budget left, and whether an " +
+		"interactive Claude Code session is open in the repo"},
+	{"RUNNING", "handler runs in progress with the elapsed time"},
+	{"NEEDS YOU", "items a worker handed to you; enter shows the question and the thread"},
+	{"DEAD LETTERS", "items that failed every attempt; enter shows the reason, t requeues"},
+	{"RECENT ACTIVITY", "the newest messages of every agent"},
+	{"EVENTS", "the live audit feed, newest first: state changes, routes, runs, human actions"},
+	{"", ""},
+	{"", "The UI reads the daemon with the human token only. It shows bodies to you, never to an agent."},
+}
+
+// helpKeyWidth is the width of the key column of the help screen.
+const helpKeyWidth = 22
+
+// helpLines renders helpText for a terminal w cells wide. Long texts wrap
+// under their own column.
+func helpLines(w int) []string {
+	out := []string{""}
+	textW := max(20, w-helpKeyWidth-4)
+	for _, e := range helpText {
+		switch {
+		case e.keys == "" && e.what == "":
+			out = append(out, "")
+		case e.keys == "#":
+			if len(out) > 1 {
+				out = append(out, "")
+			}
+			out = append(out, stTitle.Render("  "+e.what))
+		case e.keys == "":
+			for _, l := range strings.Split(ansi.Wrap(e.what, max(20, w-4), ""), "\n") {
+				out = append(out, "  "+l)
+			}
+		default:
+			keys := e.keys
+			pad := helpKeyWidth - ansi.StringWidth(keys)
+			if pad < 2 {
+				// The keys take their own line; the text goes under the column.
+				out = append(out, "  "+keys)
+				keys, pad = "", helpKeyWidth
+			}
+			for i, l := range strings.Split(ansi.Wrap(e.what, textW, ""), "\n") {
+				if i > 0 {
+					keys, pad = "", helpKeyWidth
+				}
+				out = append(out, "  "+keys+strings.Repeat(" ", pad)+l)
+			}
+		}
+	}
+	return out
+}
+
+func (m *Model) openHelp() {
+	m.help, m.helpScroll = true, 0
+}
+
+// helpKey handles a key on the help screen: scroll keys scroll, q quits,
+// every other key closes the help.
+func (m *Model) helpKey(k string) tea.Cmd {
+	switch k {
+	case "q", "ctrl+c":
+		return tea.Quit
+	case "up", "k":
+		m.helpScroll--
+	case "down", "j":
+		m.helpScroll++
+	case "pgup":
+		m.helpScroll -= 10
+	case "pgdown", " ":
+		m.helpScroll += 10
+	case "home", "g":
+		m.helpScroll = 0
+	case "end", "G":
+		m.helpScroll = 1 << 30
+	default:
+		m.help = false
+	}
+	return nil
+}
+
+// helpView is the help screen in avail lines. When the help is taller,
+// the first line says which lines show.
+func (m *Model) helpView(w, avail int) []string {
+	ls := helpLines(w)
+	if len(ls) <= avail {
+		m.helpScroll = 0
+		return ls
+	}
+	room := max(1, avail-1)
+	m.helpScroll = max(0, min(m.helpScroll, len(ls)-room))
+	stop := min(len(ls), m.helpScroll+room)
+	head := stDim.Render(fmt.Sprintf("  HELP · lines %d-%d of %d · ↑/↓ scroll · q quit · any other key closes", m.helpScroll+1, stop,
+		len(ls)))
+	return append([]string{head}, ls[m.helpScroll:stop]...)
+}

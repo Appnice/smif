@@ -1,0 +1,50 @@
+mailroom  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
+queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ RUN · 01JRUN000000000000AAAAAAAA   done
+  agent cafe · worker/fix · attempt 1 · message 000000RUN1 · started 13:09:00 · took 5s
+   1 RECORD   2 TRANSCRIPT  [3 DIFF]
+  mailroom/cafe/00thread01 against HEAD of /home/p/cafe
+  diff --git a/src/fix.txt b/src/fix.txt
+  new file mode 100644
+  index 0000000..3b18e51
+  --- /dev/null
+  +++ b/src/fix.txt
+  @@ -0,0 +1 @@
+  +edited by fake 01JRUN000000000000AAAAAAAA
+  diff --git a/README.md b/README.md
+  index 1111111..2222222 100644
+  --- a/README.md
+  +++ b/README.md
+  @@ -1,2 +1,2 @@
+   # puzzle
+  -old line
+  +new line
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1 record · 2 transcript · 3 diff · ↑/↓ scroll · a apply · r refresh · esc back · ? help · q quit

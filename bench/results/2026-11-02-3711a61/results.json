@@ -1,0 +1,225 @@
+{
+  "commit": "3711a61",
+  "quick": false,
+  "sections": [
+    {
+      "id": "S1",
+      "data": {
+        "errors": 0,
+        "rate": 20,
+        "stats": {
+          "N": 400,
+          "P50": 24612334,
+          "P90": 26596042,
+          "P99": 30346375,
+          "P999": 161460417,
+          "Max": 161460417,
+          "Mean": 25275032
+        }
+      }
+    },
+    {
+      "id": "S2",
+      "data": {
+        "errors": 0,
+        "rate": 200,
+        "stats": {
+          "N": 4000,
+          "P50": 10142875,
+          "P90": 19947375,
+          "P99": 23120875,
+          "P999": 25211375,
+          "Max": 27037417,
+          "Mean": 11712188
+        }
+      }
+    },
+    {
+      "id": "S5",
+      "data": {
+        "hook_busy": {
+          "N": 30,
+          "P50": 9705125,
+          "P90": 10100208,
+          "P99": 21158917,
+          "P999": 21158917,
+          "Max": 21158917,
+          "Mean": 9280647
+        },
+        "hook_bytes": 0,
+        "hook_idle": {
+          "N": 30,
+          "P50": 5442917,
+          "P90": 5895917,
+          "P99": 6398042,
+          "P999": 6398042,
+          "Max": 6398042,
+          "Mean": 5531340
+        },
+        "line_busy": {
+          "N": 30,
+          "P50": 9952166,
+          "P90": 10373875,
+          "P99": 15171375,
+          "P999": 15171375,
+          "Max": 15171375,
+          "Mean": 9528206
+        },
+        "line_idle": {
+          "N": 30,
+          "P50": 5646083,
+          "P90": 6044500,
+          "P99": 6384334,
+          "P999": 6384334,
+          "Max": 6384334,
+          "Mean": 5717669
+        }
+      }
+    },
+    {
+      "id": "S3",
+      "data": {
+        "bare": {
+          "N": 30,
+          "P50": 2631209,
+          "P90": 3774625,
+          "P99": 5876250,
+          "P999": 5876250,
+          "Max": 5876250,
+          "Mean": 2946233
+        },
+        "dispatch": {
+          "N": 30,
+          "P50": 5000000,
+          "P90": 6000000,
+          "P99": 7000000,
+          "P999": 7000000,
+          "Max": 7000000,
+          "Mean": 5266666
+        },
+        "e2e": {
+          "N": 30,
+          "P50": 31000000,
+          "P90": 33000000,
+          "P99": 41000000,
+          "P999": 41000000,
+          "Max": 41000000,
+          "Mean": 31666666
+        },
+        "finish": {
+          "N": 30,
+          "P50": 0,
+          "P90": 0,
+          "P99": 0,
+          "P999": 0,
+          "Max": 0,
+          "Mean": 0
+        },
+        "process": {
+          "N": 30,
+          "P50": 26000000,
+          "P90": 28000000,
+          "P99": 36000000,
+          "P999": 36000000,
+          "Max": 36000000,
+          "Mean": 26400000
+        }
+      }
+    },
+    {
+      "id": "T1",
+      "data": {
+        "envelope_overhead_bytes": 634,
+        "policy_bytes": 834,
+        "schema_bytes": 801,
+        "tools": "Read,Grep,Glob,Bash",
+        "total_bytes": 2269
+      }
+    },
+    {
+      "id": "S4",
+      "data": {
+        "coalesced": 498,
+        "errors": 0,
+        "events": 500,
+        "messages": 2,
+        "runs": 2
+      }
+    },
+    {
+      "id": "R1",
+      "data": {
+        "lost": 0,
+        "n": 100,
+        "not_done": 0,
+        "over_run": 0,
+        "recovery_ms": 12946
+      }
+    },
+    {
+      "id": "R2",
+      "data": {
+        "frozen": true,
+        "messages": 8,
+        "reason": "ping_pong: 7 messages between pong and ping within 10m0s",
+        "runs": 4
+      }
+    },
+    {
+      "id": "R3",
+      "data": {
+        "leaks": 0,
+        "probes": 7
+      }
+    },
+    {
+      "id": "T2",
+      "data": {
+        "mcp_def_bytes": 2627,
+        "mcp_instr_bytes": 166,
+        "mcp_tools": 5
+      }
+    },
+    {
+      "id": "TR",
+      "data": {
+        "mailroom": [
+          {
+            "Input": 4,
+            "CacheWrite": 7436,
+            "CacheRead": 7299,
+            "Output": 203,
+            "CostUSD": 0.00166209,
+            "Turns": 3
+          },
+          {
+            "Input": 4,
+            "CacheWrite": 738,
+            "CacheRead": 15420,
+            "Output": 259,
+            "CostUSD": 0.00209379,
+            "Turns": 3
+          }
+        ],
+        "plain": [
+          {
+            "Input": 4,
+            "CacheWrite": 22399,
+            "CacheRead": 39869,
+            "Output": 111,
+            "CostUSD": 0.00493439,
+            "Turns": 2
+          },
+          {
+            "Input": 4,
+            "CacheWrite": 19254,
+            "CacheRead": 46315,
+            "Output": 111,
+            "CostUSD": 0.00436985,
+            "Turns": 2
+          }
+        ]
+      }
+    }
+  ]
+}

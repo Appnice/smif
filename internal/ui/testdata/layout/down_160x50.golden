@@ -1,0 +1,50 @@
+mailroom  DAEMON DOWN  mailroom daemon is not reachable at /tmp/mr-x/mailroom.sock: connection refused
+retrying every 1ms · no data yet
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  The daemon is not reachable. Start it with `mailroom daemon` or `mailroom install`.
+  This screen retries every 1ms and fills in when the daemon answers.
+  Last error: mailroom daemon is not reachable at /tmp/mr-x/mailroom.sock: connection refused
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+tab panel · ↑/↓ move · i inbox · d digest · r refresh · ? help · q quit

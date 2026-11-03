@@ -1,0 +1,64 @@
+[daemon]
+max_workers = 3
+command_pool = 4
+default_ttl = "24h"
+presence_ttl = "30m"
+notify = "os"
+
+[defaults]
+claude_command = "claude"
+max_hops = 4
+max_attempts = 3
+
+[profiles.triage]
+model = "sonnet"
+permission_mode = "default"
+allowed_tools = ["Read", "Grep", "Glob", "Bash(git log:*)", "Bash(git show:*)"]
+disallowed_tools = ["Edit", "Write", "NotebookEdit"]
+write_scope = "none"
+max_turns = 25
+timeout_s = 900
+
+[profiles.fix]
+model = "sonnet"
+permission_mode = "acceptEdits"
+allowed_tools = ["Read", "Grep", "Glob", "Edit", "Write", "Bash(git:*)", "Bash(./gradlew test:*)"]
+write_scope = "worktree"
+max_turns = 40
+timeout_s = 1800
+
+[agents.puzzle]
+repo = "~/dev/puzzle"
+base_ref = "main"
+accept_from = ["observability", "atlas", "lab", "cafe"]
+budget_usd = 10
+on_budget = "escalate"
+
+[[agents.puzzle.rules]]
+match = { kind = "ask", intent = "app.version" }
+handler = "command"
+command = ["./scripts/mailroom/version.sh"]
+
+[[agents.puzzle.rules]]
+match = { from = "observability", kind = "event", intent = "crash.*" }
+handler = "worker"
+profile = "triage"
+cooldown = "6h"
+reopen_after = 10
+
+[[agents.puzzle.rules]]
+match = { kind = "ask", intent = "asset.*" }
+handler = "worker"
+profile = "answer"
+
+[[agents.puzzle.rules]]
+match = {}
+handler = "escalate"
+
+[agents.cafe]
+repo = "~/dev/cafe"
+
+[[agents.cafe.rules]]
+match = { kind = "ask", intent = "store.status" }
+handler = "command"
+command = ["./scripts/mailroom/store-status.sh"]
