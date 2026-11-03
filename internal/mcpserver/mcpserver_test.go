@@ -10,7 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 func listTools(t *testing.T, origin string) []string {
@@ -44,9 +44,9 @@ func listTools(t *testing.T, origin string) []string {
 // The tool list must match RFC 7.2 exactly, and no tool may read inbound mail.
 func TestToolListMatchesRFC(t *testing.T) {
 	want := map[string][]string{
-		"interactive": {"mailroom_agents", "mailroom_ask", "mailroom_await", "mailroom_send", "mailroom_status"},
-		"worker":      {"mailroom_agents", "mailroom_ask", "mailroom_await", "mailroom_send"},
-		"none":        {"mailroom_agents"},
+		"interactive": {"smif_agents", "smif_ask", "smif_await", "smif_send", "smif_status"},
+		"worker":      {"smif_agents", "smif_ask", "smif_await", "smif_send"},
+		"none":        {"smif_agents"},
 	}
 	for origin, w := range want {
 		got := listTools(t, origin)
@@ -71,14 +71,14 @@ func TestToolErrorsAreResults(t *testing.T) {
 	defer ss.Close()
 	cs, _ := mcp.NewClient(&mcp.Implementation{Name: "t", Version: "1"}, nil).Connect(ctx, ct, nil)
 	defer cs.Close()
-	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "mailroom_status", Arguments: map[string]any{}})
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "smif_status", Arguments: map[string]any{}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "daemon down") {
 		t.Fatalf("got %+v", res)
 	}
-	res, _ = cs.CallTool(ctx, &mcp.CallToolParams{Name: "mailroom_send", Arguments: map[string]any{"to": "x", "kind": "ask", "intent": "a.b", "subject": "s"}})
+	res, _ = cs.CallTool(ctx, &mcp.CallToolParams{Name: "smif_send", Arguments: map[string]any{"to": "x", "kind": "ask", "intent": "a.b", "subject": "s"}})
 	if !res.IsError {
 		t.Fatal("send with kind ask must be refused")
 	}

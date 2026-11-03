@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // SendParams is message.send / message.ask / message.emit.
@@ -200,7 +200,7 @@ type PresenceParams struct {
 	Event     string `json:"event"`
 	Cwd       string `json:"cwd"`
 	SessionID string `json:"session_id"`
-	// Agent, when set ($MAILROOM_AGENT in the session), wins over Cwd.
+	// Agent, when set ($SMIF_AGENT in the session), wins over Cwd.
 	Agent string `json:"agent,omitempty"`
 	// Where the session runs, from the hook: its terminal device, the
 	// claude process and $TERM_PROGRAM ("tmux" inside tmux).
@@ -355,7 +355,7 @@ type CountsParams struct {
 	SessionID string `json:"session_id,omitempty"`
 }
 
-// Counts is inbox.counts and mailroom_status.
+// Counts is inbox.counts and smif_status.
 type Counts struct {
 	Agent            string `json:"agent,omitempty"`
 	Running          int    `json:"running"`

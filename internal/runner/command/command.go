@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/paths"
-	"github.com/appnice/mailroom/internal/runner"
-	"github.com/appnice/mailroom/internal/runner/claude"
-	"github.com/appnice/mailroom/internal/supervisor"
+	"github.com/appnice/smif/internal/paths"
+	"github.com/appnice/smif/internal/runner"
+	"github.com/appnice/smif/internal/runner/claude"
+	"github.com/appnice/smif/internal/supervisor"
 )
 
 // Runner executes command handlers.

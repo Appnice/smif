@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // SESSIONS (ADR-0012): the hooks report idle and busy turns, the human
@@ -114,7 +114,7 @@ func TestSessionPrompt(t *testing.T) {
 	// The CLI types into the agent's one idle session; it is busy after.
 	out, err := e.CLI("", "prompt", "app", "run", "the", "tests")
 	if err != nil || !strings.Contains(out, "sent to app (session s-idle-0") {
-		t.Fatalf("mailroom prompt: %v %s", err, out)
+		t.Fatalf("smif prompt: %v %s", err, out)
 	}
 	b, _ := os.ReadFile(typed)
 	var got struct{ SessionID, TTY, Text string }
@@ -133,7 +133,7 @@ func TestSessionPrompt(t *testing.T) {
 	report("s-idle-0001", "idle", "", 0)
 	out, err = e.CLI("", "sessions")
 	if err != nil || !strings.Contains(out, "s-idle-0") || !strings.Contains(out, "idle") {
-		t.Fatalf("mailroom sessions: %v\n%s", err, out)
+		t.Fatalf("smif sessions: %v\n%s", err, out)
 	}
 	if err := c.Call("session.prompt", api.SessionPromptParams{Agent: "app", Text: "now the lint"}, &x, 5e9); err != nil {
 		t.Fatalf("second prompt: %v", err)

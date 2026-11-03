@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/appnice/mailroom/internal/paths"
+	"github.com/appnice/smif/internal/paths"
 )
 
 // HumanPrincipal is the token name for the human (CLI, hooks, status line).
@@ -75,7 +75,7 @@ func EnsureToken(name string) (string, error) {
 func ReadToken(name string) (string, error) {
 	b, err := os.ReadFile(TokenPath(name))
 	if err != nil {
-		return "", fmt.Errorf("no token for %q (run `mailroom`: it starts the daemon, which makes the tokens): %w", name, err)
+		return "", fmt.Errorf("no token for %q (run `smif`: it starts the daemon, which makes the tokens): %w", name, err)
 	}
 	return strings.TrimSpace(string(b)), nil
 }

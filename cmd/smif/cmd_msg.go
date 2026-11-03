@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 func cmdSend(use, kind string) *cobra.Command {
@@ -79,7 +79,7 @@ func cmdSend(use, kind string) *cobra.Command {
 				printReply(res.Reply)
 				return saveAttachments(cl, res.Reply, saveDir)
 			case kind == "ask":
-				fmt.Printf("ticket %s (state %s); wait with `mailroom await %s`\n", res.ID, res.State, res.ID)
+				fmt.Printf("ticket %s (state %s); wait with `smif await %s`\n", res.ID, res.State, res.ID)
 			default:
 				fmt.Printf("%s %s (state %s, thread %s)\n", kind, res.ID, res.State, res.ThreadID)
 			}
@@ -95,7 +95,7 @@ func cmdSend(use, kind string) *cobra.Command {
 	f.StringVar(&data, "data", "", "JSON object passed to the handler")
 	f.StringArrayVar(&attach, "attach", nil, "file to attach (repeatable)")
 	f.StringVar(&deadline, "deadline", "", "duration (2h) or RFC 3339 time")
-	f.StringVar(&flagAs, "as", "", "send as this agent (default: $MAILROOM_AGENT, else the human)")
+	f.StringVar(&flagAs, "as", "", "send as this agent (default: $SMIF_AGENT, else the human)")
 	if kind == "event" {
 		f.StringVar(&dedupe, "dedupe-key", "", "coalesce repeats with the same key")
 	}
@@ -229,7 +229,7 @@ func cancelLine(id, state string) string {
 	case api.CancelRejected:
 		return "cancelled " + id + ": rejected"
 	case api.CancelCancelling:
-		return "cancelling " + id + ": the worker is stopping; see mailroom thread " + id
+		return "cancelling " + id + ": the worker is stopping; see smif thread " + id
 	}
 	return "cancel sent for " + id + " (state " + state + ")"
 }

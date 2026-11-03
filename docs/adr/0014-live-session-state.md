@@ -35,7 +35,7 @@ subscription nothing is billed.
 - **The preview follows the state.**
   - Working: the prompt, the step that runs and for how long, the last five steps, and the asks to its fork.
   - Waiting: what it stopped on (a permission, a question, a plan), when it asked, and the steps before. `o` brings
-    its tab to the front. Mailroom never answers a permission prompt.
+    its tab to the front. Smif never answers a permission prompt.
   - Idle: your last prompt and the final answer.
 
   Under each preview, one line says where `s` sends the text: typed into the tab, or answered by a fork (ADR-0013).
@@ -58,14 +58,14 @@ subscription nothing is billed.
     `"waiting"`, `"answered"` or `"none"`. The audit records only the kind and the session, never the text.
 - **No setup.**
   - With no config file, the daemon runs with the defaults and no agents. The session view needs no agent; messages,
-    workers and forks do. `mailroom doctor` says so instead of failing.
-  - `mailroom` and `mailroom sessions` start the daemon in the background when none answers
-    (`MAILROOM_NO_AUTOSTART=1` turns this off). That daemon runs until a reboot; `mailroom install` makes it a
+    workers and forks do. `smif doctor` says so instead of failing.
+  - `smif` and `smif sessions` start the daemon in the background when none answers
+    (`SMIF_NO_AUTOSTART=1` turns this off). That daemon runs until a reboot; `smif install` makes it a
     service.
   - `daemon.lock` in the data dir lets one daemon run per data dir: a second one stops before it opens the store.
 - **Canary.** The doctor canary (ADR-0012) also checks that the tool calls in the transcripts it reads have an id and
   a name. Without them, the step that runs cannot be matched to its result.
-- **Trial.** The trial ends on 16 November 2026. If its numbers (`mailroom stats`, the sessions line) show that the
+- **Trial.** The trial ends on 16 November 2026. If its numbers (`smif stats`, the sessions line) show that the
   mail part is not used, it moves behind a flag; the session view stays the product.
 
 **Limits.**
@@ -75,7 +75,7 @@ subscription nothing is billed.
   fall back to "thinking".
 - A session's status line redraws only when Claude Code redraws it (on that session's own activity), so an idle
   session shows the others' state as of its last redraw. The notification covers that case.
-- A notification also comes for the session the human is looking at; Mailroom does not know which tab is in front.
+- A notification also comes for the session the human is looking at; Smif does not know which tab is in front.
 - Claude Code writes a tool call to the transcript a second or so after it starts (checked live on 2.1.316), so the
   step that runs shows with that delay plus the poll's second.
 - A long command that prints nothing also shows "silent"; the word does not mean stuck.
@@ -86,7 +86,7 @@ subscription nothing is billed.
 - `e2e/sessions_test.go` `TestSessionDiscovery`: the activity in `session.list` from a real file, with relative paths.
   `TestSessionNotify`: no notification on first sight, then waiting and answered; the counts name others, not self,
   and never for an agent; the canary on a tool call without an id.
-- `e2e/autostart_test.go` `TestAutostart`: no config, `mailroom sessions` starts the daemon, a second daemon stops on
+- `e2e/autostart_test.go` `TestAutostart`: no config, `smif sessions` starts the daemon, a second daemon stops on
   the lock.
 - `internal/statusline` `TestSegment`: the session names in the segment.
 - `internal/ui/sessions_test.go`: busy, waiting and new rows, the previews (goldens), `tab`, `z`, the chat.

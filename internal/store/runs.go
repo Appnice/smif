@@ -249,7 +249,7 @@ ON CONFLICT(repo,session_id) DO UPDATE SET last_seen=excluded.last_seen, state=e
 	return err
 }
 
-// SetPresenceTurn sets one session's turn (after Mailroom typed a prompt).
+// SetPresenceTurn sets one session's turn (after Smif typed a prompt).
 func (t *Tx) SetPresenceTurn(session, turn string) error {
 	_, err := t.tx.Exec(`UPDATE presence SET turn=?, turn_at=? WHERE session_id=?`, turn, t.now.UnixMilli(), session)
 	return err

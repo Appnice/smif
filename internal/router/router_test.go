@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 func cfg(t *testing.T) *config.Config {

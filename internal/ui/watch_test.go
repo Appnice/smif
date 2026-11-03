@@ -16,8 +16,8 @@ func TestWatchSummary(t *testing.T) {
 	if strings.Contains(got, "#40") || !strings.Contains(got, "event 13:09:00 #42 run.started") {
 		t.Fatalf("--last 2 not applied:\n%s", got)
 	}
-	down := WatchSummary(Snapshot{At: t0, Err: errors.New("mailroom daemon not reachable")}, t0, 5*time.Second, 2)
-	if down != "== 13:10:05 · DAEMON DOWN: mailroom daemon not reachable · retrying every 5s\n" {
+	down := WatchSummary(Snapshot{At: t0, Err: errors.New("smif daemon not reachable")}, t0, 5*time.Second, 2)
+	if down != "== 13:10:05 · DAEMON DOWN: smif daemon not reachable · retrying every 5s\n" {
 		t.Fatalf("down: %q", down)
 	}
 }

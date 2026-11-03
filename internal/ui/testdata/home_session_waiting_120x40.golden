@@ -1,4 +1,4 @@
- mailroom   1 waiting  1 quiet  ⚑ 1 asks you  ✗ 1 dead                              ● live · ≈ $1.75 at API prices today
+ smif   1 waiting  1 quiet  ⚑ 1 asks you  ✗ 1 dead                                  ● live · ≈ $1.75 at API prices today
 ╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
 │ NEEDS YOU · 1                                            │ │ ! WAITING 2m  web  /r/web · ttys004                     │
 │   ⚑ cafe ← web Ship?                                  4m │ │                                                         │
@@ -17,7 +17,7 @@
 │   ◌ web ← cafe retry · Icons for the dark mode        1m │ │   which test was it?                                    │
 │                                                          │ │ ◇ fork ───────────────── a copy of this session · 13:09 │
 │ DONE TODAY · 2 · 1 unread (e marks read)                 │ │                                                         │
-│  •✓ observability ← human harness run mailroom-ui: g… 2h │ │   TestCheckout in cart_test.go.                         │
+│  •✓ observability ← human harness run smif-ui: green  2h │ │   TestCheckout in cart_test.go.                         │
 │   ✓ cafe ← web Is Cafe live?                          5h │ │                                                         │
 │                                                          │ │                                                         │
 │ DEAD · 1                                                 │ │                                                         │
@@ -34,7 +34,7 @@
 │                                                          │ │                                                         │
 │                                                          │ │                                                         │
 │                                                          │ │ o bring its tab to the front and answer there           │
-│                                                          │ │ Mailroom never answers a permission prompt for you. s … │
+│                                                          │ │ Smif never answers a permission prompt for you. s asks… │
 ╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
 Terminal shows release.
 o answer in its tab · ↑↓ move · tab next that needs you · enter chat · s ask a fork · n new session · ? help · q quit

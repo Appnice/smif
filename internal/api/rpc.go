@@ -1,4 +1,4 @@
-// Package api is Mailroom's wire protocol: newline-delimited JSON-RPC 2.0
+// Package api is Smif's wire protocol: newline-delimited JSON-RPC 2.0
 // over a Unix socket (RFC 5.4), plus the request and response types of every
 // method in RFC 7.1.
 package api
@@ -19,7 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/appnice/mailroom/internal/auth"
+	"github.com/appnice/smif/internal/auth"
 )
 
 // ProtocolVersion is sent with every request; the major part must match.
@@ -36,7 +36,7 @@ type Auth struct {
 	Origin string `json:"origin,omitempty"`
 }
 
-// Request is a JSON-RPC request with Mailroom's auth and version members.
+// Request is a JSON-RPC request with Smif's auth and version members.
 type Request struct {
 	JSONRPC         string          `json:"jsonrpc"`
 	ID              int64           `json:"id"`
@@ -306,7 +306,7 @@ type Client struct {
 func Dial(socket string, a Auth, timeout time.Duration) (*Client, error) {
 	c, err := net.DialTimeout("unix", socket, timeout)
 	if err != nil {
-		return nil, fmt.Errorf("mailroom daemon is not reachable at %s: %w", socket, err)
+		return nil, fmt.Errorf("smif daemon is not reachable at %s: %w", socket, err)
 	}
 	return &Client{conn: c, r: bufio.NewReaderSize(c, 64<<10), auth: a}, nil
 }

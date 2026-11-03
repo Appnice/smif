@@ -10,7 +10,7 @@ import (
 
 func TestLogSinkRotates(t *testing.T) {
 	dir := t.TempDir()
-	p := filepath.Join(dir, "mailroomd.jsonl")
+	p := filepath.Join(dir, "smifd.jsonl")
 	l, err := openLogSink(p)
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestLogSinkRotates(t *testing.T) {
 	if string(b) != "after\n" {
 		t.Fatalf("live file after rotation = %q", b)
 	}
-	old, _ := filepath.Glob(filepath.Join(dir, "mailroomd.*.jsonl"))
+	old, _ := filepath.Glob(filepath.Join(dir, "smifd.*.jsonl"))
 	if len(old) != 1 {
 		t.Fatalf("rotated files: %v", old)
 	}

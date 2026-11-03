@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // Saved prompts and new sessions (ADR-0015). p on a session opens the

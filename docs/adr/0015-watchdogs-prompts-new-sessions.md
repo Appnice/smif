@@ -9,7 +9,7 @@
 - The human types the same prompts again and again ("run the tests and report"), and starts new sessions by hand
   in a new tab.
 
-Similar tools for parallel agents have watchdogs, playbooks and one place to start sessions. Mailroom takes these
+Similar tools for parallel agents have watchdogs, playbooks and one place to start sessions. Smif takes these
 three ideas and leaves the rest (an IDE, integrations, agent-to-agent plans).
 
 **Decision.**
@@ -28,7 +28,7 @@ three ideas and leaves the rest (an IDE, integrations, agent-to-agent plans).
   - `prompts.list` gives them to the human only.
   - In the UI, `p` on a session lists them, and `enter` or `1-9` sends one the way `s` would: typed into an idle
     session, else answered by a fork.
-  - In `session.send` and `session.prompt` (the UI, `mailroom prompt`, `: prompt`), text that starts with
+  - In `session.send` and `session.prompt` (the UI, `smif prompt`, `: prompt`), text that starts with
     `@name` becomes the saved prompt, followed by the rest of the text. `@x` that is not the name of a saved
     prompt stays as typed, because `@README.md` is Claude Code's file mention.
 - **New sessions.** `session.new {dir, name, term}` (human only) opens the configured `claude_command` with
@@ -45,7 +45,7 @@ three ideas and leaves the rest (an IDE, integrations, agent-to-agent plans).
 **Limits.**
 
 - Terminal.app opens a window, not a tab. A new tab would need System Events keystrokes and the Accessibility
-  permission, which Mailroom does not ask for.
+  permission, which Smif does not ask for.
 - Claude Code's own `--worktree` is not used. A worktree per session is the human's choice, in the folder they pick.
 - The silent alert uses the transcript's mtime. A long command that prints nothing also counts as silent.
 

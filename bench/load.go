@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // openLoop sends at a fixed rate for d, whatever the replies do (no

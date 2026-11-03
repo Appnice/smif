@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/auth"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/router"
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/auth"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/router"
+	"github.com/appnice/smif/internal/store"
 )
 
 func (d *Daemon) authenticate(a api.Auth) (api.Caller, error) {
@@ -396,7 +396,7 @@ func (d *Daemon) expire() {
 	}
 }
 
-// HumanReply answers a needs_human item (RFC 5.3, 7.3 `mailroom reply`).
+// HumanReply answers a needs_human item (RFC 5.3, 7.3 `smif reply`).
 //
 // An ask the rules escalated is answered directly: the text becomes the
 // reply to the asker. Anything else continues in the same thread: the text

@@ -10,8 +10,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // The command prompt (`:` on the home screen): type what you want instead

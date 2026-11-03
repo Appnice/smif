@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/auth"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/store"
-	"github.com/appnice/mailroom/internal/workspace"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/auth"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/store"
+	"github.com/appnice/smif/internal/workspace"
 )
 
 type authP = auth.Principal
@@ -618,7 +618,7 @@ func (d *Daemon) agentForCwd(cwd string) *config.Agent {
 	if cwd == "" {
 		return nil
 	}
-	// A cwd inside Mailroom's own worktrees is never an interactive session.
+	// A cwd inside Smif's own worktrees is never an interactive session.
 	if strings.HasPrefix(filepath.Clean(cwd)+"/", filepath.Join(d.dataDir, "worktrees")+"/") {
 		return nil
 	}

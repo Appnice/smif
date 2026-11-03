@@ -11,7 +11,7 @@
 3. **Replies.** A reply to an ask from an interactive session, the CLI or the human is stored and counted
    (`replies ready`), not routed. A reply to a worker's ask is routed through the asker's rules (the
    continuation of RFC 5.3). Replies to your own ask bypass `accept_from`.
-4. **`mailroom reply`.** For an ask that a rule escalated, the text becomes the reply to the asker. For
+4. **`smif reply`.** For an ask that a rule escalated, the text becomes the reply to the asker. For
    anything else the text goes back to the agent as a `reply` in the same thread; if the item was a worker's,
    that worker's profile runs again on it.
 5. **Client-supplied envelope fields.** `from`, `id`, `hop`, `parent_id`, `origin`, `created_at` and
@@ -19,7 +19,7 @@
 6. **Daemon knobs** not named in the RFC, all with the RFC's defaults: `retry_backoff`,
    `rate_limit_per_minute`, `max_thread_messages`, `ping_pong_limit`, `ping_pong_window`, `aging_step`,
    `overload_extra_attempts` and retention durations.
-7. **Paths.** `MAILROOM_CONFIG_DIR`, `MAILROOM_CONFIG`, `MAILROOM_DATA_DIR` and `MAILROOM_SOCKET` override
+7. **Paths.** `SMIF_CONFIG_DIR`, `SMIF_CONFIG`, `SMIF_DATA_DIR` and `SMIF_SOCKET` override
    the RFC locations (tests need short socket paths: macOS caps them at 104 bytes).
-8. **Hooks inside workers.** User hooks also fire in worker runs; `mailroom hook` ignores calls whose
-   environment has `MAILROOM_RUN_ID`, so a worker never counts as an interactive session.
+8. **Hooks inside workers.** User hooks also fire in worker runs; `smif hook` ignores calls whose
+   environment has `SMIF_RUN_ID`, so a worker never counts as an interactive session.

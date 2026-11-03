@@ -1,4 +1,4 @@
-// Package store owns Mailroom's SQLite database: messages, runs, presence,
+// Package store owns Smif's SQLite database: messages, runs, presence,
 // cursors, budgets, blobs, threads and the audit table (RFC 8.1).
 //
 // Every message state change goes through Tx.Transition, which checks the
@@ -22,7 +22,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 //go:embed migrations/*.sql
@@ -116,9 +116,9 @@ type Store struct {
 	now     func() time.Time
 }
 
-// Open opens (and migrates) the database at dir/mailroom.db.
+// Open opens (and migrates) the database at dir/smif.db.
 func Open(dir string) (*Store, error) {
-	p := filepath.Join(dir, "mailroom.db")
+	p := filepath.Join(dir, "smif.db")
 	dsn := "file:" + p + "?_pragma=journal_mode(WAL)&_pragma=synchronous(FULL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

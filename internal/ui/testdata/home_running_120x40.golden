@@ -1,4 +1,4 @@
- mailroom   ⚑ 1 asks you  ✗ 1 dead                                                  ● live · ≈ $1.75 at API prices today
+ smif   ⚑ 1 asks you  ✗ 1 dead                                                      ● live · ≈ $1.75 at API prices today
 ╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
 │ NEEDS YOU · 1                                            │ │ ◉ RUNNING  observability → cafe · event crash.report ·… │
 │   ⚑ cafe ← web Ship?                                  4m │ │                                                         │
@@ -11,7 +11,7 @@
 │   ◌ web ← cafe retry · Icons for the dark mode        1m │ │                                                         │
 │                                                          │ │ THREAD                                                  │
 │ DONE TODAY · 2 · 1 unread (e marks read)                 │ │ cannot load: thread 01JMSG0000000000000000RUN1 not fou… │
-│  •✓ observability ← human harness run mailroom-ui: g… 2h │ │                                                         │
+│  •✓ observability ← human harness run smif-ui: green  2h │ │                                                         │
 │   ✓ cafe ← web Is Cafe live?                          5h │ │ [enter] open   [c] cancel                               │
 │                                                          │ │                                                         │
 │ DEAD · 1                                                 │ │                                                         │

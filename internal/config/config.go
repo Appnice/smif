@@ -1,4 +1,4 @@
-// Package config loads and validates ~/.config/mailroom/config.toml (RFC 7.6).
+// Package config loads and validates ~/.config/smif/config.toml (RFC 7.6).
 //
 // Decoding is strict: unknown keys are rejected. Validation enforces every
 // rule the daemon relies on for safety (R-ISO-3), including the catch-all
@@ -21,7 +21,7 @@ import (
 
 	toml "github.com/pelletier/go-toml/v2"
 
-	"github.com/appnice/mailroom/internal/paths"
+	"github.com/appnice/smif/internal/paths"
 )
 
 // Duration is a time.Duration decoded from strings such as "6h" or "30m".
@@ -263,7 +263,7 @@ func Load(file string) (*Config, error) {
 	switch {
 	case errors.Is(err, fs.ErrNotExist) && file == paths.ConfigFile():
 		// No config yet: the defaults and no agents. The session view
-		// works; messages need `mailroom init`.
+		// works; messages need `smif init`.
 		b = nil
 	case err != nil:
 		return nil, err
@@ -561,7 +561,7 @@ func (c *Config) Validate() error {
 		for _, a := range p.ExtraArgs {
 			for _, f := range forbiddenExtra {
 				if a == f || strings.HasPrefix(a, f+"=") || (strings.HasPrefix(f, "--dangerously") && strings.HasPrefix(a, f)) {
-					add("%s.extra_args: %q is controlled by Mailroom and cannot be passed", where, a)
+					add("%s.extra_args: %q is controlled by Smif and cannot be passed", where, a)
 				}
 			}
 		}

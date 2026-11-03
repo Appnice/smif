@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // eventLine reports whether one line of v has every sub.
@@ -165,13 +165,13 @@ func (r *lineReader) wait(t *testing.T, what string, n int, timeout time.Duratio
 	}
 }
 
-// UI-5: `mailroom watch --events` starts while the daemon is down, says
+// UI-5: `smif watch --events` starts while the daemon is down, says
 // so, streams one line per audit event once the daemon is up (events of a
 // sent message appear), keeps its cursor over a daemon restart and exits
-// 0 on SIGINT. `mailroom watch --once` prints the summary.
+// 0 on SIGINT. `smif watch --once` prints the summary.
 func TestWatchEventsLive(t *testing.T) {
 	e := NewEnv(t, "", "", AgentSpec{ID: "observability", Rules: digestRule()}, AgentSpec{ID: "cafe"})
-	cmd := exec.Command(mailroomBin, "watch", "--events", "--interval", "200ms", "--last", "0")
+	cmd := exec.Command(smifBin, "watch", "--events", "--interval", "200ms", "--last", "0")
 	cmd.Env = e.env
 	r := watchLines(t, cmd)
 	if err := cmd.Start(); err != nil {

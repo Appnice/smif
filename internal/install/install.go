@@ -1,9 +1,9 @@
-// Package install adds and removes Mailroom's hooks, status line, slash
+// Package install adds and removes Smif's hooks, status line, slash
 // command, MCP registration and service unit (RFC 7.3, 7.4, R-OPS-1).
 //
 // Every file it edits is backed up first. Uninstall restores the backup
 // byte for byte when the file has not changed since install; otherwise it
-// removes only Mailroom's entries.
+// removes only Smif's entries.
 package install
 
 import (
@@ -20,25 +20,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/paths"
+	"github.com/appnice/smif/internal/paths"
 )
 
 // Label is the launchd label.
-const Label = "local.mailroom"
+const Label = "local.smif"
 
-// LegacyLabel is the label of installs made before 2026-11-02; install
-// replaces such an agent, uninstall and doctor still find it.
-const LegacyLabel = "dev.appnice.mailroom"
+// LegacyLabels are the labels of installs made under the old name Mailroom
+// (ADR-0016) and before 2026-11-02; install replaces such an agent and doctor
+// still finds it.
+var LegacyLabels = []string{"local.mailroom", "dev.appnice.mailroom"}
 
 // labelOf is the launchd label of an installed plist path.
 func labelOf(path string) string { return strings.TrimSuffix(filepath.Base(path), ".plist") }
 
-// HookEvents are the Claude Code hooks Mailroom adds.
+// HookEvents are the Claude Code hooks Smif adds.
 var HookEvents = []string{"SessionStart", "SessionEnd", "UserPromptSubmit", "Stop"}
 
 // Options control install and uninstall.
 type Options struct {
-	Binary        string // absolute path of the mailroom binary
+	Binary        string // absolute path of the smif binary
 	ClaudeCommand string // for `claude mcp add/remove`
 	NoService     bool
 	NoMCP         bool
@@ -54,7 +55,7 @@ type FileRecord struct {
 	PostSHA string `json:"post_sha"`
 }
 
-// Manifest is ~/.config/mailroom/install.json.
+// Manifest is ~/.config/smif/install.json.
 type Manifest struct {
 	InstalledAt       time.Time       `json:"installed_at"`
 	Binary            string          `json:"binary"`
@@ -95,13 +96,13 @@ func (o *Options) logf(format string, a ...any) {
 // SettingsPath is ~/.claude/settings.json.
 func SettingsPath() string { return filepath.Join(paths.ClaudeDir(), "settings.json") }
 
-// CommandPath is ~/.claude/commands/mailroom.md.
-func CommandPath() string { return filepath.Join(paths.ClaudeDir(), "commands", "mailroom.md") }
+// CommandPath is ~/.claude/commands/smif.md.
+func CommandPath() string { return filepath.Join(paths.ClaudeDir(), "commands", "smif.md") }
 
 // Install performs every install step and writes the manifest.
 func Install(o Options) (*Manifest, error) {
 	if m, _ := LoadManifest(); m != nil {
-		return nil, fmt.Errorf("already installed on %s (run `mailroom uninstall` first)", m.InstalledAt.Format(time.RFC3339))
+		return nil, fmt.Errorf("already installed on %s (run `smif uninstall` first)", m.InstalledAt.Format(time.RFC3339))
 	}
 	if !filepath.IsAbs(o.Binary) {
 		return nil, fmt.Errorf("binary path must be absolute: %s", o.Binary)
@@ -154,7 +155,7 @@ func Install(o Options) (*Manifest, error) {
 	crec := FileRecord{Path: cp}
 	if b, err := os.ReadFile(cp); err == nil {
 		crec.Existed, crec.PreSHA = true, sum(b)
-		crec.Backup = filepath.Join(backupDir, "mailroom.md")
+		crec.Backup = filepath.Join(backupDir, "smif.md")
 		if err := os.WriteFile(crec.Backup, b, 0o600); err != nil {
 			return nil, err
 		}
@@ -176,13 +177,13 @@ func Install(o Options) (*Manifest, error) {
 		if cc == "" {
 			cc = "claude"
 		}
-		if exec.Command(cc, "mcp", "get", "mailroom").Run() == nil {
-			o.logf("mcp: a server named mailroom is already registered; left as is")
-		} else if outb, err := exec.Command(cc, "mcp", "add", "--scope", "user", "mailroom", "--", o.Binary, "mcp").CombinedOutput(); err != nil {
+		if exec.Command(cc, "mcp", "get", "smif").Run() == nil {
+			o.logf("mcp: a server named smif is already registered; left as is")
+		} else if outb, err := exec.Command(cc, "mcp", "add", "--scope", "user", "smif", "--", o.Binary, "mcp").CombinedOutput(); err != nil {
 			o.logf("mcp: registration failed: %v: %s", err, strings.TrimSpace(string(outb)))
 		} else {
 			m.MCPRegistered = true
-			o.logf("mcp: registered `mailroom` at user scope")
+			o.logf("mcp: registered `smif` at user scope")
 		}
 	}
 
@@ -217,7 +218,7 @@ func Uninstall(o Options) error {
 		return err
 	}
 	if m == nil {
-		return fmt.Errorf("mailroom is not installed (no %s)", manifestPath())
+		return fmt.Errorf("smif is not installed (no %s)", manifestPath())
 	}
 	if o.Binary == "" {
 		o.Binary = m.Binary
@@ -261,7 +262,7 @@ func Uninstall(o Options) error {
 				errs = append(errs, err.Error())
 				continue
 			}
-			o.logf("%s changed since install: removed Mailroom's hooks and status line only (backup kept at %s)", f.Path, f.Backup)
+			o.logf("%s changed since install: removed Smif's hooks and status line only (backup kept at %s)", f.Path, f.Backup)
 		default:
 			o.logf("%s changed since install; left in place (backup at %s)", f.Path, f.Backup)
 		}
@@ -271,10 +272,10 @@ func Uninstall(o Options) error {
 		if cc == "" {
 			cc = "claude"
 		}
-		if out, err := exec.Command(cc, "mcp", "remove", "--scope", "user", "mailroom").CombinedOutput(); err != nil {
+		if out, err := exec.Command(cc, "mcp", "remove", "--scope", "user", "smif").CombinedOutput(); err != nil {
 			errs = append(errs, fmt.Sprintf("mcp remove: %v: %s", err, strings.TrimSpace(string(out))))
 		} else {
-			o.logf("mcp: removed `mailroom`")
+			o.logf("mcp: removed `smif`")
 		}
 	}
 	if m.ServicePath != "" {
@@ -298,7 +299,7 @@ func filePerm(p string) os.FileMode {
 }
 
 func writeAtomic(p string, b []byte, mode os.FileMode) error {
-	tmp := p + ".mailroom-tmp"
+	tmp := p + ".smif-tmp"
 	if err := os.WriteFile(tmp, b, mode); err != nil {
 		return err
 	}
@@ -428,15 +429,15 @@ func restoreStatusLine(doc *ordered, orig json.RawMessage, bin string) {
 	doc.set("statusLine", orig)
 }
 
-// SlashCommand is the /mailroom command file. Digest content enters the
-// session only when the human types /mailroom.
+// SlashCommand is the /smif command file. Digest content enters the
+// session only when the human types /smif.
 func SlashCommand(bin string) []byte {
 	q := shellQuote(bin)
 	return []byte(`---
-description: Mailroom digest - what background workers handled since you last looked
+description: Smif digest - what background workers handled since you last looked
 allowed-tools: Bash(` + bin + ` digest:*)
 ---
-## Mailroom digest
+## Smif digest
 
 !` + "`" + q + ` digest --cwd "$PWD" --since last` + "`" + `
 
@@ -511,7 +512,7 @@ func LaunchdPlist(bin, logPath string) []byte {
 // SystemdUnit renders the systemd user unit.
 func SystemdUnit(bin string) []byte {
 	return []byte(`[Unit]
-Description=Mailroom daemon (messaging between Claude Code sessions)
+Description=Smif daemon (messaging between Claude Code sessions)
 
 [Service]
 ExecStart=` + bin + ` daemon
@@ -538,10 +539,12 @@ func installService(o Options) (kind, path string, was bool, err error) {
 			return "", "", was, err
 		}
 		dom := fmt.Sprintf("gui/%d", os.Getuid())
-		legacy := filepath.Join(filepath.Dir(path), LegacyLabel+".plist")
-		if _, err := os.Stat(legacy); err == nil {
-			_ = exec.Command("launchctl", "bootout", dom+"/"+LegacyLabel).Run()
-			_ = os.Remove(legacy)
+		for _, l := range LegacyLabels {
+			legacy := filepath.Join(filepath.Dir(path), l+".plist")
+			if _, err := os.Stat(legacy); err == nil {
+				_ = exec.Command("launchctl", "bootout", dom+"/"+l).Run()
+				_ = os.Remove(legacy)
+			}
 		}
 		_ = exec.Command("launchctl", "bootout", dom+"/"+Label).Run()
 		if out, err := exec.Command("launchctl", "bootstrap", dom, path).CombinedOutput(); err != nil {
@@ -549,7 +552,7 @@ func installService(o Options) (kind, path string, was bool, err error) {
 		}
 		return "launchd", path, was, nil
 	}
-	path = filepath.Join(paths.Home(), ".config", "systemd", "user", "mailroom.service")
+	path = filepath.Join(paths.Home(), ".config", "systemd", "user", "smif.service")
 	_, statErr := os.Stat(path)
 	was = statErr == nil
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -559,7 +562,7 @@ func installService(o Options) (kind, path string, was bool, err error) {
 		return "", "", was, err
 	}
 	_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
-	if out, err := exec.Command("systemctl", "--user", "enable", "--now", "mailroom.service").CombinedOutput(); err != nil {
+	if out, err := exec.Command("systemctl", "--user", "enable", "--now", "smif.service").CombinedOutput(); err != nil {
 		return "systemd", path, was, fmt.Errorf("systemctl enable: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	return "systemd", path, was, nil
@@ -570,7 +573,7 @@ func uninstallService(kind, path string) error {
 	case "launchd":
 		_ = exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), labelOf(path))).Run()
 	case "systemd":
-		_ = exec.Command("systemctl", "--user", "disable", "--now", "mailroom.service").Run()
+		_ = exec.Command("systemctl", "--user", "disable", "--now", "smif.service").Run()
 	}
 	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -585,8 +588,11 @@ func uninstallService(kind, path string) error {
 func ServiceLoaded() (bool, string) {
 	if runtime.GOOS == "darwin" {
 		out, err := exec.Command("launchctl", "print", fmt.Sprintf("gui/%d/%s", os.Getuid(), Label)).CombinedOutput()
-		if err != nil {
-			out, err = exec.Command("launchctl", "print", fmt.Sprintf("gui/%d/%s", os.Getuid(), LegacyLabel)).CombinedOutput()
+		for _, l := range LegacyLabels {
+			if err == nil {
+				break
+			}
+			out, err = exec.Command("launchctl", "print", fmt.Sprintf("gui/%d/%s", os.Getuid(), l)).CombinedOutput()
 		}
 		if err != nil {
 			return false, "launchd agent " + Label + " not loaded"
@@ -598,6 +604,6 @@ func ServiceLoaded() (bool, string) {
 		}
 		return true, "launchd agent loaded"
 	}
-	out, err := exec.Command("systemctl", "--user", "is-active", "mailroom.service").Output()
+	out, err := exec.Command("systemctl", "--user", "is-active", "smif.service").Output()
 	return err == nil, "systemd " + strings.TrimSpace(string(out))
 }

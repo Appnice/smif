@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // What a session does now, for the list, the preview and the chat: the

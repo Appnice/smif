@@ -23,7 +23,7 @@ var (
 	stNew       lipgloss.Style // a new answer (also marked ●)
 
 	// The home screen.
-	stBadge   lipgloss.Style // the "mailroom" name in the top line
+	stBadge   lipgloss.Style // the "smif" name in the top line
 	stTabOn   lipgloss.Style // the selected agent tab
 	stAccent  lipgloss.Style // keys, the unread dot, the thread mark
 	stSelRow  lipgloss.Style // the selected list row (also marked ▌)
@@ -103,7 +103,7 @@ func applyTheme(color bool) {
 // is set and not empty (https://no-color.org).
 func NoColor(getenv func(string) string) bool { return getenv("NO_COLOR") != "" }
 
-// SetupColor prepares the styles before `mailroom ui` starts. With
+// SetupColor prepares the styles before `smif ui` starts. With
 // NO_COLOR the styles keep only text attributes (bold, faint, underline,
 // reverse). Bubble Tea v2 downsamples what is left to the terminal's own
 // profile, so a terminal without styles (TERM=dumb) gets plain text.

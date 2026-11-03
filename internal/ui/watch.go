@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// WatchSummary is the compact plain-text summary `mailroom watch` prints
+// WatchSummary is the compact plain-text summary `smif watch` prints
 // every interval: one header line, the agents table, then one line per
 // running run, needs-you item, dead letter and each of the last events
 // (newest last). It has no colours and no cursor movement, so it works in

@@ -9,9 +9,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // renderUI polls the live daemon once through the UI's own data source and
@@ -33,7 +33,7 @@ func agentRow(view, agent string) []string {
 	return nil
 }
 
-// UI-1: `mailroom ui` renders the overview from a live daemon (agents with
+// UI-1: `smif ui` renders the overview from a live daemon (agents with
 // counts, running runs, needs you, dead letters) and survives a daemon restart.
 func TestUIOverviewLive(t *testing.T) {
 	e := NewEnv(t, "", "",

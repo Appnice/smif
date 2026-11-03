@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // message.cancel returns the state the item has after the call (ADR-0009):
@@ -54,7 +54,7 @@ func TestCancelReturnsState(t *testing.T) {
 
 	// The CLI tells the same result.
 	out, err := e.CLI("", "cancel", q2.ID)
-	t.Logf("mailroom cancel <queued>: %s", strings.TrimSpace(out))
+	t.Logf("smif cancel <queued>: %s", strings.TrimSpace(out))
 	if err != nil || strings.TrimSpace(out) != "cancelled "+q2.ID+": rejected" {
 		t.Fatalf("cli cancel of a queued item: %v %q", err, out)
 	}
@@ -106,8 +106,8 @@ func TestCancelCLIRunning(t *testing.T) {
 		Subject: "Build the long report", Body: "#fake:sleep=60"})
 	e.WaitState(long.ID, 15*time.Second, "running")
 	out, err := e.CLI("", "cancel", long.ID)
-	t.Logf("mailroom cancel <running>: %s", strings.TrimSpace(out))
-	if err != nil || strings.TrimSpace(out) != "cancelling "+long.ID+": the worker is stopping; see mailroom thread "+long.ID {
+	t.Logf("smif cancel <running>: %s", strings.TrimSpace(out))
+	if err != nil || strings.TrimSpace(out) != "cancelling "+long.ID+": the worker is stopping; see smif thread "+long.ID {
 		t.Fatalf("cli cancel of a running item: %v %q", err, out)
 	}
 	e.WaitState(long.ID, 15*time.Second, "rejected")

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // stats computes stats.get (ADR-0011) straight from the store: messages by

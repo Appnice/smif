@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // The home screen (ADR-0010): one list of everything that is or was in
@@ -571,7 +571,7 @@ func (m *Model) homeMarkRead() tea.Cmd {
 // homeTop is the one-line header: the name, the session counts by state,
 // what asks for you, the agent filter, and whether the view is live.
 func (m *Model) homeTop(w int) string {
-	parts := []string{stBadge.Render(" mailroom ")}
+	parts := []string{stBadge.Render(" smif ")}
 	c := m.sessionCounts()
 	if c[kWaiting] > 0 {
 		parts = append(parts, stWarn.Render(fmt.Sprintf("%d waiting", c[kWaiting])))

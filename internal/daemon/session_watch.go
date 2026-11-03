@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/notify"
-	"github.com/appnice/mailroom/internal/presence"
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/notify"
+	"github.com/appnice/smif/internal/presence"
+	"github.com/appnice/smif/internal/store"
 )
 
 // Telling the human when a session needs them while they look elsewhere

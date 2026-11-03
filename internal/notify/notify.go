@@ -79,23 +79,23 @@ type osNotifier struct{}
 func title(e Event) string {
 	switch e.Kind {
 	case "needs_human":
-		return "Mailroom: " + e.Agent + " needs you"
+		return "Smif: " + e.Agent + " needs you"
 	case "dead_letter":
-		return "Mailroom: " + e.Agent + " dead letter"
+		return "Smif: " + e.Agent + " dead letter"
 	case "budget":
-		return "Mailroom: " + e.Agent + " budget exhausted"
+		return "Smif: " + e.Agent + " budget exhausted"
 	case "session_waiting":
-		return "Mailroom: " + e.Agent + " waits for you"
+		return "Smif: " + e.Agent + " waits for you"
 	case "session_answered":
-		return "Mailroom: " + e.Agent + " answered"
+		return "Smif: " + e.Agent + " answered"
 	case "session_reminder":
-		return "Mailroom: " + e.Agent + " still waits for you"
+		return "Smif: " + e.Agent + " still waits for you"
 	case "session_silent":
-		return "Mailroom: " + e.Agent + " is silent"
+		return "Smif: " + e.Agent + " is silent"
 	case "session_long":
-		return "Mailroom: " + e.Agent + " works long"
+		return "Smif: " + e.Agent + " works long"
 	default:
-		return "Mailroom: " + e.Agent
+		return "Smif: " + e.Agent
 	}
 }
 
@@ -104,13 +104,13 @@ func (osNotifier) Notify(e Event) error {
 	t := title(e)
 	if runtime.GOOS == "darwin" {
 		if p, err := exec.LookPath("terminal-notifier"); err == nil {
-			return exec.Command(p, "-title", t, "-message", body, "-group", "mailroom-"+e.Agent).Run()
+			return exec.Command(p, "-title", t, "-message", body, "-group", "smif-"+e.Agent).Run()
 		}
 		script := fmt.Sprintf("display notification %s with title %s", appleQuote(body), appleQuote(t))
 		return exec.Command("osascript", "-e", script).Run()
 	}
 	if p, err := exec.LookPath("notify-send"); err == nil {
-		return exec.Command(p, "--app-name=mailroom", t, body).Run()
+		return exec.Command(p, "--app-name=smif", t, body).Run()
 	}
 	return fmt.Errorf("no notifier found (install notify-send)")
 }

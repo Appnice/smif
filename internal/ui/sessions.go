@@ -9,7 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // The SESSIONS group of the home screen (ADR-0012): the live interactive
@@ -193,7 +193,7 @@ func sessionName(sv *api.SessionView) string {
 	return "session " + api.ShortSession(sv.SessionID)
 }
 
-// idleAgents are the names (one word, no spaces) of the sessions Mailroom
+// idleAgents are the names (one word, no spaces) of the sessions Smif
 // can type into now, then their agents.
 func (m *Model) idleAgents() []string {
 	if m.snap == nil {
@@ -236,7 +236,7 @@ func (m *Model) promptAgent(agent, text string) tea.Cmd {
 	}
 	switch len(idle) {
 	case 0:
-		m.setStatus(fmt.Sprintf("%s has no idle session Mailroom can type into.", agent), true)
+		m.setStatus(fmt.Sprintf("%s has no idle session Smif can type into.", agent), true)
 		return nil
 	case 1:
 		r := sessionRow(idle[0])

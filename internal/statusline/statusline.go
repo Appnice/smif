@@ -1,4 +1,4 @@
-// Package statusline renders Mailroom's status-line segment and wraps an
+// Package statusline renders Smif's status-line segment and wraps an
 // existing status-line command (RFC 7.4, R-HUM-1). It carries counts only.
 package statusline
 
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // Segment renders the counts, e.g.

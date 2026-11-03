@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 const storeStatusScript = `#!/bin/sh
@@ -21,7 +21,7 @@ printf '{"status":"done","summary":"1.0.1 (4) live on Play","reply":"1.0.1 (4) i
 
 func withScript(name, body string) func(string) {
 	return func(repo string) {
-		p := filepath.Join(repo, "scripts", "mailroom", name)
+		p := filepath.Join(repo, "scripts", "smif", name)
 		os.MkdirAll(filepath.Dir(p), 0o755)
 		os.WriteFile(p, []byte(body), 0o755)
 	}
@@ -35,7 +35,7 @@ func TestA1ReleaseSyncCommandHandler(t *testing.T) {
 [[agents.AGENT.rules]]
 match = { kind = "ask", intent = "store.status" }
 handler = "command"
-command = ["./scripts/mailroom/store-status.sh"]
+command = ["./scripts/smif/store-status.sh"]
 [[agents.AGENT.rules]]
 match = {}
 handler = "escalate"
@@ -93,8 +93,8 @@ max_turns = 3
 	e.WaitState(r.ID, 15*time.Second, "done")
 	var tok string
 	for _, inv := range e.WorkerCalls() {
-		if inv.Env["MAILROOM_AGENT"] == "alpha" && inv.Env["MAILROOM_RUN_TOKEN"] != "" {
-			tok = inv.Env["MAILROOM_RUN_TOKEN"]
+		if inv.Env["SMIF_AGENT"] == "alpha" && inv.Env["SMIF_RUN_TOKEN"] != "" {
+			tok = inv.Env["SMIF_RUN_TOKEN"]
 		}
 	}
 	if tok == "" {

@@ -16,29 +16,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 var (
-	mailroomBin string
-	fakeBin     string
-	repoRoot    string
+	smifBin  string
+	fakeBin  string
+	repoRoot string
 )
 
 func TestMain(m *testing.M) {
 	_, file, _, _ := runtime.Caller(0)
 	repoRoot = filepath.Dir(filepath.Dir(file))
-	dir, err := os.MkdirTemp("", "mailroom-bin-")
+	dir, err := os.MkdirTemp("", "smif-bin-")
 	if err != nil {
 		panic(err)
 	}
-	mailroomBin = filepath.Join(dir, "mailroom")
+	smifBin = filepath.Join(dir, "smif")
 	fakeBin = filepath.Join(dir, "claude")
-	for _, b := range [][2]string{{mailroomBin, "./cmd/mailroom"}, {fakeBin, "./testdata/fakeclaude"}} {
+	for _, b := range [][2]string{{smifBin, "./cmd/smif"}, {fakeBin, "./testdata/fakeclaude"}} {
 		args := []string{"build", "-o", b[0], b[1]}
 		cgo := "CGO_ENABLED=0"
-		if raceBuild && b[0] == mailroomBin {
+		if raceBuild && b[0] == smifBin {
 			args = []string{"build", "-race", "-o", b[0], b[1]}
 			cgo = "CGO_ENABLED=1"
 		}
@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// Env is one isolated Mailroom installation.
+// Env is one isolated Smif installation.
 type Env struct {
 	t      *testing.T
 	Root   string
@@ -86,7 +86,7 @@ func NewEnv(t *testing.T, daemonExtra, profiles string, agents ...AgentSpec) *En
 	e := &Env{t: t, Root: root, Home: filepath.Join(root, "home"), Repos: map[string]string{}}
 	t.Cleanup(func() {
 		e.Stop()
-		if !t.Failed() || os.Getenv("MAILROOM_KEEP") == "" {
+		if !t.Failed() || os.Getenv("SMIF_KEEP") == "" {
 			os.RemoveAll(root)
 		} else {
 			t.Logf("kept %s", root)
@@ -97,15 +97,15 @@ func NewEnv(t *testing.T, daemonExtra, profiles string, agents ...AgentSpec) *En
 	}
 	e.env = append(cleanEnv(),
 		"HOME="+e.Home,
-		"MAILROOM_CONFIG_DIR="+filepath.Join(root, "cfg"),
-		"MAILROOM_DATA_DIR="+filepath.Join(root, "data"),
-		"MAILROOM_SOCKET="+filepath.Join(root, "s.sock"),
-		"MAILROOM_FAKE_LOG="+filepath.Join(root, "fake"),
+		"SMIF_CONFIG_DIR="+filepath.Join(root, "cfg"),
+		"SMIF_DATA_DIR="+filepath.Join(root, "data"),
+		"SMIF_SOCKET="+filepath.Join(root, "s.sock"),
+		"SMIF_FAKE_LOG="+filepath.Join(root, "fake"),
 		"CLAUDE_CONFIG_DIR="+filepath.Join(e.Home, ".claude"),
 		"GIT_CONFIG_GLOBAL="+filepath.Join(root, "gitconfig"),
 		// The harness starts its own daemon; a CLI call must not start
 		// another one that outlives the test (TestAutostart turns it on).
-		"MAILROOM_NO_AUTOSTART=1",
+		"SMIF_NO_AUTOSTART=1",
 	)
 	os.WriteFile(filepath.Join(root, "gitconfig"), []byte("[user]\n\temail = test@example.com\n\tname = Test\n[init]\n\tdefaultBranch = main\n"), 0o644)
 	var cfg strings.Builder
@@ -140,7 +140,7 @@ func cleanEnv() []string {
 	var out []string
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "MAILROOM_") || strings.HasPrefix(k, "CLAUDE") || k == "HOME" || strings.HasPrefix(k, "GIT_") {
+		if strings.HasPrefix(k, "SMIF_") || strings.HasPrefix(k, "CLAUDE") || k == "HOME" || strings.HasPrefix(k, "GIT_") {
 			continue
 		}
 		out = append(out, kv)
@@ -170,7 +170,7 @@ func (e *Env) Config() string { return filepath.Join(e.Root, "cfg", "config.toml
 // Start launches the daemon and waits for the socket.
 func (e *Env) Start() {
 	e.t.Helper()
-	cmd := exec.Command(mailroomBin, "daemon")
+	cmd := exec.Command(smifBin, "daemon")
 	cmd.Env = e.env
 	e.logBuf = &bytes.Buffer{}
 	cmd.Stdout, cmd.Stderr = e.logBuf, e.logBuf
@@ -288,9 +288,9 @@ func (e *Env) Send(from, method string, d envelope.Draft) api.SendResult {
 	return r
 }
 
-// CLI runs the mailroom binary with the env and optional stdin.
+// CLI runs the smif binary with the env and optional stdin.
 func (e *Env) CLI(stdin string, args ...string) (string, error) {
-	cmd := exec.Command(mailroomBin, args...)
+	cmd := exec.Command(smifBin, args...)
 	cmd.Env = e.env
 	cmd.Stdin = strings.NewReader(stdin)
 	var out, errb bytes.Buffer
@@ -304,7 +304,7 @@ func (e *Env) CLI(stdin string, args ...string) (string, error) {
 
 // CLIDir runs the binary in a directory.
 func (e *Env) CLIDir(dir, stdin string, extraEnv []string, args ...string) (stdout, stderr string, err error) {
-	cmd := exec.Command(mailroomBin, args...)
+	cmd := exec.Command(smifBin, args...)
 	cmd.Env = append(append([]string{}, e.env...), extraEnv...)
 	cmd.Dir = dir
 	cmd.Stdin = strings.NewReader(stdin)
@@ -368,7 +368,7 @@ func (e *Env) WaitFor(what string, timeout time.Duration, cond func() bool) {
 }
 
 func (e *Env) tailLog() string {
-	b, _ := os.ReadFile(filepath.Join(e.Root, "data", "logs", "mailroomd.jsonl"))
+	b, _ := os.ReadFile(filepath.Join(e.Root, "data", "logs", "smifd.jsonl"))
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
 	if len(lines) > 25 {
 		lines = lines[len(lines)-25:]

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/store"
 )
 
 // Log writes audit rows to daily files.

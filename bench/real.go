@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // usage is the token count of one claude -p result event.
@@ -50,7 +50,7 @@ func parseResult(b []byte) (usage, error) {
 }
 
 // realTokens (opt-in, -real): the same question answered by a plain
-// `claude -p` in the repo and by a Mailroom worker, on haiku, through the
+// `claude -p` in the repo and by a Smif worker, on haiku, through the
 // existing Claude Code login (subscription). It measures what the bytes/4
 // estimates of T1 only guess: the net token cost of a handled message.
 func (b *bench) realTokens(trials int) error {
@@ -82,14 +82,14 @@ max_cost_usd = 0.25
 		case strings.HasPrefix(kv, "HOME="):
 			e.vars[i] = "HOME=" + os.Getenv("HOME")
 		case strings.HasPrefix(kv, "CLAUDE_CONFIG_DIR="):
-			e.vars[i] = "MAILROOM_UNUSED=1"
+			e.vars[i] = "SMIF_UNUSED=1"
 		}
 	}
 	if err := e.start(); err != nil {
 		return err
 	}
 	question := "What version is in the VERSION file at the repository root? Reply with the version only."
-	var viaMailroom, plain []usage
+	var viaSmif, plain []usage
 	for i := 0; i < trials; i++ {
 		c, err := e.client("asker", "interactive")
 		if err != nil {
@@ -114,11 +114,11 @@ max_cost_usd = 0.25
 		if err != nil {
 			return err
 		}
-		viaMailroom = append(viaMailroom, u)
+		viaSmif = append(viaSmif, u)
 
 		cmd := exec.Command(claude, "-p", "--model", "haiku", "--output-format", "json", question)
 		cmd.Dir = e.repos["app"]
-		cmd.Env = append(os.Environ(), "MAILROOM_RUN_ID=bench") // keeps the user's mailroom hooks quiet
+		cmd.Env = append(os.Environ(), "SMIF_RUN_ID=bench") // keeps the user's smif hooks quiet
 		out, err := cmd.Output()
 		if err != nil {
 			return fmt.Errorf("plain claude -p: %v", err)
@@ -143,10 +143,10 @@ max_cost_usd = 0.25
 			a.Output/n, (a.Input+a.CacheWrite+a.CacheRead)/n, a.CostUSD/float64(n))
 	}
 	b.add("TR", fmt.Sprintf("### T-real · actual tokens of one handled question (haiku, subscription)\n\nThe same question, %d "+
-		"trials each: a Mailroom worker (profile `ro`: Read/Grep/Glob, no MCP, no hooks) versus a plain `claude -p` in the "+
+		"trials each: a Smif worker (profile `ro`: Read/Grep/Glob, no MCP, no hooks) versus a plain `claude -p` in the "+
 		"same repo with the user's normal setup. Means per run; the cost column is what claude reports (API-equivalent; "+
 		"on a subscription it is not billed).\n\n| | input | cache write | cache read | output | **context tokens** | reported cost |\n"+
-		"|---|---|---|---|---|---|---|\n%s\n%s\n", trials, row("Mailroom worker", viaMailroom), row("plain claude -p", plain)),
-		map[string]any{"mailroom": viaMailroom, "plain": plain})
+		"|---|---|---|---|---|---|---|\n%s\n%s\n", trials, row("Smif worker", viaSmif), row("plain claude -p", plain)),
+		map[string]any{"smif": viaSmif, "plain": plain})
 	return nil
 }

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // UI-3: the human finds a fix-profile item in the inbox (agent and state
@@ -118,7 +118,7 @@ func TestUIRunDiffApplyLive(t *testing.T) {
 	if b, err := os.ReadFile(filepath.Join(repo, "src", "fix.txt")); err != nil || !strings.Contains(string(b), "edited by fake") {
 		t.Fatalf("apply did not merge: %v", err)
 	}
-	if msg := e.Git(repo, "log", "-1", "--format=%s"); !strings.Contains(msg, "Merge "+run.Branch+" (mailroom run "+run.ID+")") {
+	if msg := e.Git(repo, "log", "-1", "--format=%s"); !strings.Contains(msg, "Merge "+run.Branch+" (smif run "+run.ID+")") {
 		t.Fatalf("merge commit = %q", msg)
 	}
 	applies := 0

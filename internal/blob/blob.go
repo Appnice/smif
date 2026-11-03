@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // Store is the blob directory.

@@ -1,4 +1,4 @@
-// Package daemon wires Mailroom together: the socket API, the store, the
+// Package daemon wires Smif together: the socket API, the store, the
 // router, the scheduler, the supervisor and the runners. It is the only
 // long-lived process (RFC 4.1).
 package daemon
@@ -16,20 +16,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/audit"
-	"github.com/appnice/mailroom/internal/auth"
-	"github.com/appnice/mailroom/internal/blob"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/notify"
-	"github.com/appnice/mailroom/internal/paths"
-	"github.com/appnice/mailroom/internal/router"
-	"github.com/appnice/mailroom/internal/runner/claude"
-	"github.com/appnice/mailroom/internal/runner/command"
-	"github.com/appnice/mailroom/internal/scheduler"
-	"github.com/appnice/mailroom/internal/store"
-	"github.com/appnice/mailroom/internal/supervisor"
-	"github.com/appnice/mailroom/internal/workspace"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/audit"
+	"github.com/appnice/smif/internal/auth"
+	"github.com/appnice/smif/internal/blob"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/notify"
+	"github.com/appnice/smif/internal/paths"
+	"github.com/appnice/smif/internal/router"
+	"github.com/appnice/smif/internal/runner/claude"
+	"github.com/appnice/smif/internal/runner/command"
+	"github.com/appnice/smif/internal/scheduler"
+	"github.com/appnice/smif/internal/store"
+	"github.com/appnice/smif/internal/supervisor"
+	"github.com/appnice/smif/internal/workspace"
 )
 
 // Version is set at build time.
@@ -134,7 +134,7 @@ func New(o Options) (*Daemon, error) {
 		wake: make(chan struct{}, 1)}
 	d.cfg.Store(cfg)
 
-	lf, err := openLogSink(filepath.Join(o.DataDir, "logs", "mailroomd.jsonl"))
+	lf, err := openLogSink(filepath.Join(o.DataDir, "logs", "smifd.jsonl"))
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func New(o Options) (*Daemon, error) {
 	d.slots = scheduler.NewSlots(cfg.Daemon.MaxWorkers, cfg.Daemon.CommandPool)
 	d.limiter = router.NewLimiter(cfg.Daemon.RateLimitPerMinute)
 	exe, _ := os.Executable()
-	d.claude = &claude.Runner{Command: cfg.Defaults.ClaudeCommand, MaxOutput: cfg.Defaults.MaxOutputBytes, MailroomBinary: exe, Socket: o.Socket,
+	d.claude = &claude.Runner{Command: cfg.Defaults.ClaudeCommand, MaxOutput: cfg.Defaults.MaxOutputBytes, SmifBinary: exe, Socket: o.Socket,
 		Protected: []string{paths.ConfigDir(), o.DataDir}}
 	d.commands = &command.Runner{}
 	d.srv = api.NewServer()
@@ -325,7 +325,7 @@ func (d *Daemon) probeClaude() {
 	d.capsMu.Unlock()
 	if !caps.OK() {
 		d.log.Error("claude unavailable; worker runs are held", "problems", caps.Problems)
-		d.notifyOnce("claude_unavailable", "", "Claude Code is unavailable; worker runs are held. Run `mailroom doctor`.", "claude-down")
+		d.notifyOnce("claude_unavailable", "", "Claude Code is unavailable; worker runs are held. Run `smif doctor`.", "claude-down")
 	} else if !wasOK {
 		d.clearOnce("claude-down")
 		d.kick()
@@ -346,7 +346,7 @@ func (d *Daemon) setClaudeDown(reason string) {
 	}
 	d.capsMu.Unlock()
 	d.log.Error("claude unavailable; worker runs are held", "reason", reason)
-	d.notifyOnce("claude_unavailable", "", "Claude Code is unavailable ("+reason+"); worker runs are held. Run `mailroom doctor`.", "claude-down")
+	d.notifyOnce("claude_unavailable", "", "Claude Code is unavailable ("+reason+"); worker runs are held. Run `smif doctor`.", "claude-down")
 }
 
 // notifyOnce sends a notification at most once per key until clearOnce.

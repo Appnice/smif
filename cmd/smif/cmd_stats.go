@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 func cmdStats() *cobra.Command {
@@ -19,7 +19,7 @@ func cmdStats() *cobra.Command {
 	var since string
 	c := &cobra.Command{
 		Use:   "stats",
-		Short: "How much went through Mailroom: handled without you, needed you, runs, tokens, per agent and day",
+		Short: "How much went through Smif: handled without you, needed you, runs, tokens, per agent and day",
 		Long: "Counts over a window (default the last 14 days), straight from the daemon's store.\n" +
 			"inbound: asks, tells and events created in the window (replies counted apart).\n" +
 			"without you: done and never in needs_human. needed you: in needs_human at least once (from the audit trail).\n" +
@@ -73,7 +73,7 @@ func kTokens(n int64) string {
 
 func printStats(r api.StatsResult) {
 	t := r.Total
-	fmt.Printf("Mailroom stats since %s (%.1f days)\n\n", r.Since.Local().Format("2006-01-02 15:04"), r.Until.Sub(r.Since).Hours()/24)
+	fmt.Printf("Smif stats since %s (%.1f days)\n\n", r.Since.Local().Format("2006-01-02 15:04"), r.Until.Sub(r.Since).Hours()/24)
 	merged := ""
 	if t.Merged > 0 {
 		merged = fmt.Sprintf(" (+%d repeats merged)", t.Merged)

@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 func TestRunsLifecycle(t *testing.T) {
 	s := openTest(t)
 	id := newMsg(t, s)
-	r := &Run{ID: envelope.NewID(), MessageID: id, Agent: "b", Handler: "worker", Profile: "triage", Attempt: 1, Workspace: "/w", Branch: "mailroom/b/x", BaseSHA: "abc"}
+	r := &Run{ID: envelope.NewID(), MessageID: id, Agent: "b", Handler: "worker", Profile: "triage", Attempt: 1, Workspace: "/w", Branch: "smif/b/x", BaseSHA: "abc"}
 	if err := s.Update(func(tx *Tx) error { return tx.InsertRun(r) }); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestRunsLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := s.GetRun(r.ID)
-	if err != nil || got.State != RunSucceeded || got.SessionID != "sess" || got.Branch != "mailroom/b/x" || got.CostUSD != 0.5 || got.EndedAt.IsZero() {
+	if err != nil || got.State != RunSucceeded || got.SessionID != "sess" || got.Branch != "smif/b/x" || got.CostUSD != 0.5 || got.EndedAt.IsZero() {
 		t.Fatalf("run: %+v %v", got, err)
 	}
 	if len(got.Stderr) > 64<<10 {
@@ -157,7 +157,7 @@ func TestBlobsRefcountAndThreads(t *testing.T) {
 		if n != 1 {
 			t.Fatal("count thread")
 		}
-		if err := tx.SetThreadBranch(id, "b", "mailroom/b/x"); err != nil {
+		if err := tx.SetThreadBranch(id, "b", "smif/b/x"); err != nil {
 			return err
 		}
 		if err := tx.MarkSeen(id); err != nil {
@@ -172,7 +172,7 @@ func TestBlobsRefcountAndThreads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.ThreadBranch(id, "b") != "mailroom/b/x" {
+	if s.ThreadBranch(id, "b") != "smif/b/x" {
 		t.Fatal("thread branch")
 	}
 	m, _ = s.GetMessage(id)

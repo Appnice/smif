@@ -8,8 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // liveUI runs a ui.Model like the Bubble Tea loop does, without a

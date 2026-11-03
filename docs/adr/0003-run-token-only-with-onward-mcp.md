@@ -2,7 +2,7 @@
 
 **Status:** accepted, 2026-11-02
 
-**What.** RFC 6.3 lists `MAILROOM_RUN_TOKEN` in every worker's environment. Mailroom mints the run-scoped
+**What.** RFC 6.3 lists `SMIF_RUN_TOKEN` in every worker's environment. Smif mints the run-scoped
 token only for profiles with `onward_mcp = true`; other workers get no token at all.
 
 **Why.** D3 says workers talk to peers through `followups` and keeps the tool surface small. A token in the

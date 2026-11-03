@@ -1,4 +1,4 @@
- mailroom   ⚑ 1 asks you  ✗ 1 dead                                                  ● live · ≈ $1.75 at API prices today
+ smif   ⚑ 1 asks you  ✗ 1 dead                                                      ● live · ≈ $1.75 at API prices today
 ╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
 │ NEEDS YOU · 1                                            │ │ ⚑ NEEDS YOU  web → cafe · ask store.release · 4m ago    │
 │ ▌ ⚑ cafe ← web Ship?                                  4m │ │                                                         │
@@ -11,7 +11,7 @@
 │   ◌ web ← cafe retry · Icons for the dark mode        1m │ │ Store review passed for 1.0.2. Decide if we ship now.   │
 │                                                          │ │ #fake:result=needs_human                                │
 │ DONE TODAY · 2 · 1 unread (e marks read)                 │ │                                                         │
-│  •✓ observability ← human harness run mailroom-ui: g… 2h │ │ THREAD · 1 messages · 1 runs                            │
+│  •✓ observability ← human harness run smif-ui: green  2h │ │ THREAD · 1 messages · 1 runs                            │
 │   ✓ cafe ← web Is Cafe live?                          5h │ │ ▸ 13:05  web → cafe  ask  Ship?                         │
 │                                                          │ │                                                         │
 │ DEAD · 1                                                 │ │ [a] answer   [enter] open   [c] cancel                  │

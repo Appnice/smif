@@ -10,16 +10,16 @@ import (
 	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
-	"github.com/appnice/mailroom/internal/paths"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/paths"
+	"github.com/appnice/smif/internal/ui"
 )
 
 func cmdUI() *cobra.Command {
 	var interval time.Duration
 	c := &cobra.Command{
 		Use:   "ui",
-		Short: "Full-screen live view for the human (also what plain `mailroom` opens in a terminal)",
-		Long: "Full-screen terminal UI; plain `mailroom` in a terminal opens it too. The start screen lists what needs you,\n" +
+		Short: "Full-screen live view for the human (also what plain `smif` opens in a terminal)",
+		Long: "Full-screen terminal UI; plain `smif` in a terminal opens it too. The start screen lists what needs you,\n" +
 			"running workers (with a live card of their tool calls), the queue, today's handled items and dead letters, with\n" +
 			"a preview on the right: a answers inline, : opens a command prompt (ask, tell, answer, …; tab completes),\n" +
 			"[ ] pick an agent, / filters, v switches to the six-panel dashboard below.\n\n" +
@@ -29,12 +29,12 @@ func cmdUI() *cobra.Command {
 			"run (RUNNING), an agent's inbox (AGENTS) or the thread of an audit event (EVENTS, the live feed),\n" +
 			"i inbox (f/s filter by agent/state), d digest (m marks it read), a reply, c cancel, t retry; on a run:\n" +
 			"1 record, 2 transcript, 3 diff, a apply the worker branch. Cancel, retry and apply ask y/N first.\n" +
-			"esc back, r refresh, ? help (every key), q quit. Without a terminal use `mailroom watch`.\n\n" +
+			"esc back, r refresh, ? help (every key), q quit. Without a terminal use `smif watch`.\n\n" +
 			"Set NO_COLOR=1 for no colours: the cursor, the focused panel (▶) and the open tab ([1 RECORD]) still show.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !isTTY() {
-				return errors.New("mailroom ui needs a terminal; use `mailroom watch` (or `mailroom status --json`) in scripts and pipes")
+				return errors.New("smif ui needs a terminal; use `smif watch` (or `smif status --json`) in scripts and pipes")
 			}
 			return runUI(interval)
 		},

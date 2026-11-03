@@ -35,7 +35,7 @@ func (l *logSink) Close() error {
 	return l.f.Close()
 }
 
-// rotateIfLarger renames the live file to mailroomd.<time>.jsonl and reopens
+// rotateIfLarger renames the live file to smifd.<time>.jsonl and reopens
 // it when it is larger than max bytes.
 func (l *logSink) rotateIfLarger(max int64, now time.Time) (bool, error) {
 	l.mu.Lock()

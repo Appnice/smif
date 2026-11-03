@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // EventKeep is how many audit events the overview keeps for the EVENTS
@@ -63,7 +63,7 @@ func (f *EventFeed) Poll(call func(method string, params, out any) error, backlo
 	return evs, false, nil
 }
 
-// PollEvents is EventFeed.Poll on the source's connection, for `mailroom
+// PollEvents is EventFeed.Poll on the source's connection, for `smif
 // watch --events`. It shares the feed with Fetch, so use one or the other.
 func (s *DaemonSource) PollEvents(ctx context.Context, backlog int) ([]api.AuditEvent, bool, error) {
 	call := func(method string, params, out any) error {
@@ -79,7 +79,7 @@ func (s *DaemonSource) EventCursor() int64 {
 	return s.feed.Cursor()
 }
 
-// FormatEvent is one audit event on one line, as `mailroom watch
+// FormatEvent is one audit event on one line, as `smif watch
 // --events` prints it:
 //
 //	13:10:05 #42 message.transition cafe msg 0000000001 queued→running

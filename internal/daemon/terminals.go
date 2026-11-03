@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/store"
 )
 
-// Terminals (ADR-0012). Mailroom types the human's prompt into the terminal
+// Terminals (ADR-0012). Smif types the human's prompt into the terminal
 // a session runs in, and brings that terminal to the front: Terminal.app
 // and iTerm2 by AppleScript (macOS), tmux by send-keys (any OS). A tab or
 // pane is found by the session's tty. Text and Enter go separately: text
@@ -49,21 +49,21 @@ func newTerminal(spec string) terminal {
 	return autoTerminal{}
 }
 
-// The $TERM_PROGRAM values (and "tmux") Mailroom can drive.
+// The $TERM_PROGRAM values (and "tmux") Smif can drive.
 const (
 	termApple = "Apple_Terminal"
 	termITerm = "iTerm.app"
 	termTmux  = "tmux"
 )
 
-// termSupport says why Mailroom cannot type into the session's terminal,
+// termSupport says why Smif cannot type into the session's terminal,
 // whatever the OS ("" = a terminal it knows).
 func termSupport(p store.Presence) string {
 	switch p.Term {
 	case termApple, termITerm, termTmux:
 		return ""
 	case "":
-		return "Mailroom does not know which terminal this session runs in"
+		return "Smif does not know which terminal this session runs in"
 	}
 	return "prompts work in Terminal.app, iTerm2 and tmux; this session runs in " + p.Term
 }
@@ -346,9 +346,9 @@ func runAppleScript(ctx context.Context, app, script string, argv ...string) err
 	msg := strings.TrimSpace(string(out))
 	switch {
 	case err != nil && ctx.Err() != nil:
-		return fmt.Errorf("no answer from %s in 15 s. If macOS asks whether mailroom may control %s, click OK, then try again", app, app)
+		return fmt.Errorf("no answer from %s in 15 s. If macOS asks whether smif may control %s, click OK, then try again", app, app)
 	case err != nil && strings.Contains(msg, "-1743"):
-		return fmt.Errorf("macOS does not let Mailroom control %s: allow it in System Settings → Privacy & Security → Automation", app)
+		return fmt.Errorf("macOS does not let Smif control %s: allow it in System Settings → Privacy & Security → Automation", app)
 	case err != nil:
 		return fmt.Errorf("osascript: %v: %s", err, msg)
 	case msg == "no tab":

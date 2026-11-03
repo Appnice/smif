@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/store"
 )
 
 // GC applies the retention rules of RFC 8.1.
@@ -77,7 +77,7 @@ func (d *Daemon) GC() (*api.GCResult, error) {
 	logDir := filepath.Join(d.dataDir, "logs")
 	ents, _ := os.ReadDir(logDir)
 	for _, e := range ents {
-		if strings.HasPrefix(e.Name(), "mailroomd.") && e.Name() != "mailroomd.jsonl" {
+		if strings.HasPrefix(e.Name(), "smifd.") && e.Name() != "smifd.jsonl" {
 			if fi, err := e.Info(); err == nil && now.Sub(fi.ModTime()) > cfg.Daemon.LogRetention.Duration {
 				if os.Remove(filepath.Join(logDir, e.Name())) == nil {
 					res.Logs++

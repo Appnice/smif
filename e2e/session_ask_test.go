@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // SESSION ASKS (ADR-0013): the human writes to a session. Idle: the text is
@@ -118,7 +118,7 @@ func TestSessionAsk(t *testing.T) {
 		t.Errorf("busy session without an agent: %v", err)
 	}
 
-	// mailroom stats counts the cockpit; doctor's canary reads the files.
+	// smif stats counts the cockpit; doctor's canary reads the files.
 	var st api.StatsResult
 	e.Call("stats.get", api.StatsParams{}, &st)
 	if st.Sessions.Typed != 1 || st.Sessions.WorkerAsks != 1 || st.Sessions.AgentAsks != 1 {

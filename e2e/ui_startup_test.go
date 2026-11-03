@@ -34,7 +34,7 @@ func (l *lockedBuffer) String() string {
 	return l.b.String()
 }
 
-// runInSilentPTY starts the mailroom binary on a new pseudo terminal (its
+// runInSilentPTY starts the smif binary on a new pseudo terminal (its
 // controlling terminal, 80x24, TERM=xterm-256color). Nothing answers the
 // terminal queries, as under macOS `script` or a slow ssh link. After
 // typeAfter it types keys (if not empty). It returns the terminal output,
@@ -49,7 +49,7 @@ func runInSilentPTY(t *testing.T, env []string, keys string, typeAfter, limit ti
 	if err := unix.IoctlSetWinsize(int(slave.Fd()), unix.TIOCSWINSZ, &unix.Winsize{Row: 24, Col: 80}); err != nil {
 		t.Fatalf("set window size: %v", err)
 	}
-	cmd := exec.Command(mailroomBin, args...)
+	cmd := exec.Command(smifBin, args...)
 	// A -race binary sleeps 1 s at exit (GORACE atexit_sleep_ms, default
 	// 1000); turn that off so the time is the program's own.
 	cmd.Env = append(append([]string{}, env...), "TERM=xterm-256color", "GORACE=atexit_sleep_ms=0")
@@ -119,37 +119,37 @@ func TestStartupSendsNoQuery(t *testing.T) {
 
 	t.Run("ui quits on q typed after 500ms", func(t *testing.T) {
 		out, took, err := runInSilentPTY(t, e.env, "q", 500*time.Millisecond, 6*time.Second, "ui")
-		t.Logf("mailroom ui: exit %v after %v", err, took.Round(time.Millisecond))
+		t.Logf("smif ui: exit %v after %v", err, took.Round(time.Millisecond))
 		if err != nil {
-			t.Fatalf("mailroom ui did not exit 0 on q: %v\noutput: %q", err, out)
+			t.Fatalf("smif ui did not exit 0 on q: %v\noutput: %q", err, out)
 		}
 		if took > 3*time.Second {
-			t.Fatalf("mailroom ui took %v to quit on q, want under 3s", took)
+			t.Fatalf("smif ui took %v to quit on q, want under 3s", took)
 		}
 		if strings.Contains(out, "\x1b]11;?") || strings.Contains(out, "\x1b[6n") {
-			t.Fatalf("mailroom ui queried the terminal: %q", out)
+			t.Fatalf("smif ui queried the terminal: %q", out)
 		}
 		if !strings.Contains(out, "\x1b[?1049h") || !strings.Contains(out, "DAEMON DOWN") {
-			t.Fatalf("mailroom ui did not draw the screen: %q", out)
+			t.Fatalf("smif ui did not draw the screen: %q", out)
 		}
 	})
 
-	t.Run("plain mailroom opens the ui", func(t *testing.T) {
+	t.Run("plain smif opens the ui", func(t *testing.T) {
 		out, took, err := runInSilentPTY(t, e.env, "q", 500*time.Millisecond, 6*time.Second)
-		t.Logf("mailroom: exit %v after %v", err, took.Round(time.Millisecond))
+		t.Logf("smif: exit %v after %v", err, took.Round(time.Millisecond))
 		if err != nil || !strings.Contains(out, "\x1b[?1049h") || !strings.Contains(out, "DAEMON DOWN") {
-			t.Fatalf("plain mailroom did not open the ui: %v\n%q", err, out)
+			t.Fatalf("plain smif did not open the ui: %v\n%q", err, out)
 		}
 	})
 
 	t.Run("any command is fast on a terminal", func(t *testing.T) {
 		out, took, err := runInSilentPTY(t, e.env, "", 0, 6*time.Second, "--help")
-		t.Logf("mailroom --help: exit %v after %v", err, took.Round(time.Millisecond))
+		t.Logf("smif --help: exit %v after %v", err, took.Round(time.Millisecond))
 		if err != nil {
-			t.Fatalf("mailroom --help: %v\n%q", err, out)
+			t.Fatalf("smif --help: %v\n%q", err, out)
 		}
 		if took > 2*time.Second || strings.Contains(out, "\x1b]11;?") {
-			t.Fatalf("mailroom --help took %v (want under 2s), output %q", took, out)
+			t.Fatalf("smif --help took %v (want under 2s), output %q", took, out)
 		}
 	})
 }

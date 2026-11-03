@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // ADR-0012: the human sees which sessions wait for input and types a
@@ -68,7 +68,7 @@ func cmdPrompt() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "prompt <session name> <text…>",
 		Short: "Write to a session: typed in when idle (Terminal.app, iTerm2, tmux), else a worker with its context answers",
-		Long: "The first word names the session (its name from `mailroom sessions`, case does not matter; quote a\n" +
+		Long: "The first word names the session (its name from `smif sessions`, case does not matter; quote a\n" +
 			"name with spaces); --session picks one by id prefix instead. An idle session gets one line typed in and\n" +
 			"Enter (Terminal.app, iTerm2 or tmux; claude in the foreground of its tab). A busy session is not touched: a worker resumes\n" +
 			"a fork of it (read only) and answers (ADR-0013).",
@@ -98,7 +98,7 @@ func cmdPrompt() *cobra.Command {
 				return err
 			}
 			if r.Mode == "worker" {
-				fmt.Printf("%s is busy: a worker with its context answers here; wait for it with `mailroom await %s`\n",
+				fmt.Printf("%s is busy: a worker with its context answers here; wait for it with `smif await %s`\n",
 					args[0], r.MessageID)
 				return nil
 			}

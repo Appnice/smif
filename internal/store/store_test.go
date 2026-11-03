@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 func openTest(t *testing.T) *Store {

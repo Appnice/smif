@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// AUTOSTART: with no config and no service, `mailroom sessions` starts the
+// AUTOSTART: with no config and no service, `smif sessions` starts the
 // daemon in the background and lists the sessions; the next call finds it
 // running. A second daemon on the same data dir stops on daemon.lock.
 func TestAutostart(t *testing.T) {
@@ -21,7 +21,7 @@ func TestAutostart(t *testing.T) {
 	}
 	var env []string
 	for _, kv := range e.env {
-		if !strings.HasPrefix(kv, "MAILROOM_NO_AUTOSTART=") {
+		if !strings.HasPrefix(kv, "SMIF_NO_AUTOSTART=") {
 			env = append(env, kv)
 		}
 	}
@@ -39,7 +39,7 @@ func TestAutostart(t *testing.T) {
 	if err != nil || strings.Contains(stderr, "started the daemon") {
 		t.Fatalf("second call: %v %q %q", err, out, stderr)
 	}
-	_, stderr, err = e.CLIDir(e.Root, "", []string{"MAILROOM_LOG_STDERR=1"}, "daemon")
+	_, stderr, err = e.CLIDir(e.Root, "", []string{"SMIF_LOG_STDERR=1"}, "daemon")
 	if err == nil || !strings.Contains(stderr, "another daemon runs with the data dir") {
 		t.Fatalf("a second daemon started: %v %q", err, stderr)
 	}

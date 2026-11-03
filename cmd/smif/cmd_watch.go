@@ -12,8 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/ui"
 )
 
 func cmdWatch() *cobra.Command {
@@ -27,7 +27,7 @@ func cmdWatch() *cobra.Command {
 		Use:   "watch",
 		Short: "Plain-text live view for a pipe, a tmux pane or ssh: a summary every few seconds, or --events",
 		Long: "Plain-text view of the daemon for places without a full-screen terminal. It reads the socket with the\n" +
-			"human token, like `mailroom ui`.\n\n" +
+			"human token, like `smif ui`.\n\n" +
 			"Without --events it prints a compact summary every --interval (default 5s): agents with queued,\n" +
 			"running, needs-you and dead counts, spend and budget left, the running runs, the needs-you items,\n" +
 			"the dead letters and the last --last audit events.\n\n" +

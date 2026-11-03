@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // layoutSizes are the terminal sizes every screen must fit: the classic
@@ -49,7 +49,7 @@ func emptySnapshot() Snapshot {
 
 // downSnapshot is a poll that found no daemon.
 func downSnapshot() Snapshot {
-	return Snapshot{At: t0, Err: errors.New("mailroom daemon is not reachable at /tmp/mr-x/mailroom.sock: connection refused")}
+	return Snapshot{At: t0, Err: errors.New("smif daemon is not reachable at /tmp/mr-x/smif.sock: connection refused")}
 }
 
 // longSnapshot has long names and texts in every column, to force
@@ -77,7 +77,7 @@ var screens = []struct {
 	want []string // text the screen shows at every size
 }{
 	{"overview", sample, nil, []string{"▶ AGENTS (3)", "? help", "q quit"}},
-	{"down", downSnapshot, nil, []string{"DAEMON DOWN", "connection refused", "Start it with `mailroom daemon`"}},
+	{"down", downSnapshot, nil, []string{"DAEMON DOWN", "Last error: smif daemon is not reachable", "Start it with `smif daemon`"}},
 	{"overview_empty", emptySnapshot, nil, []string{"no agents in the config", "nothing is running", "nothing needs you",
 		"no dead letters", "no messages yet", "no audit events yet"}},
 	{"overview_long", longSnapshot, []string{"tab", "tab"}, []string{"▶ NEEDS YOU (1)", "…"}},

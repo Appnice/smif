@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/store"
 )
 
 func TestTerminalSupport(t *testing.T) {

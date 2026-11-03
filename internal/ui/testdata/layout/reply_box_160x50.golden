@@ -1,4 +1,4 @@
-mailroom  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
+smif  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
 queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  NEEDS YOU · 01JMSG000000000000000NEED1   needs_human

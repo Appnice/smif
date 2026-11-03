@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // panel returns the lines of one overview panel: its title line up to

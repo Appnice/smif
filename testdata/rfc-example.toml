@@ -37,7 +37,7 @@ on_budget = "escalate"
 [[agents.puzzle.rules]]
 match = { kind = "ask", intent = "app.version" }
 handler = "command"
-command = ["./scripts/mailroom/version.sh"]
+command = ["./scripts/smif/version.sh"]
 
 [[agents.puzzle.rules]]
 match = { from = "observability", kind = "event", intent = "crash.*" }
@@ -61,7 +61,7 @@ repo = "~/dev/cafe"
 [[agents.cafe.rules]]
 match = { kind = "ask", intent = "store.status" }
 handler = "command"
-command = ["./scripts/mailroom/store-status.sh"]
+command = ["./scripts/smif/store-status.sh"]
 
 [[agents.cafe.rules]]
 match = { from = "observability", kind = "event", intent = "crash.*" }
@@ -107,7 +107,7 @@ accept_from = ["observability", "atlas", "puzzle", "cafe"]
 [[agents.lab.rules]]
 match = { kind = "ask", intent = "app.version" }
 handler = "command"
-command = ["./scripts/mailroom/version.sh"]
+command = ["./scripts/smif/version.sh"]
 
 [[agents.lab.rules]]
 match = { from = "observability", kind = "event", intent = "crash.*" }

@@ -1,12 +1,12 @@
-# ADR-0011: `stats.get` and `mailroom stats`
+# ADR-0011: `stats.get` and `smif stats`
 
 **Status:** accepted, 2026-11-02.
 
-**Context.** The owner uses Mailroom daily for two weeks and then decides whether it earns its place. The decision
+**Context.** The owner uses Smif daily for two weeks and then decides whether it earns its place. The decision
 needs four numbers: how much went through, how much was handled without him, how much needed him, and what it
 cost in tokens.
 
-**Decision.** A human-only daemon method `stats.get {since}` (default the last 14 days) and `mailroom stats
+**Decision.** A human-only daemon method `stats.get {since}` (default the last 14 days) and `smif stats
 [--days N | --since YYYY-MM-DD] [--json]`, per agent and per day. Definitions:
 
 - **inbound**: asks, tells and events created in the window (by `created_at`); replies are counted apart.

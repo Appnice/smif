@@ -14,7 +14,7 @@ CW, LH, PAD = 7.8, 18, 20  # cell width, line height, padding (px)
 
 # (pattern, colour, bold): the first match wins for each character.
 RULES = [
-    (r" mailroom ", BG, True),
+    (r" smif ", BG, True),
     (r"[╭╮╰╯│─┼]+", FRAME, False),
     (r"! WAITING \S+|! \d+[smhd]\b|\d+ waiting|needs you(?= *│)|silent \d+[smhd]", AMBER, True),
     (r"▶ WORKING \S+|▶ \d+\S*|\d+ working|◇ fork", CYAN, True),
@@ -49,13 +49,13 @@ def main(src, dst):
     width = max(len(l) for l in lines)
     w, h = int(PAD * 2 + width * CW), PAD * 2 + len(lines) * LH
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" '
-           'aria-label="The mailroom home screen: sessions with their state, a working session with the step that runs now, '
+           'aria-label="The smif home screen: sessions with their state, a working session with the step that runs now, '
            'its steps so far and a fork\'s answer">',
            f'<rect width="100%" height="100%" rx="10" fill="{BG}"/>',
            '<style>text{font-family:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;font-size:13px;white-space:pre}</style>']
     for row, line in enumerate(lines):
         y = PAD + row * LH + 13
-        m = line.find(" mailroom ")
+        m = line.find(" smif ")
         if row == 0 and m >= 0:
             out.append(f'<rect x="{PAD + m * CW:.1f}" y="{y - 12}" width="{10 * CW:.1f}" height="17" rx="2" fill="{PALE}"/>')
         spans, cols = [], colours(line)

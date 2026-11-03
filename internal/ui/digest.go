@@ -8,8 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // DigestLimit is how many unread items per agent the digest screen loads.
@@ -223,7 +223,7 @@ func (m *Model) digestLines(w, avail int) []string {
 	case n == 0:
 		return append(head, "", "  Nothing new since the read cursor.")
 	}
-	head = append(head, stDim.Render("  m marks these items read (the read cursor moves past them); `mailroom digest` shows the same list."))
+	head = append(head, stDim.Render("  m marks these items read (the read cursor moves past them); `smif digest` shows the same list."))
 	t := table{panel: PanelRecent, cols: []string{"MESSAGE", "HANDLED", "AGENT", "FROM", "KIND", "INTENT", "STATE", "SUMMARY"}}
 	for _, it := range ds.res.Items {
 		s := it.Summary

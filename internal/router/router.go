@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // Action is the routing outcome.

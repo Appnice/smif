@@ -12,7 +12,7 @@ import (
 
 	"github.com/oklog/ulid/v2"
 
-	"github.com/appnice/mailroom/internal/config"
+	"github.com/appnice/smif/internal/config"
 )
 
 // Limits from RFC 5.1.
@@ -107,7 +107,7 @@ func (d *Draft) Validate() error {
 	switch d.Kind {
 	case "tell", "ask", "event":
 	case "reply":
-		return fmt.Errorf("kind reply is created by the daemon from a handler result or mailroom reply")
+		return fmt.Errorf("kind reply is created by the daemon from a handler result or smif reply")
 	default:
 		return fmt.Errorf("kind %q: must be tell, ask or event", d.Kind)
 	}

@@ -13,9 +13,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/mcpserver"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/mcpserver"
 )
 
 const (
@@ -120,7 +120,7 @@ func (b *bench) s2IngestS5Hooks() error {
 	b.add("S2", fmt.Sprintf("### S2 · a tell accepted and routed (ingest)\n\nOpen loop, %.0f tells/s for %v to an agent whose "+
 		"rule is `digest`. The call returns once the message is stored (SQLite, synchronous=FULL) and routed.\n\n%s\n%s\n\n"+
 		"Errors: %d of %d.\n", rate, d, statsHead, s.row("send → stored"), errs, s.N), map[string]any{"rate": rate, "stats": s, "errors": errs})
-	b.add("S5", fmt.Sprintf("### S5 · what the human's session pays: hook and status line\n\nEach is a `mailroom` process "+
+	b.add("S5", fmt.Sprintf("### S5 · what the human's session pays: hook and status line\n\nEach is a `smif` process "+
 		"(exec included), as Claude Code runs it. Budgets: hook under 200 ms, status line under 300 ms.\n\n%s\n%s\n%s\n%s\n%s\n\n"+
 		"Bytes the hook printed into the session over %d calls under load: **%d** (it must print nothing).\n",
 		statsHead, summarize(idleHook).row("hook, idle daemon"), summarize(busyHook).row(fmt.Sprintf("hook, during %.0f tells/s", rate)),
@@ -133,7 +133,7 @@ func (b *bench) s2IngestS5Hooks() error {
 
 // ---------------------------------------------------------------- S3, T1
 
-// s3WorkerOverhead: what Mailroom adds around a worker process, measured
+// s3WorkerOverhead: what Smif adds around a worker process, measured
 // against the same fake claude run directly with the same argv and stdin.
 func (b *bench) s3WorkerOverheadT1() error {
 	e, err := b.env("", "", agentSpec{id: "caller", rules: digestRules}, agentSpec{id: "w", rules: workerRules})
@@ -172,7 +172,7 @@ func (b *bench) s3WorkerOverheadT1() error {
 			finish = append(finish, m.UpdatedAt.Sub(*r.EndedAt))
 		}
 	}
-	// The same fake process alone, with the argv and stdin Mailroom gave it.
+	// The same fake process alone, with the argv and stdin Smif gave it.
 	calls := e.fakeCalls()
 	if len(calls) == 0 {
 		return fmt.Errorf("no fake invocation recorded")
@@ -183,7 +183,7 @@ func (b *bench) s3WorkerOverheadT1() error {
 	var bare []time.Duration
 	for i := 0; i < n; i++ {
 		cmd := exec.Command(e.fake, argv[1:]...)
-		cmd.Env = append(e.vars, "MAILROOM_FAKE_LOG="+filepath.Join(e.root, "bare"))
+		cmd.Env = append(e.vars, "SMIF_FAKE_LOG="+filepath.Join(e.root, "bare"))
 		cmd.Dir = e.repos["w"]
 		cmd.Stdin = strings.NewReader(stdin)
 		t0 := time.Now()
@@ -191,9 +191,9 @@ func (b *bench) s3WorkerOverheadT1() error {
 		bare = append(bare, time.Since(t0))
 	}
 	se, sb := summarize(e2e), summarize(bare)
-	b.add("S3", fmt.Sprintf("### S3 · what Mailroom adds around one worker run\n\n%d tells to a worker agent, one at a time "+
+	b.add("S3", fmt.Sprintf("### S3 · what Smif adds around one worker run\n\n%d tells to a worker agent, one at a time "+
 		"(fake claude, no sleep). Phases from the daemon's own timestamps (ms resolution).\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n"+
-		"Mailroom's own cost per worker message ≈ end to end − the bare process = **%s** (p50).\n",
+		"Smif's own cost per worker message ≈ end to end − the bare process = **%s** (p50).\n",
 		n, statsHead, se.row("end to end (accepted → done)"), summarize(dispatch).row("accepted → process start"),
 		summarize(process).row("run: prepare, spawn, stream parse, exit"), summarize(finish).row("process exit → done (result, audit)"),
 		sb.row("the same fake run directly (baseline)"), ms(se.P50-sb.P50)),
@@ -226,10 +226,10 @@ func (b *bench) s3WorkerOverheadT1() error {
 	for _, r := range rows {
 		fmt.Fprintf(&tb, "| %s | %s | %s |\n", r[0], r[1], r[2])
 	}
-	fmt.Fprintf(&tb, "| **total Mailroom adds** | **%d** | **≈ %d** |\n", total, est(total))
-	b.add("T1", fmt.Sprintf("### T1 · tokens Mailroom adds to each worker run\n\nFrom the argv and stdin of a real worker "+
+	fmt.Fprintf(&tb, "| **total Smif adds** | **%d** | **≈ %d** |\n", total, est(total))
+	b.add("T1", fmt.Sprintf("### T1 · tokens Smif adds to each worker run\n\nFrom the argv and stdin of a real worker "+
 		"invocation (profile `triage`, a %d-byte body). Token counts are bytes/4 estimates.\n\n%s\n"+
-		"What Mailroom takes away from a worker's context, compared with a plain `claude -p` in the repo:\n\n"+
+		"What Smif takes away from a worker's context, compared with a plain `claude -p` in the repo:\n\n"+
 		"- `--tools %s` (%d tools): every built-in tool not listed is not defined in the context at all.\n"+
 		"- `--strict-mcp-config --mcp-config %s`: no MCP servers load (a plain session here loads every user and claude.ai server; on this Mac that was 12).\n"+
 		"- `--settings {\"disableAllHooks\":true}`: no hook output enters the worker.\n"+
@@ -493,7 +493,7 @@ func (b *bench) r3CanaryT2() error {
 	if ir := cs.InitializeResult(); ir != nil {
 		instr = ir.Instructions
 	}
-	for _, name := range []string{"mailroom_status", "mailroom_agents"} {
+	for _, name := range []string{"smif_status", "smif_agents"} {
 		r, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: map[string]any{}})
 		if err == nil {
 			out, _ := json.Marshal(r.Content)
@@ -503,16 +503,16 @@ func (b *bench) r3CanaryT2() error {
 	check(string(defs) + instr)
 	b.add("R3", fmt.Sprintf("### R3 · inbound text never reaches the human's session (canary)\n\n20 messages to an agent with "+
 		"an open interactive session, each carrying the unique string `%s…`. Then every way into that session was read: "+
-		"the hook output (3 events), the status line, `mailroom_status` and `mailroom_agents`, the MCP tool definitions and "+
+		"the hook output (3 events), the status line, `smif_status` and `smif_agents`, the MCP tool definitions and "+
 		"instructions.\n\n| check | result |\n|---|---|\n| probes | %d |\n| probes that contained the canary | **%d** |\n\n"+
-		"The digest (`/mailroom`) shows summaries only when the human types it; it is not probed here.\n",
+		"The digest (`/smif`) shows summaries only when the human types it; it is not probed here.\n",
 		canary[:12], probes, leaks), map[string]any{"probes": probes, "leaks": leaks})
-	b.add("T2", fmt.Sprintf("### T2 · tokens Mailroom costs the human's session\n\n| channel | bytes | ≈ tokens | when |\n|---|---|---|---|\n"+
+	b.add("T2", fmt.Sprintf("### T2 · tokens Smif costs the human's session\n\n| channel | bytes | ≈ tokens | when |\n|---|---|---|---|\n"+
 		"| MCP tool definitions (%d tools) | %d | ≈ %d | in every session's context (cached after the first turn) |\n"+
 		"| MCP server instructions | %d | ≈ %d | same |\n| hook output | 0 | 0 | every prompt (hooks print nothing) |\n"+
 		"| status line `%s` | %d | 0 | shown in the terminal only, never sent to the model |\n"+
 		"| inbound messages (R3: 20 messages) | 0 | 0 | never; workers and handlers take them |\n"+
-		"| `/mailroom` digest | on demand | – | only when the human types it |\n",
+		"| `/smif` digest | on demand | – | only when the human types it |\n",
 		len(tools.Tools), len(defs), est(len(defs)), len(instr), est(len(instr)), strings.TrimSpace(line), len(line)),
 		map[string]any{"mcp_tools": len(tools.Tools), "mcp_def_bytes": len(defs), "mcp_instr_bytes": len(instr)})
 	return nil

@@ -1,7 +1,7 @@
 // Command fakeclaude is a scripted stand-in for `claude -p` (RFC 9.4).
 //
 // It accepts the real flag set, appends one JSON record per invocation to
-// $MAILROOM_FAKE_LOG (argv, cwd, selected env, stdin, pid), reads stdin and
+// $SMIF_FAKE_LOG (argv, cwd, selected env, stdin, pid), reads stdin and
 // writes stream JSON: an init event with session_id, assistant messages and a
 // final result with usage and cost. Behaviour is scripted by directives in
 // the prompt text:
@@ -22,7 +22,7 @@
 //	#fake:reply=<text>                  reply text for an ask
 //	#fake:noresume                      pretend --resume is unknown (exit 1)
 //
-// The prompt the runner sends for a compaction turn contains MAILROOM_COMPACT.
+// The prompt the runner sends for a compaction turn contains SMIF_COMPACT.
 package main
 
 import (
@@ -91,9 +91,9 @@ func main() {
 		"argv": os.Args, "cwd": cwd, "pid": os.Getpid(), "stdin": string(stdin),
 		"session_id": session,
 		"env": map[string]string{
-			"MAILROOM_AGENT":     os.Getenv("MAILROOM_AGENT"),
-			"MAILROOM_RUN_ID":    os.Getenv("MAILROOM_RUN_ID"),
-			"MAILROOM_RUN_TOKEN": os.Getenv("MAILROOM_RUN_TOKEN"),
+			"SMIF_AGENT":     os.Getenv("SMIF_AGENT"),
+			"SMIF_RUN_ID":    os.Getenv("SMIF_RUN_ID"),
+			"SMIF_RUN_TOKEN": os.Getenv("SMIF_RUN_TOKEN"),
 		},
 		"time": time.Now().UTC().Format(time.RFC3339Nano),
 	})
@@ -141,10 +141,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "fake: exiting with", code)
 		os.Exit(code)
 	}
-	if p, ok := dirs["edit"]; ok && !strings.Contains(prompt, "MAILROOM_REPAIR") {
+	if p, ok := dirs["edit"]; ok && !strings.Contains(prompt, "SMIF_REPAIR") {
 		full := filepath.Join(cwd, p)
 		_ = os.MkdirAll(filepath.Dir(full), 0o755)
-		_ = os.WriteFile(full, []byte("edited by fake "+os.Getenv("MAILROOM_RUN_ID")+"\n"), 0o644)
+		_ = os.WriteFile(full, []byte("edited by fake "+os.Getenv("SMIF_RUN_ID")+"\n"), 0o644)
 	}
 
 	tokens := 1000
@@ -172,7 +172,7 @@ func main() {
 
 	var result map[string]any
 	switch {
-	case strings.Contains(prompt, "MAILROOM_COMPACT"):
+	case strings.Contains(prompt, "SMIF_COMPACT"):
 		result = map[string]any{"memory": "fake memory carried from session " + session}
 	default:
 		status := "done"
@@ -205,13 +205,13 @@ func main() {
 		}
 	}
 	bad := false
-	if v, ok := dirs["bad_output"]; ok && !strings.Contains(prompt, "MAILROOM_REPAIR") {
+	if v, ok := dirs["bad_output"]; ok && !strings.Contains(prompt, "SMIF_REPAIR") {
 		bad = true
 		if v == "always" {
 			markBad(session) // the repair turn on this session fails too
 		}
 	}
-	if strings.Contains(prompt, "MAILROOM_REPAIR") && lastBad(session) {
+	if strings.Contains(prompt, "SMIF_REPAIR") && lastBad(session) {
 		bad = true
 	}
 
@@ -293,7 +293,7 @@ func parseFlags(args []string) map[string]string {
 	return out
 }
 
-func logDir() string { return os.Getenv("MAILROOM_FAKE_LOG") }
+func logDir() string { return os.Getenv("SMIF_FAKE_LOG") }
 
 func record(v map[string]any) {
 	dir := logDir()
@@ -363,16 +363,16 @@ func fakeMCP(args []string) {
 	switch args[0] {
 	case "get":
 		if _, err := os.Stat(marker); err != nil {
-			fmt.Fprintln(os.Stderr, "No MCP server found with name: mailroom")
+			fmt.Fprintln(os.Stderr, "No MCP server found with name: smif")
 			os.Exit(1)
 		}
 	case "add":
 		_ = os.WriteFile(marker, []byte(strings.Join(args, " ")), 0o644)
-		fmt.Println("Added stdio MCP server mailroom to user config")
+		fmt.Println("Added stdio MCP server smif to user config")
 	case "remove":
 		if err := os.Remove(marker); err != nil {
 			os.Exit(1)
 		}
-		fmt.Println("Removed MCP server mailroom")
+		fmt.Println("Removed MCP server smif")
 	}
 }

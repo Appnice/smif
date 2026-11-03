@@ -9,7 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // Panel is one section of the overview.
@@ -44,7 +44,7 @@ type Options struct {
 	SeenFile string
 }
 
-// Model is the Bubble Tea model of `mailroom ui`.
+// Model is the Bubble Tea model of `smif ui`.
 type Model struct {
 	src      Source
 	interval time.Duration
@@ -375,7 +375,7 @@ const statusTTL = 30 * time.Second
 func (m *Model) View() tea.View {
 	v := tea.NewView(m.Render())
 	v.AltScreen = true
-	v.WindowTitle = "mailroom"
+	v.WindowTitle = "smif"
 	return v
 }
 
@@ -414,7 +414,7 @@ func (m *Model) Render() string {
 		if m.lastErr != nil {
 			lines = append(lines, "")
 			for _, p := range []string{
-				"The daemon is not reachable. Start it with `mailroom daemon` or `mailroom install`.",
+				"The daemon is not reachable. Start it with `smif daemon` or `smif install`.",
 				"This screen retries every " + m.interval.String() + " and fills in when the daemon answers.",
 				"Last error: " + oneLine(m.lastErr.Error()),
 			} {
@@ -462,7 +462,7 @@ func (m *Model) header() []string {
 		w = 80
 	}
 	if m.lastErr != nil {
-		l1 := "mailroom  " + stBad.Render("DAEMON DOWN") + "  " + oneLine(m.lastErr.Error())
+		l1 := "smif  " + stBad.Render("DAEMON DOWN") + "  " + oneLine(m.lastErr.Error())
 		l2 := "retrying every " + m.interval.String()
 		if m.snap != nil {
 			l2 += fmt.Sprintf(" · showing stale data from %s (%s ago)", m.snap.At.Local().Format("15:04:05"), dur(now.Sub(m.snap.At)))
@@ -472,7 +472,7 @@ func (m *Model) header() []string {
 		return []string{l1, l2}
 	}
 	if m.snap == nil {
-		return []string{"mailroom  connecting to the daemon…", ""}
+		return []string{"smif  connecting to the daemon…", ""}
 	}
 	s := m.snap.Status
 	d := s.Daemon
@@ -482,7 +482,7 @@ func (m *Model) header() []string {
 	}
 	// The parts with the highest number go first when the line is too
 	// wide for the terminal.
-	l1 := "mailroom  " + fitParts(w-10, " · ",
+	l1 := "smif  " + fitParts(w-10, " · ",
 		part{fmt.Sprintf("daemon %s pid %d up %s", d.Version, d.PID, dur(now.Sub(d.StartedAt))), 3,
 			fmt.Sprintf("daemon %s up %s", d.Version, dur(now.Sub(d.StartedAt)))},
 		part{fmt.Sprintf("schema %d", d.SchemaVersion), 4, ""}, part{claude, 0, ""},
@@ -524,7 +524,7 @@ func (m *Model) tables() []table {
 	}
 	ts[PanelAgents].cols = []string{"AGENT", "QUEUED", "RUNNING", "NEEDS YOU", "DEAD", "SPENT TODAY", "BUDGET LEFT", "SESSION"}
 	ts[PanelAgents].short = []string{"AGENT", "QUEUED", "RUNNING", "NEEDS", "DEAD", "SPENT", "LEFT", "SESSION"}
-	ts[PanelAgents].empty = "no agents in the config; add one with `mailroom init --agent id=repo-path`"
+	ts[PanelAgents].empty = "no agents in the config; add one with `smif init --agent id=repo-path`"
 	ts[PanelRunning].empty = "nothing is running"
 	ts[PanelNeedsYou].empty = "nothing needs you"
 	ts[PanelDLQ].empty = "no dead letters"

@@ -12,19 +12,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/presence"
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/presence"
+	"github.com/appnice/smif/internal/store"
 )
 
 // Session discovery (ADR-0012). Claude Code keeps one file for each running
 // session in $CLAUDE_CONFIG_DIR/sessions/<pid>.json (default ~/.claude):
-// its session id, cwd, name and status (idle or busy). Mailroom reads these
+// its session id, cwd, name and status (idle or busy). Smif reads these
 // files, so every open session shows up at once, also one that had no hook
-// since Mailroom was installed. The files are not a documented interface:
+// since Smif was installed. The files are not a documented interface:
 // a missing or changed file only means the hooks alone decide (docs/compat.md).
 
-// claudeSession is the part of one session file that Mailroom uses.
+// claudeSession is the part of one session file that Smif uses.
 type claudeSession struct {
 	PID             int    `json:"pid"`
 	SessionID       string `json:"sessionId"`
@@ -292,7 +292,7 @@ func gitRoot(dir string) string {
 // sessionsCanary checks that Claude Code's session files and transcripts
 // still have the shape the session view reads. They are not a documented
 // interface: a new Claude Code version can change them, and the view would
-// go quiet without this check (mailroom doctor shows it).
+// go quiet without this check (smif doctor shows it).
 func (d *Daemon) sessionsCanary() (state, detail string) {
 	files, _ := filepath.Glob(filepath.Join(d.sessDir, "*.json"))
 	if len(files) == 0 {

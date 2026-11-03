@@ -13,7 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // A session's answer in the UI: only its final message (the text after the
@@ -732,7 +732,7 @@ func (m *Model) liveBody(sv *api.SessionView, turns []api.SessionTurn, w int, no
 	return out
 }
 
-// canFocus reports a terminal whose tab or pane Mailroom can bring to the
+// canFocus reports a terminal whose tab or pane Smif can bring to the
 // front (session.focus).
 func canFocus(term string) bool {
 	return term == "Apple_Terminal" || term == "iTerm.app" || term == "tmux"
@@ -751,7 +751,7 @@ func writeHint(sv *api.SessionView) string {
 	case sv.CanPrompt:
 		return "It is idle: what you write is typed into its tab."
 	case canWrite(sv) && sv.Turn == "waiting":
-		return "Mailroom never answers a permission prompt for you. s asks a fork instead, without touching the prompt."
+		return "Smif never answers a permission prompt for you. s asks a fork instead, without touching the prompt."
 	case canWrite(sv):
 		return "It is busy: a fork of this session answers from what it knows. Nothing is typed into its tab."
 	case sv.Turn == "busy" || sv.Turn == "waiting":

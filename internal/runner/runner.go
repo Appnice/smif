@@ -10,8 +10,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // Followup is a message the daemon sends after the run on the worker's behalf.

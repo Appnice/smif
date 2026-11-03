@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // Manager owns worktrees under Root/<agent>.
@@ -41,9 +41,9 @@ func Git(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-// BranchName is mailroom/<agent>/<thread-ulid-short>.
+// BranchName is smif/<agent>/<thread-ulid-short>.
 func BranchName(agent, thread string) string {
-	return "mailroom/" + agent + "/" + envelope.Short(thread)
+	return "smif/" + agent + "/" + envelope.Short(thread)
 }
 
 // Prepare returns the workspace for a run.
@@ -72,7 +72,7 @@ func (m *Manager) Prepare(a *config.Agent, scope, thread, existingBranch string)
 	if dirty(wt) {
 		cur, _ := Git(wt, "rev-parse", "--abbrev-ref", "HEAD")
 		if cur != "HEAD" && cur != "" {
-			_ = commitAll(wt, "mailroom: recovered changes from an interrupted run")
+			_ = commitAll(wt, "smif: recovered changes from an interrupted run")
 		} else {
 			_, _ = Git(wt, "reset", "--hard")
 		}
@@ -129,7 +129,7 @@ func dirty(dir string) bool {
 
 func identityArgs(dir string) []string {
 	if e, _ := Git(dir, "config", "user.email"); e == "" {
-		return []string{"-c", "user.name=Mailroom", "-c", "user.email=mailroom@localhost"}
+		return []string{"-c", "user.name=Smif", "-c", "user.email=smif@localhost"}
 	}
 	return nil
 }
@@ -143,7 +143,7 @@ func commitAll(dir, msg string) error {
 	return err
 }
 
-// Finish commits a dirty worktree ("mailroom: <summary> [run <id>]") and
+// Finish commits a dirty worktree ("smif: <summary> [run <id>]") and
 // returns the head SHA and the branch diffstat against its base.
 func (m *Manager) Finish(ws *Workspace, summary, runID string) (head, diffstat string, err error) {
 	if ws == nil || ws.Scope != "worktree" {
@@ -157,7 +157,7 @@ func (m *Manager) Finish(ws *Workspace, summary, runID string) (head, diffstat s
 		if len(s) > 120 {
 			s = s[:120]
 		}
-		if err := commitAll(ws.Dir, fmt.Sprintf("mailroom: %s [run %s]", s, runID)); err != nil {
+		if err := commitAll(ws.Dir, fmt.Sprintf("smif: %s [run %s]", s, runID)); err != nil {
 			return "", "", err
 		}
 	}
@@ -192,7 +192,7 @@ func Apply(repo, branch, runID string) (string, error) {
 	if _, err := Git(repo, "merge-base", "--is-ancestor", branch, "HEAD"); err == nil {
 		return "", ErrMerged
 	}
-	args := append(identityArgs(repo), "merge", "--no-ff", "--no-edit", "-m", fmt.Sprintf("Merge %s (mailroom run %s)", branch, runID), branch)
+	args := append(identityArgs(repo), "merge", "--no-ff", "--no-edit", "-m", fmt.Sprintf("Merge %s (smif run %s)", branch, runID), branch)
 	if _, err := Git(repo, args...); err != nil {
 		_, _ = Git(repo, "merge", "--abort")
 		return "", err
@@ -200,11 +200,11 @@ func Apply(repo, branch, runID string) (string, error) {
 	return Git(repo, "rev-parse", "HEAD")
 }
 
-// GC deletes mailroom/<agent>/* branches whose last commit is older than
+// GC deletes smif/<agent>/* branches whose last commit is older than
 // retention, detaching the worktree first when needed. Returns how many.
 func (m *Manager) GC(a *config.Agent, retention time.Duration, now time.Time) int {
 	repo := a.RepoPath()
-	out, err := Git(repo, "for-each-ref", "--format=%(refname:short) %(committerdate:unix)", "refs/heads/mailroom/"+a.ID+"/")
+	out, err := Git(repo, "for-each-ref", "--format=%(refname:short) %(committerdate:unix)", "refs/heads/smif/"+a.ID+"/")
 	if err != nil || out == "" {
 		return 0
 	}

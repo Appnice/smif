@@ -9,12 +9,12 @@ import (
 )
 
 // ensureDaemon starts the daemon in the background when none answers, so
-// `mailroom` and `mailroom sessions` work with no setup (no init, no
-// service). The started daemon runs until a reboot; `mailroom install`
-// makes it a service. MAILROOM_NO_AUTOSTART=1 turns it
+// `smif` and `smif sessions` work with no setup (no init, no
+// service). The started daemon runs until a reboot; `smif install`
+// makes it a service. SMIF_NO_AUTOSTART=1 turns it
 // off. One daemon per data dir: a second one stops on daemon.lock.
 func ensureDaemon() {
-	if os.Getenv("MAILROOM_NO_AUTOSTART") != "" {
+	if os.Getenv("SMIF_NO_AUTOSTART") != "" {
 		return
 	}
 	if c, err := humanClient(300 * time.Millisecond); err == nil {
@@ -24,7 +24,7 @@ func ensureDaemon() {
 	cmd := exec.Command(absBinary(), "daemon")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
-		fmt.Fprintln(os.Stderr, "mailroom: cannot start the daemon:", err)
+		fmt.Fprintln(os.Stderr, "smif: cannot start the daemon:", err)
 		return
 	}
 	pid := cmd.Process.Pid
@@ -32,9 +32,9 @@ func ensureDaemon() {
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(100 * time.Millisecond) {
 		if c, err := humanClient(300 * time.Millisecond); err == nil {
 			c.Close()
-			fmt.Fprintf(os.Stderr, "mailroom: started the daemon (pid %d); it runs until a reboot, `mailroom install` makes it a service\n", pid)
+			fmt.Fprintf(os.Stderr, "smif: started the daemon (pid %d); it runs until a reboot, `smif install` makes it a service\n", pid)
 			return
 		}
 	}
-	fmt.Fprintln(os.Stderr, "mailroom: started the daemon, but it does not answer yet; `mailroom doctor` says why")
+	fmt.Fprintln(os.Stderr, "smif: started the daemon, but it does not answer yet; `smif doctor` says why")
 }

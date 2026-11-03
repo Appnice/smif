@@ -1,10 +1,10 @@
-mailroom  DAEMON DOWN  mailroom daemon is not reachable at /tmp/x.sock: connection refused
+smif  DAEMON DOWN  smif daemon is not reachable at /tmp/x.sock: connection refused
 retrying every 1s · no data yet
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-  The daemon is not reachable. Start it with `mailroom daemon` or `mailroom install`.
+  The daemon is not reachable. Start it with `smif daemon` or `smif install`.
   This screen retries every 1s and fills in when the daemon answers.
-  Last error: mailroom daemon is not reachable at /tmp/x.sock: connection refused
+  Last error: smif daemon is not reachable at /tmp/x.sock: connection refused
 
 
 

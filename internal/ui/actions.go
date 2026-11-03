@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // Actions are the human-only writes and the thread read the item screens

@@ -12,9 +12,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/store"
 )
 
 // fakeInspector also serves runs, diffs, transcripts, lists and apply.
@@ -116,11 +116,11 @@ func newInspModel(t *testing.T) (*Model, *fakeInspector) {
 		fakeActions: fakeActions{fakeSource: fakeSource{snaps: []Snapshot{sample()}}, threads: sampleThreads()},
 		runs: map[string]*api.RunView{runID: {ID: runID, MessageID: "01JMSG0000000000000000RUN1", Agent: "cafe", Handler: "worker",
 			Profile: "fix", Attempt: 1, State: "done", SessionID: "5d1e7a40-0000-4000-8000-000000000001",
-			Workspace: "/home/p/.local/share/mailroom/worktrees/cafe", Branch: "mailroom/cafe/00thread01", HeadSHA: "9a8b7c6d5e4f3a2b1c0d",
+			Workspace: "/home/p/.local/share/smif/worktrees/cafe", Branch: "smif/cafe/00thread01", HeadSHA: "9a8b7c6d5e4f3a2b1c0d",
 			Diffstat: " src/fix.txt | 1 +\n 1 file changed, 1 insertion(+)", Result: res, CostUSD: 0.0123, InputTokens: 1200,
-			OutputTokens: 340, Transcript: "/home/p/.local/share/mailroom/transcripts/" + runID + ".jsonl",
+			OutputTokens: 340, Transcript: "/home/p/.local/share/smif/transcripts/" + runID + ".jsonl",
 			StartedAt: t0.Add(-65 * time.Second), EndedAt: &ended}},
-		diffs:       map[string]*DiffView{runID: {RunID: runID, Branch: "mailroom/cafe/00thread01", Repo: "/home/p/cafe", Diff: fakeDiff}},
+		diffs:       map[string]*DiffView{runID: {RunID: runID, Branch: "smif/cafe/00thread01", Repo: "/home/p/cafe", Diff: fakeDiff}},
 		transcripts: map[string]string{runID: fakeTranscript},
 	}
 	m := New(f, Options{Dashboard: true, Now: func() time.Time { return t0 }, Interval: time.Millisecond})
@@ -144,7 +144,7 @@ func TestRunScreenTabs(t *testing.T) {
 		"RUN · " + runID, "agent cafe · worker/fix · attempt 1 · message 000000RUN1 · started 13:09:00 · took 5s",
 		"1 RECORD", "2 TRANSCRIPT", "3 DIFF", "cost $0.0123 · tokens in 1200 out 340",
 		"session 5d1e7a40-0000-4000-8000-000000000001 (open it with: claude --resume",
-		"mailroom/cafe/00thread01 · head 9a8b7c6d5e4f · a applies it (asks y/N)", "1 file changed, 1 insertion(+)",
+		"smif/cafe/00thread01 · head 9a8b7c6d5e4f · a applies it (asks y/N)", "1 file changed, 1 insertion(+)",
 		`"summary": "null check fixed"`, "1 record · 2 transcript · 3 diff · ↑/↓ scroll · a apply · r refresh · esc back",
 	} {
 		if !strings.Contains(out, want) {
@@ -172,7 +172,7 @@ func TestRunScreenTabs(t *testing.T) {
 
 	key(m, "3")
 	out = view(m)
-	for _, want := range []string{"mailroom/cafe/00thread01 against HEAD of /home/p/cafe", "+++ b/src/fix.txt",
+	for _, want := range []string{"smif/cafe/00thread01 against HEAD of /home/p/cafe", "+++ b/src/fix.txt",
 		"+edited by fake " + runID, "-old line", "+new line", "@@ -1,2 +1,2 @@"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("diff view lacks %q", want)
@@ -201,7 +201,7 @@ func TestApplyAsksAndShowsRefusal(t *testing.T) {
 	m, f := newInspModel(t)
 	key(m, "tab", "enter", "3", "a")
 	out := view(m)
-	if !strings.Contains(out, "Apply run 00AAAAAAAA? [y/N] It merges branch mailroom/cafe/00thread01") ||
+	if !strings.Contains(out, "Apply run 00AAAAAAAA? [y/N] It merges branch smif/cafe/00thread01") ||
 		!strings.Contains(out, "into the current branch of /home/p/cafe (git merge --no-ff in your main checkout).") ||
 		!strings.Contains(out, "y yes · any other key: no") {
 		t.Fatalf("apply confirmation:\n%s", out)
@@ -230,7 +230,7 @@ func TestApplyAsksAndShowsRefusal(t *testing.T) {
 
 	f.applyErr = nil
 	key(m, "a", "y")
-	if len(f.applies) != 1 || m.Status() != "Applied mailroom/cafe/00thread01 to /home/p/cafe: HEAD 4f1c2d3e4b5a." {
+	if len(f.applies) != 1 || m.Status() != "Applied smif/cafe/00thread01 to /home/p/cafe: HEAD 4f1c2d3e4b5a." {
 		t.Fatalf("apply: %v %q", f.applies, m.Status())
 	}
 	if out := view(m); !strings.Contains(out, "(no changes against HEAD: the branch is merged or empty)") {

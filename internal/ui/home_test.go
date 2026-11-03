@@ -8,8 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // homeSample adds the home groups to sample(): one running message with
@@ -31,7 +31,7 @@ func homeSample() Snapshot {
 	}
 	s.Done = []api.MessageView{
 		{ID: "01JMSG0000000000000000DON1", To: "observability", From: envelope.From{Agent: "human"}, Kind: "event",
-			Intent: "notice.harness", State: "done", Subject: "harness run mailroom-ui: green", Handler: "digest",
+			Intent: "notice.harness", State: "done", Subject: "harness run smif-ui: green", Handler: "digest",
 			UpdatedAt: t0.Add(-2 * time.Hour)},
 		{ID: "01JMSG0000000000000000DON2", To: "cafe", From: envelope.From{Agent: "web"}, Kind: "ask",
 			Intent: "store.status", State: "done", Subject: "Is Cafe live?", Summary: "1.0.17 (22) live on iOS",

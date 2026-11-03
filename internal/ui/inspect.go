@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // Inspector is the read side of the thread, run and inbox screens plus
@@ -82,7 +82,7 @@ func (s *DaemonSource) Diff(ctx context.Context, runID string) (*DiffView, error
 }
 
 // Apply merges the worker branch (run.apply). The daemon refuses on a
-// dirty tree. The call gets 60 s, like `mailroom apply`.
+// dirty tree. The call gets 60 s, like `smif apply`.
 func (s *DaemonSource) Apply(ctx context.Context, runID string) (*ApplyResult, error) {
 	var a ApplyResult
 	if err := s.callT(ctx, "run.apply", api.IDParams{ID: runID}, &a, 60*time.Second); err != nil {
@@ -93,7 +93,7 @@ func (s *DaemonSource) Apply(ctx context.Context, runID string) (*ApplyResult, e
 
 // Transcript reads the last TranscriptTailBytes of the transcript file
 // that run.get names. The daemon and the UI share the host (the socket is
-// local), so this is the same file `mailroom run --transcript` prints.
+// local), so this is the same file `smif run --transcript` prints.
 func (s *DaemonSource) Transcript(ctx context.Context, r api.RunView) (*TranscriptTail, error) {
 	return ReadTranscriptTail(r.Transcript, TranscriptTailBytes)
 }

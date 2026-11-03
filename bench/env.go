@@ -11,14 +11,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
-// env is one throw-away Mailroom: its own config, data, socket, repos and
+// env is one throw-away Smif: its own config, data, socket, repos and
 // a daemon process, with the fake claude as claude_command.
 type env struct {
 	root    string
-	bin     string // mailroom
+	bin     string // smif
 	fake    string // fake claude
 	vars    []string
 	daemon  *exec.Cmd
@@ -34,10 +34,10 @@ type agentSpec struct {
 	files            map[string]string // repo files written before the first commit
 }
 
-// buildBinaries builds mailroom and the fake claude once.
-func buildBinaries(repoRoot, dir string) (mailroom, fake string, err error) {
-	mailroom, fake = filepath.Join(dir, "mailroom"), filepath.Join(dir, "claude")
-	for _, b := range [][2]string{{mailroom, "./cmd/mailroom"}, {fake, "./testdata/fakeclaude"}} {
+// buildBinaries builds smif and the fake claude once.
+func buildBinaries(repoRoot, dir string) (smif, fake string, err error) {
+	smif, fake = filepath.Join(dir, "smif"), filepath.Join(dir, "claude")
+	for _, b := range [][2]string{{smif, "./cmd/smif"}, {fake, "./testdata/fakeclaude"}} {
 		cmd := exec.Command("go", "build", "-o", b[0], b[1])
 		cmd.Dir = repoRoot
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
@@ -45,7 +45,7 @@ func buildBinaries(repoRoot, dir string) (mailroom, fake string, err error) {
 			return "", "", fmt.Errorf("build %s: %v\n%s", b[1], err, out)
 		}
 	}
-	return mailroom, fake, nil
+	return smif, fake, nil
 }
 
 func newEnv(bin, fake, daemonExtra, profiles string, agents ...agentSpec) (*env, error) {
@@ -62,17 +62,17 @@ func newEnv(bin, fake, daemonExtra, profiles string, agents ...agentSpec) (*env,
 	}
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
-		if strings.HasPrefix(k, "MAILROOM_") || strings.HasPrefix(k, "CLAUDE") || k == "HOME" || strings.HasPrefix(k, "GIT_") {
+		if strings.HasPrefix(k, "SMIF_") || strings.HasPrefix(k, "CLAUDE") || k == "HOME" || strings.HasPrefix(k, "GIT_") {
 			continue
 		}
 		e.vars = append(e.vars, kv)
 	}
 	e.vars = append(e.vars,
 		"HOME="+filepath.Join(root, "home"),
-		"MAILROOM_CONFIG_DIR="+filepath.Join(root, "cfg"),
-		"MAILROOM_DATA_DIR="+filepath.Join(root, "data"),
-		"MAILROOM_SOCKET="+filepath.Join(root, "s.sock"),
-		"MAILROOM_FAKE_LOG="+filepath.Join(root, "fake"),
+		"SMIF_CONFIG_DIR="+filepath.Join(root, "cfg"),
+		"SMIF_DATA_DIR="+filepath.Join(root, "data"),
+		"SMIF_SOCKET="+filepath.Join(root, "s.sock"),
+		"SMIF_FAKE_LOG="+filepath.Join(root, "fake"),
 		"CLAUDE_CONFIG_DIR="+filepath.Join(root, "home", ".claude"),
 		"GIT_CONFIG_GLOBAL="+filepath.Join(root, "gitconfig"),
 	)
@@ -187,7 +187,7 @@ func (e *env) human(method string, params, out any) error {
 	return c.Call(method, params, out, 10*time.Second)
 }
 
-// cli runs the mailroom binary with stdin and returns stdout.
+// cli runs the smif binary with stdin and returns stdout.
 func (e *env) cli(dir, stdin string, args ...string) (string, error) {
 	cmd := exec.Command(e.bin, args...)
 	cmd.Env, cmd.Dir = e.vars, dir

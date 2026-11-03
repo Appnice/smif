@@ -1,4 +1,4 @@
- mailroom   1 working  1 quiet  ⚑ 1 asks you  ✗ 1 dead                              ● live · ≈ $1.75 at API prices today
+ smif   1 working  1 quiet  ⚑ 1 asks you  ✗ 1 dead                                  ● live · ≈ $1.75 at API prices today
 ╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
 │ NEEDS YOU · 1                                            │ │ ○ IDLE  release  /r/cafe · ttys003 · idle 10m           │
 │   ⚑ cafe ← web Ship?                                  4m │ │                                                         │
@@ -17,7 +17,7 @@
 │   ◌ web ← cafe retry · Icons for the dark mode        1m │ │                                                         │
 │                                                          │ │                                                         │
 │ DONE TODAY · 2 · 1 unread (e marks read)                 │ │                                                         │
-│  •✓ observability ← human harness run mailroom-ui: g… 2h │ │                                                         │
+│  •✓ observability ← human harness run smif-ui: green  2h │ │                                                         │
 │   ✓ cafe ← web Is Cafe live?                          5h │ │                                                         │
 │                                                          │ │                                                         │
 │ DEAD · 1                                                 │ │                                                         │

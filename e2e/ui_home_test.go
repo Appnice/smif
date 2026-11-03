@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // UI-HOME: the start screen against a live daemon. Every group fills from
@@ -20,7 +20,7 @@ func TestUIHomeLive(t *testing.T) {
 [[agents.AGENT.rules]]
 match = { kind = "ask", intent = "store.status" }
 handler = "command"
-command = ["./scripts/mailroom/store-status.sh"]
+command = ["./scripts/smif/store-status.sh"]
 [[agents.AGENT.rules]]
 match = {}
 handler = "worker"

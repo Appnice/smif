@@ -13,8 +13,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/paths"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/paths"
 )
 
 func cmdStatus() *cobra.Command {
@@ -126,7 +126,7 @@ func cmdDLQ() *cobra.Command {
 				return nil
 			}
 			printMessages(ms)
-			fmt.Println("requeue with `mailroom retry <id>`")
+			fmt.Println("requeue with `smif retry <id>`")
 			return nil
 		},
 	}
@@ -163,7 +163,7 @@ func cmdThread() *cobra.Command {
 					fmt.Printf("  summary: %s\n", m.Summary)
 				}
 				if m.HumanQuestion != "" {
-					fmt.Printf("  needs you: %s  (answer: mailroom reply %s \"...\")\n", m.HumanQuestion, short(m.ID))
+					fmt.Printf("  needs you: %s  (answer: smif reply %s \"...\")\n", m.HumanQuestion, short(m.ID))
 				}
 				if m.Reason != "" {
 					fmt.Printf("  reason: %s\n", m.Reason)
@@ -258,11 +258,11 @@ func cmdDigest() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var d api.DigestResult
 			if agent == "" {
-				agent = os.Getenv("MAILROOM_AGENT") // wins over --cwd, like in the hooks
+				agent = os.Getenv("SMIF_AGENT") // wins over --cwd, like in the hooks
 			}
 			p := api.DigestParams{Agent: agent, Cwd: cwd, Since: since, Advance: !peek}
 			if err := call("digest.get", p, &d, 10*time.Second); err != nil {
-				fmt.Println("Mailroom is not reachable:", err)
+				fmt.Println("Smif is not reachable:", err)
 				return nil
 			}
 			if flagJSON {
@@ -283,7 +283,7 @@ func cmdDigest() *cobra.Command {
 func renderDigest(d *api.DigestResult) string {
 	var b strings.Builder
 	if len(d.Items) == 0 {
-		fmt.Fprintf(&b, "Mailroom: nothing new for %s.\n", strings.Join(d.Agents, ", "))
+		fmt.Fprintf(&b, "Smif: nothing new for %s.\n", strings.Join(d.Agents, ", "))
 		return b.String()
 	}
 	byAgent := map[string][]api.DigestItem{}
@@ -307,10 +307,10 @@ func renderDigest(d *api.DigestResult) string {
 				fmt.Fprintf(&b, "  %s\n", it.Summary)
 			}
 			if it.HumanQuestion != "" {
-				fmt.Fprintf(&b, "  NEEDS YOU: %s -> mailroom reply %s \"<answer>\"\n", it.HumanQuestion, short(it.MessageID))
+				fmt.Fprintf(&b, "  NEEDS YOU: %s -> smif reply %s \"<answer>\"\n", it.HumanQuestion, short(it.MessageID))
 			}
 			if it.Branch != "" {
-				fmt.Fprintf(&b, "  branch %s -> mailroom diff %s / mailroom apply %s\n", it.Branch, short(it.RunID), short(it.RunID))
+				fmt.Fprintf(&b, "  branch %s -> smif diff %s / smif apply %s\n", it.Branch, short(it.RunID), short(it.RunID))
 			}
 		}
 	}

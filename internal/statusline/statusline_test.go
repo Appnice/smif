@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 func TestSegment(t *testing.T) {

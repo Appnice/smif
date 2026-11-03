@@ -15,8 +15,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")
@@ -157,13 +157,13 @@ func TestOverviewView(t *testing.T) {
 }
 
 func TestDaemonDownThenRecovers(t *testing.T) {
-	down := Snapshot{At: t0, Err: errors.New("mailroom daemon is not reachable at /tmp/x.sock: connection refused")}
+	down := Snapshot{At: t0, Err: errors.New("smif daemon is not reachable at /tmp/x.sock: connection refused")}
 	src := &fakeSource{snaps: []Snapshot{down, sample(), down}}
 	m := newModel(src, 120, 40)
 	poll(t, m)
 	out := view(m)
 	if !m.Down() || !strings.Contains(out, "DAEMON DOWN") || !strings.Contains(out, "connection refused") ||
-		!strings.Contains(out, "no data yet") || !strings.Contains(out, "Start it with `mailroom daemon`") {
+		!strings.Contains(out, "no data yet") || !strings.Contains(out, "Start it with `smif daemon`") {
 		t.Fatalf("down view:\n%s", out)
 	}
 	golden(t, "down_120x40.golden", out)

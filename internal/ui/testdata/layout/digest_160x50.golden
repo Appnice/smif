@@ -1,8 +1,8 @@
-mailroom  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
+smif  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
 queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
  DIGEST · 2 unread handled items · cafe, web 
-  m marks these items read (the read cursor moves past them); `mailroom digest` shows the same list.
+  m marks these items read (the read cursor moves past them); `smif digest` shows the same list.
   MESSAGE     HANDLED     AGENT  FROM  KIND  INTENT         STATE        SUMMARY
 > 000000DONE  30m00s ago  cafe   web   tell  x.y            done         fake handled x.y (+2 coalesced)
   00000NEED1  4m00s ago   cafe   web   ask   store.release  needs_human  asks: Ship 1.0.2 now or wait for review?

@@ -3,7 +3,7 @@
 **Status:** accepted, 2026-11-02
 
 **What.** Every state transition writes an `audit` row in the same SQLite transaction (RFC 5.2). After commit
-the rows are appended (fsync) to `audit/YYYY-MM-DD.jsonl`, which `mailroom tail` follows and which is
+the rows are appended (fsync) to `audit/YYYY-MM-DD.jsonl`, which `smif tail` follows and which is
 gzipped after rotation.
 
 **Why.** A transaction cannot span SQLite and a plain file. Writing the row in SQLite makes the audit atomic

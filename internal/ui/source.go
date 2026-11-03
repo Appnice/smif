@@ -1,4 +1,4 @@
-// Package ui is the human terminal UI (`mailroom ui`): a Bubble Tea program
+// Package ui is the human terminal UI (`smif ui`): a Bubble Tea program
 // that polls the daemon socket with the human token and draws the overview.
 // It is a client of the human-only RPC methods; it adds no path through
 // which an agent could read inbound mail (RFC D4).
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/smif/internal/api"
 )
 
 // Snapshot is one poll of the daemon. Err is set when the daemon could not

@@ -183,7 +183,7 @@
     {
       "id": "TR",
       "data": {
-        "mailroom": [
+        "smif": [
           {
             "Input": 4,
             "CacheWrite": 7436,

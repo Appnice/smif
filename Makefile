@@ -1,14 +1,14 @@
-# Mailroom: local checks (no GitHub Actions in this workspace; see docs/adr/0001).
+# Smif: local checks (no GitHub Actions in this workspace; see docs/adr/0001).
 GO ?= go
-BIN ?= bin/mailroom
+BIN ?= bin/smif
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -s -w -X github.com/appnice/mailroom/internal/daemon.Version=$(VERSION)
+LDFLAGS := -s -w -X github.com/appnice/smif/internal/daemon.Version=$(VERSION)
 GOLANG_IMAGE ?= golang:1.27
 
 .PHONY: bench bench-real build test race e2e check check-linux fmt-check lint cover install-local smoke-real clean
 
 build:
-	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/mailroom
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/smif
 
 test:
 	$(GO) test ./...
@@ -38,7 +38,7 @@ check: fmt-check lint race build
 	! ./$(BIN) config validate --config testdata/no-catchall.toml 2>/dev/null
 
 # check-linux runs make check in a Linux container. The repo mounts read-only and the
-# container works on a copy in /tmp/src, so the host bin/mailroom stays a macOS binary.
+# container works on a copy in /tmp/src, so the host bin/smif stays a macOS binary.
 # No git config: a worktree .git points to a host path the container cannot see.
 # With a host module cache, the container has no network: the cache mounts read-only as
 # GOPROXY, and the host sumdb cache lets go verify checksums offline.
@@ -61,7 +61,7 @@ check-linux:
 	  PATH=$$PATH:$$(go env GOPATH)/bin make check'
 
 install-local: build
-	install -m 0755 $(BIN) $(HOME)/.local/bin/mailroom
+	install -m 0755 $(BIN) $(HOME)/.local/bin/smif
 
 bench: ## benchmark tiers S, R and T on the fake claude ($0); report in bench/results/
 	go run ./bench
@@ -70,7 +70,7 @@ bench-real: ## bench plus actual tokens on haiku through the existing claude log
 	go run ./bench -real
 
 smoke-real:
-	MAILROOM_E2E_REAL=1 $(GO) test -count=1 -run 'TestRealClaudeSmoke|TestRealWorkerConfinement' -v ./e2e/
+	SMIF_E2E_REAL=1 $(GO) test -count=1 -run 'TestRealClaudeSmoke|TestRealWorkerConfinement' -v ./e2e/
 
 clean:
 	rm -rf bin cover.out dist

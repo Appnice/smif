@@ -2,9 +2,9 @@
 
 **Status:** accepted, 2026-11-03.
 
-**Context.** ADR-0012 lets the human type into an idle session from Mailroom. The human also wants to write to a
+**Context.** ADR-0012 lets the human type into an idle session from Smif. The human also wants to write to a
 session that is working, and to open a chat with any session: list, arrows, enter, write. Text typed into a busy
-Claude Code session waits in its input or breaks into the running turn, so Mailroom must not type there. Agents
+Claude Code session waits in its input or breaks into the running turn, so Smif must not type there. Agents
 also want to ask "the cafe session" by name, but D4 says no inbound text reaches an interactive session.
 
 **Decision.**
@@ -31,7 +31,7 @@ also want to ask "the cafe session" by name, but D4 says no inbound text reaches
   whole conversation (final answers only), newest at the bottom, and a box that has the keys at once; `enter`
   sends (typed in or to a worker, the hint says which), `↑↓ pgup pgdn` scroll, `ctrl+o` brings its tab to the
   front, `esc` goes back. `s` writes from the preview the same way.
-- **Counts.** `mailroom stats` adds a sessions line: prompts typed into idle sessions, asks a fork answered (from
+- **Counts.** `smif stats` adds a sessions line: prompts typed into idle sessions, asks a fork answered (from
   the human, from agents) and tabs brought to the front (`session.focus` is audited).
 
 **Limits.**

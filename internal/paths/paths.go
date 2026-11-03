@@ -1,4 +1,4 @@
-// Package paths resolves Mailroom's config, data and socket locations.
+// Package paths resolves Smif's config, data and socket locations.
 //
 // Defaults follow RFC 8.1 and 5.4. Every location can be overridden with an
 // environment variable, which the tests use to keep socket paths short
@@ -21,20 +21,20 @@ func Home() string {
 	return h
 }
 
-// ConfigDir is ~/.config/mailroom unless MAILROOM_CONFIG_DIR is set.
+// ConfigDir is ~/.config/smif unless SMIF_CONFIG_DIR is set.
 func ConfigDir() string {
-	if v := os.Getenv("MAILROOM_CONFIG_DIR"); v != "" {
+	if v := os.Getenv("SMIF_CONFIG_DIR"); v != "" {
 		return v
 	}
 	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" && runtime.GOOS != "darwin" {
-		return filepath.Join(x, "mailroom")
+		return filepath.Join(x, "smif")
 	}
-	return filepath.Join(Home(), ".config", "mailroom")
+	return filepath.Join(Home(), ".config", "smif")
 }
 
-// ConfigFile is ConfigDir()/config.toml unless MAILROOM_CONFIG is set.
+// ConfigFile is ConfigDir()/config.toml unless SMIF_CONFIG is set.
 func ConfigFile() string {
-	if v := os.Getenv("MAILROOM_CONFIG"); v != "" {
+	if v := os.Getenv("SMIF_CONFIG"); v != "" {
 		return v
 	}
 	return filepath.Join(ConfigDir(), "config.toml")
@@ -45,30 +45,30 @@ func TokenDir() string { return filepath.Join(ConfigDir(), "tokens") }
 
 // DataDir is the state directory (RFC 8.1).
 func DataDir() string {
-	if v := os.Getenv("MAILROOM_DATA_DIR"); v != "" {
+	if v := os.Getenv("SMIF_DATA_DIR"); v != "" {
 		return v
 	}
 	if runtime.GOOS == "darwin" {
-		return filepath.Join(Home(), "Library", "Application Support", "mailroom")
+		return filepath.Join(Home(), "Library", "Application Support", "smif")
 	}
 	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
-		return filepath.Join(x, "mailroom")
+		return filepath.Join(x, "smif")
 	}
-	return filepath.Join(Home(), ".local", "share", "mailroom")
+	return filepath.Join(Home(), ".local", "share", "smif")
 }
 
 // Socket is the daemon's Unix socket path (RFC 5.4).
 func Socket() string {
-	if v := os.Getenv("MAILROOM_SOCKET"); v != "" {
+	if v := os.Getenv("SMIF_SOCKET"); v != "" {
 		return v
 	}
 	if runtime.GOOS == "darwin" {
-		return filepath.Join(DataDir(), "mailroomd.sock")
+		return filepath.Join(DataDir(), "smifd.sock")
 	}
 	if x := os.Getenv("XDG_RUNTIME_DIR"); x != "" {
-		return filepath.Join(x, "mailroom", "mailroomd.sock")
+		return filepath.Join(x, "smif", "smifd.sock")
 	}
-	return filepath.Join(DataDir(), "mailroomd.sock")
+	return filepath.Join(DataDir(), "smifd.sock")
 }
 
 // ClaudeDir is ~/.claude unless CLAUDE_CONFIG_DIR is set.

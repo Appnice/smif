@@ -1,23 +1,23 @@
 # GoReleaser: static binaries for darwin/linux on amd64/arm64 (RFC 9.1).
 # Local only (ADR-0001): `make release-snapshot` builds into dist/.
 version: 2
-project_name: mailroom
+project_name: smif
 before:
   hooks:
     - go mod tidy
 builds:
-  - id: mailroom
-    main: ./cmd/mailroom
-    binary: mailroom
+  - id: smif
+    main: ./cmd/smif
+    binary: smif
     env: [CGO_ENABLED=0]
     goos: [darwin, linux]
     goarch: [amd64, arm64]
     flags: [-trimpath]
     ldflags:
-      - -s -w -X github.com/appnice/mailroom/internal/daemon.Version={{.Version}}
+      - -s -w -X github.com/appnice/smif/internal/daemon.Version={{.Version}}
 archives:
   - formats: [tar.gz]
-    # No version in the name, so .../releases/latest/download/mailroom_<os>_<arch>.tar.gz
+    # No version in the name, so .../releases/latest/download/smif_<os>_<arch>.tar.gz
     # always points at the newest release (README).
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     files: [LICENSE, README.md, docs/rfc.md, docs/compat.md, packaging/*]

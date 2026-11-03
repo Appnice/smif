@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // STATS: known traffic, every outcome once or more, and stats.get must
@@ -17,7 +17,7 @@ func TestStatsCountsKnownTraffic(t *testing.T) {
 [[agents.AGENT.rules]]
 match = { kind = "ask", intent = "store.status" }
 handler = "command"
-command = ["./scripts/mailroom/store-status.sh"]
+command = ["./scripts/smif/store-status.sh"]
 [[agents.AGENT.rules]]
 match = { kind = "event", intent = "notice.*" }
 handler = "digest"
@@ -173,9 +173,9 @@ profile = "triage"
 	// The CLI prints the same numbers; agents cannot read stats (D4).
 	outText, err := e.CLI("", "stats", "--days", "1")
 	if err != nil || !strings.Contains(outText, "without you   4 ") || !strings.Contains(outText, "needed you    3  answered 1 · waiting 2") {
-		t.Errorf("mailroom stats: %v\n%s", err, outText)
+		t.Errorf("smif stats: %v\n%s", err, outText)
 	}
-	t.Logf("mailroom stats:\n%s", outText)
+	t.Logf("smif stats:\n%s", outText)
 	ac := e.AgentClient("obs")
 	defer ac.Close()
 	if err := ac.Call("stats.get", api.StatsParams{}, &st, 5*time.Second); !api.IsCode(err, api.CodeForbidden) {

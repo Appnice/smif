@@ -17,16 +17,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/auth"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/daemon"
-	"github.com/appnice/mailroom/internal/install"
-	"github.com/appnice/mailroom/internal/mcpserver"
-	"github.com/appnice/mailroom/internal/paths"
-	"github.com/appnice/mailroom/internal/presence"
-	"github.com/appnice/mailroom/internal/runner/claude"
-	"github.com/appnice/mailroom/internal/statusline"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/auth"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/daemon"
+	"github.com/appnice/smif/internal/install"
+	"github.com/appnice/smif/internal/mcpserver"
+	"github.com/appnice/smif/internal/paths"
+	"github.com/appnice/smif/internal/presence"
+	"github.com/appnice/smif/internal/runner/claude"
+	"github.com/appnice/smif/internal/statusline"
 )
 
 func cmdDaemon() *cobra.Command {
@@ -35,7 +35,7 @@ func cmdDaemon() *cobra.Command {
 		Use: "daemon", Short: "Run the daemon in the foreground (used by the service unit)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := daemon.Options{}
-			if foreground || os.Getenv("MAILROOM_LOG_STDERR") != "" {
+			if foreground || os.Getenv("SMIF_LOG_STDERR") != "" {
 				opts.LogWriter = os.Stderr
 			}
 			d, err := daemon.New(opts)
@@ -136,7 +136,7 @@ func cmdHook() *cobra.Command {
 					return
 				}
 				defer c.Close()
-				pp := api.PresenceParams{Event: presence.EventFor(args[0]), Cwd: p.Cwd, SessionID: p.SessionID, Agent: os.Getenv("MAILROOM_AGENT")}
+				pp := api.PresenceParams{Event: presence.EventFor(args[0]), Cwd: p.Cwd, SessionID: p.SessionID, Agent: os.Getenv("SMIF_AGENT")}
 				if pp.Event != "end" {
 					pp.PID, pp.TTY = presence.Locate()
 					pp.Term = presence.Term()
@@ -178,9 +178,9 @@ func cmdStatusline() *cobra.Command {
 			var counts api.Counts
 			cl, err := humanClient(150 * time.Millisecond)
 			if err == nil {
-				err = cl.Call("inbox.counts", api.CountsParams{Cwd: p.Cwd, Agent: os.Getenv("MAILROOM_AGENT"), SessionID: p.SessionID}, &counts, 250*time.Millisecond)
+				err = cl.Call("inbox.counts", api.CountsParams{Cwd: p.Cwd, Agent: os.Getenv("SMIF_AGENT"), SessionID: p.SessionID}, &counts, 250*time.Millisecond)
 				if !presence.InWorker() {
-					_ = cl.Call("presence.update", api.PresenceParams{Event: "heartbeat", Cwd: p.Cwd, SessionID: p.SessionID, Agent: os.Getenv("MAILROOM_AGENT")}, nil, 150*time.Millisecond)
+					_ = cl.Call("presence.update", api.PresenceParams{Event: "heartbeat", Cwd: p.Cwd, SessionID: p.SessionID, Agent: os.Getenv("SMIF_AGENT")}, nil, 150*time.Millisecond)
 				}
 				cl.Close()
 			}
@@ -197,7 +197,7 @@ func cmdInstall() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig()
 			if err != nil {
-				return fmt.Errorf("config: %w (run `mailroom init` first)", err)
+				return fmt.Errorf("config: %w (run `smif init` first)", err)
 			}
 			reg := auth.NewRegistry()
 			if err := reg.Load(cfg.AgentIDs()); err != nil {
@@ -208,7 +208,7 @@ func cmdInstall() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("installed. Undo everything with `mailroom uninstall`.")
+			fmt.Println("installed. Undo everything with `smif uninstall`.")
 			return nil
 		},
 	}
@@ -219,7 +219,7 @@ func cmdInstall() *cobra.Command {
 
 func cmdUninstall() *cobra.Command {
 	return &cobra.Command{
-		Use: "uninstall", Short: "Reverse `mailroom install`, restoring every edited file",
+		Use: "uninstall", Short: "Reverse `smif install`, restoring every edited file",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cc := "claude"
 			if cfg, err := loadConfig(); err == nil {
@@ -242,7 +242,7 @@ func cmdInit() *cobra.Command {
 		Short: "Set up: discover repos, write config, generate tokens",
 		Long: "Interactive by default: lists the git repos under ~/dev, ~/code, ~/src, ~/projects and ~/repos (or the\n" +
 			"--scan dirs) and asks for an agent id for each. Non-interactive:\n" +
-			"  mailroom init --agent api=~/dev/api --agent web=~/dev/web --yes\n" +
+			"  smif init --agent api=~/dev/api --agent web=~/dev/web --yes\n" +
 			"Each agent gets the safe default rules: a status.get ask is answered from git by a command handler\n" +
 			"(" + "<config dir>/handlers/status.sh, no LLM), crash.* events go to a read-only triage worker, notice.* events\n" +
 			"go to the digest, and everything else escalates to you. Nothing is written into the repos unless --scaffold.",
@@ -275,7 +275,7 @@ func cmdInit() *cobra.Command {
 			}
 			handler := filepath.Join(paths.ConfigDir(), "handlers", "status.sh")
 			if scaffold {
-				handler = "./scripts/mailroom/status.sh"
+				handler = "./scripts/smif/status.sh"
 			}
 			body := renderConfig(pairs, claudePath, handler)
 			if _, err := config.Parse([]byte(body)); err != nil {
@@ -303,7 +303,7 @@ func cmdInit() *cobra.Command {
 			if scaffold {
 				targets = nil
 				for _, repo := range pairs {
-					targets = append(targets, filepath.Join(paths.Expand(repo), "scripts", "mailroom", "status.sh"))
+					targets = append(targets, filepath.Join(paths.Expand(repo), "scripts", "smif", "status.sh"))
 				}
 			}
 			for _, p := range targets {
@@ -315,14 +315,14 @@ func cmdInit() *cobra.Command {
 					fmt.Println("handler", p)
 				}
 			}
-			fmt.Println("next: mailroom install")
+			fmt.Println("next: smif install")
 			return nil
 		},
 	}
 	c.Flags().StringArrayVar(&agents, "agent", nil, "agent as id=repo-path (repeatable)")
 	c.Flags().BoolVar(&yes, "yes", false, "non-interactive; overwrite an existing config")
 	c.Flags().StringArrayVar(&scan, "scan", nil, "directory whose git repos are offered as agents (repeatable; replaces the defaults)")
-	c.Flags().BoolVar(&scaffold, "scaffold", false, "write the status handler into each repo's scripts/mailroom/ instead of the config dir")
+	c.Flags().BoolVar(&scaffold, "scaffold", false, "write the status handler into each repo's scripts/smif/ instead of the config dir")
 	return c
 }
 
@@ -377,7 +377,7 @@ func renderConfig(pairs map[string]string, claudePath, statusHandler string) str
 	}
 	sort.Strings(ids)
 	var b strings.Builder
-	fmt.Fprintf(&b, `# Mailroom config (RFC 7.6). Validate with: mailroom config validate
+	fmt.Fprintf(&b, `# Smif config (RFC 7.6). Validate with: smif config validate
 # Rules are tried top to bottom; the first match handles the message, the last rule must match all.
 [daemon]
 max_workers = 3
@@ -435,7 +435,7 @@ handler = "escalate"
 // StatusHandler is the status.get command handler that init installs: it
 // answers from git alone. cwd is the agent's repo; stdin is the envelope.
 const StatusHandler = `#!/bin/sh
-# Mailroom command handler for status.get asks: answers from git, no LLM.
+# Smif command handler for status.get asks: answers from git, no LLM.
 # cwd: the agent's repo. stdin: the message envelope (JSON). stdout: one JSON result.
 # Extend it freely (a release file, a store API, a build status); keep the output shape.
 cat >/dev/null
@@ -470,7 +470,7 @@ func cmdDoctor() *cobra.Command {
 			warn := func(what string) { fmt.Printf("[warn] %s\n", what) }
 			cfg, err := loadConfig()
 			if _, serr := os.Stat(paths.ConfigFile()); err == nil && os.IsNotExist(serr) {
-				warn("no config at " + paths.ConfigFile() + ": the session view works; `mailroom init` adds agents for messages and workers")
+				warn("no config at " + paths.ConfigFile() + ": the session view works; `smif init` adds agents for messages and workers")
 			} else {
 				check(err == nil, "config "+paths.ConfigFile(), errString(err))
 			}
@@ -499,7 +499,7 @@ func cmdDoctor() *cobra.Command {
 			for _, l := range caps.Lines() {
 				fmt.Println("       ", l)
 			}
-			// The probe above checks every flag Mailroom needs, so a newer
+			// The probe above checks every flag Smif needs, so a newer
 			// version only warns when it is a new minor line; an older one
 			// than the verified version always warns.
 			if v := caps.Version; v != "" {
@@ -515,7 +515,7 @@ func cmdDoctor() *cobra.Command {
 			permCheck := func(p string, want os.FileMode) {
 				fi, err := os.Stat(p)
 				if os.IsNotExist(err) {
-					warn(p + " does not exist yet: the daemon makes it on its first start (`mailroom` starts it)")
+					warn(p + " does not exist yet: the daemon makes it on its first start (`smif` starts it)")
 					return
 				}
 				if err != nil {
@@ -550,7 +550,7 @@ func cmdDoctor() *cobra.Command {
 				permCheck(paths.Socket(), 0o600)
 			}
 			m, _ := install.LoadManifest()
-			check(m != nil, "installed (hooks, status line, slash command)", map[bool]string{true: "", false: "run `mailroom install`"}[m != nil])
+			check(m != nil, "installed (hooks, status line, slash command)", map[bool]string{true: "", false: "run `smif install`"}[m != nil])
 			if m != nil {
 				b, _ := os.ReadFile(install.SettingsPath())
 				check(strings.Contains(string(b), " hook SessionStart"), "hooks in "+install.SettingsPath(), "")

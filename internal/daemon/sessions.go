@@ -13,10 +13,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/presence"
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/presence"
+	"github.com/appnice/smif/internal/store"
 )
 
 // Session prompts (ADR-0012): the human sees which interactive sessions
@@ -79,7 +79,7 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 	}
 	switch {
 	case p.PID == 0 || p.TTY == "":
-		v.Why = "Mailroom has not seen this session's terminal yet; it learns it at the next prompt or turn end"
+		v.Why = "Smif has not seen this session's terminal yet; it learns it at the next prompt or turn end"
 	case d.terminal.Supports(p) != "":
 		v.Why = d.terminal.Supports(p)
 	case p.Turn == "busy":
@@ -198,7 +198,7 @@ func (d *Daemon) sessionFocus(ctx context.Context, p api.SessionFocusParams) (an
 			continue
 		}
 		if s.TTY == "" {
-			return nil, api.Errf(api.CodeRejected, "Mailroom does not know this session's terminal")
+			return nil, api.Errf(api.CodeRejected, "Smif does not know this session's terminal")
 		}
 		if why := d.terminal.Supports(s); why != "" {
 			return nil, api.Errf(api.CodeRejected, "%s", why)
@@ -349,7 +349,7 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 		case p.Agent == "":
 			return nil, api.Errf(api.CodeParams, "name a session_id or an agent")
 		case len(idle) == 0:
-			return nil, api.Errf(api.CodeRejected, "%s has no idle session that Mailroom can type into", p.Agent)
+			return nil, api.Errf(api.CodeRejected, "%s has no idle session that Smif can type into", p.Agent)
 		case len(idle) > 1:
 			return nil, api.Errf(api.CodeRejected, "%s has %d idle sessions; name one by session id", p.Agent, len(idle))
 		}

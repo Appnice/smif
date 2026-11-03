@@ -1,8 +1,8 @@
-# ADR-0007: Terminal UI for the human (`mailroom ui`)
+# ADR-0007: Terminal UI for the human (`smif ui`)
 
 **Status:** accepted, 2026-11-02
 
-1. **What.** `mailroom ui` is a full-screen terminal view for the human: agents with queued, running,
+1. **What.** `smif ui` is a full-screen terminal view for the human: agents with queued, running,
    needs-you and dead-letter counts, spend and budget left, interactive-session presence, running runs with
    elapsed time, the needs-you queue, dead letters and recent activity. The RFC 7.3 CLI table gets a row.
 2. **Data path.** The UI is a client of the daemon socket with the human token only
@@ -31,7 +31,7 @@
    message: every message with its body and attachments, and the runs with their results. `tab` selects a
    run; `enter` opens the run screen with three tabs: the record (`run.get`), the transcript tail and the
    branch diff (`run.diff`). `i` opens the inbox (`thread.list`, newest 200) with an agent and a state filter.
-   The transcript is read from the file that `run.get` names (the last 256 KB), as `mailroom run
+   The transcript is read from the file that `run.get` names (the last 256 KB), as `smif run
    --transcript` does: the UI runs on the daemon's host, so this needs no new method. `a` on a run with a
    worker branch asks y/N, then calls `run.apply`; a refusal (dirty tree) shows the daemon's reason on the
    screen. All are existing human-only methods. `e2e/ui_run_test.go` drives it with the fix profile.
@@ -49,7 +49,7 @@
    complete.
 10. **No terminal query at start.** Bubble Tea v1.3.10 calls `lipgloss.HasDarkBackground()` in its package
     `init`. termenv then writes OSC 11 and DSR to the terminal and waits up to 5 s. A terminal that does not
-    answer holds every `mailroom` command for 5 s, and `mailroom ui` loses the keys typed in that time.
+    answer holds every `smif` command for 5 s, and `smif ui` loses the keys typed in that time.
     Package `internal/ui/noquery` calls `lipgloss.SetHasDarkBackground(true)` in its `init`, so the
     background is fixed as dark and Bubble Tea never queries the terminal. `theme.go` imports it.
     The fix depends on the Go init order by import path (Go 1.21 and later): `github.com/appnice/...` sorts

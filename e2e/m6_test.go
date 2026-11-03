@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 // M6: doctor, gc, status metrics and the read commands work against a live daemon.
@@ -156,22 +156,22 @@ func TestInitNonInteractive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("init --scaffold: %v\n%s", err, out)
 	}
-	if _, err := os.Stat(filepath.Join(e.Repos["cafe"], "scripts", "mailroom", "status.sh")); err != nil {
+	if _, err := os.Stat(filepath.Join(e.Repos["cafe"], "scripts", "smif", "status.sh")); err != nil {
 		t.Fatal("--scaffold did not write the repo handler")
 	}
-	if b, _ := os.ReadFile(e.Config()); !strings.Contains(string(b), `command = ["./scripts/mailroom/status.sh"]`) {
+	if b, _ := os.ReadFile(e.Config()); !strings.Contains(string(b), `command = ["./scripts/smif/status.sh"]`) {
 		t.Fatalf("--scaffold config:\n%s", b)
 	}
 }
 
-// $MAILROOM_AGENT names the agent of a session started outside its repo:
+// $SMIF_AGENT names the agent of a session started outside its repo:
 // the hooks, the status line and the digest follow it instead of the cwd.
 func TestAgentFromEnv(t *testing.T) {
 	e := NewEnv(t, "", "", AgentSpec{ID: "cafe"}, AgentSpec{ID: "web"})
 	e.Start()
 	outside := t.TempDir()
 	in := `{"session_id":"env1","cwd":"` + outside + `","hook_event_name":"SessionStart"}`
-	if _, errOut, err := e.CLIDir(outside, in, []string{"MAILROOM_AGENT=web"}, "hook", "SessionStart"); err != nil {
+	if _, errOut, err := e.CLIDir(outside, in, []string{"SMIF_AGENT=web"}, "hook", "SessionStart"); err != nil {
 		t.Fatalf("hook: %v %s", err, errOut)
 	}
 	var st api.StatusView
@@ -181,8 +181,8 @@ func TestAgentFromEnv(t *testing.T) {
 			t.Fatalf("agent %s interactive = %v", a.ID, a.Interactive)
 		}
 	}
-	out, _, err := e.CLIDir(outside, "", []string{"MAILROOM_AGENT=web"}, "digest", "--cwd", outside, "--peek")
+	out, _, err := e.CLIDir(outside, "", []string{"SMIF_AGENT=web"}, "digest", "--cwd", outside, "--peek")
 	if err != nil || !strings.Contains(out, "web") || strings.Contains(out, "cafe") {
-		t.Fatalf("digest with MAILROOM_AGENT=web: %v\n%s", err, out)
+		t.Fatalf("digest with SMIF_AGENT=web: %v\n%s", err, out)
 	}
 }

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
 )
 
 func digestRule() string { return "[[agents.AGENT.rules]]\nmatch = {}\nhandler = \"digest\"\n" }
@@ -117,7 +117,7 @@ handler = "escalate"
 			t.Fatalf("triage argv does not deny %s: %v", tool, inv.Argv)
 		}
 	}
-	if !strings.Contains(inv.Stdin, `<mailroom_message untrusted="true">`) || !strings.Contains(inv.Stdin, "DeckScreen.kt:42") {
+	if !strings.Contains(inv.Stdin, `<smif_message untrusted="true">`) || !strings.Contains(inv.Stdin, "DeckScreen.kt:42") {
 		t.Fatalf("envelope not wrapped as untrusted data:\n%s", inv.Stdin)
 	}
 	if after := e.Git(repo, "status", "--porcelain"); after != beforeStatus {
@@ -140,7 +140,7 @@ handler = "escalate"
 		t.Fatalf("status line leaked message content: %q", sl)
 	}
 	// A hook fired inside a worker must not count as presence.
-	_, _, _ = e.CLIDir(repo, `{"session_id":"w","cwd":"`+repo+`"}`, []string{"MAILROOM_RUN_ID=x"}, "hook", "SessionStart")
+	_, _, _ = e.CLIDir(repo, `{"session_id":"w","cwd":"`+repo+`"}`, []string{"SMIF_RUN_ID=x"}, "hook", "SessionStart")
 	t.Logf("A2 status line: %s", sl)
 }
 
@@ -164,7 +164,7 @@ func TestA3FixProfileWorktree(t *testing.T) {
 		t.Fatalf("runs = %d", len(runs))
 	}
 	run := runs[0]
-	want := "mailroom/puzzle/" + strings.ToLower(r.ThreadID[len(r.ThreadID)-10:])
+	want := "smif/puzzle/" + strings.ToLower(r.ThreadID[len(r.ThreadID)-10:])
 	if run.Branch != want {
 		t.Fatalf("branch = %q, want %q", run.Branch, want)
 	}
@@ -172,7 +172,7 @@ func TestA3FixProfileWorktree(t *testing.T) {
 		t.Fatalf("fix worker cwd = %s, want the agent worktree", inv.Cwd)
 	}
 	msg := e.Git(repo, "log", "-1", "--format=%s", run.Branch)
-	if !strings.HasPrefix(msg, "mailroom: ") || !strings.Contains(msg, "[run "+run.ID+"]") {
+	if !strings.HasPrefix(msg, "smif: ") || !strings.Contains(msg, "[run "+run.ID+"]") {
 		t.Fatalf("commit message = %q", msg)
 	}
 	if _, err := os.Stat(filepath.Join(repo, "src", "fix.txt")); err == nil {
@@ -277,7 +277,7 @@ func readLines(p string) []string {
 	return strings.Split(strings.TrimSpace(string(b)), "\n")
 }
 
-// A5: needs_human notifies once; mailroom reply continues the thread.
+// A5: needs_human notifies once; smif reply continues the thread.
 func TestA5NeedsHumanAndReply(t *testing.T) {
 	e := NewEnv(t, "", "", AgentSpec{ID: "observability", Rules: digestRule()}, AgentSpec{ID: "cafe"})
 	e.Start()
@@ -495,7 +495,7 @@ func TestA12InstallUninstall(t *testing.T) {
 	}
 	hooks := s["hooks"].(map[string]any)
 	for _, ev := range []string{"SessionStart", "SessionEnd", "UserPromptSubmit", "Stop"} {
-		if !strings.Contains(fmt.Sprint(hooks[ev]), mailroomBin+" hook "+ev) {
+		if !strings.Contains(fmt.Sprint(hooks[ev]), smifBin+" hook "+ev) {
 			t.Fatalf("hook %s missing: %v", ev, hooks[ev])
 		}
 	}
@@ -513,7 +513,7 @@ func TestA12InstallUninstall(t *testing.T) {
 	if s["statusLine"].(map[string]any)["padding"] == nil {
 		t.Fatal("statusLine padding dropped")
 	}
-	cmdFile := filepath.Join(e.Home, ".claude", "commands", "mailroom.md")
+	cmdFile := filepath.Join(e.Home, ".claude", "commands", "smif.md")
 	if b, err := os.ReadFile(cmdFile); err != nil || !strings.Contains(string(b), "digest --cwd") {
 		t.Fatalf("slash command: %v", err)
 	}
@@ -533,7 +533,7 @@ func TestA12InstallUninstall(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(e.Root, "fake", "mcp-registered")); !os.IsNotExist(err) {
 		t.Fatal("MCP server still registered")
 	}
-	// Edited while installed: uninstall removes only Mailroom's entries.
+	// Edited while installed: uninstall removes only Smif's entries.
 	if _, err := e.CLI("", "install", "--no-service"); err != nil {
 		t.Fatal(err)
 	}
@@ -546,7 +546,7 @@ func TestA12InstallUninstall(t *testing.T) {
 		t.Fatalf("uninstall: %v\n%s", err, out)
 	}
 	b, _ = os.ReadFile(settings)
-	if strings.Contains(string(b), "mailroom") || !strings.Contains(string(b), "light") || !strings.Contains(string(b), "echo 'my status'") ||
+	if strings.Contains(string(b), "smif") || !strings.Contains(string(b), "light") || !strings.Contains(string(b), "echo 'my status'") ||
 		!strings.Contains(string(b), "existing-hook") {
 		t.Fatalf("surgical uninstall wrong:\n%s", b)
 	}
@@ -577,7 +577,7 @@ func TestA13SessionRotation(t *testing.T) {
 	}
 	calls := e.WorkerCalls()
 	compact, next := calls[1], calls[2]
-	if !strings.Contains(compact.Stdin, "MAILROOM_COMPACT") || argValue(compact.Argv, "--resume") != s1 {
+	if !strings.Contains(compact.Stdin, "SMIF_COMPACT") || argValue(compact.Argv, "--resume") != s1 {
 		t.Fatalf("compaction turn not on the old session: %v", compact.Argv)
 	}
 	if argValue(next.Argv, "--resume") != "" {
@@ -665,7 +665,7 @@ func TestA15DailyBudget(t *testing.T) {
 [[agents.AGENT.rules]]
 match = { kind = "ask", intent = "store.status" }
 handler = "command"
-command = ["./scripts/mailroom/store-status.sh"]
+command = ["./scripts/smif/store-status.sh"]
 [[agents.AGENT.rules]]
 match = {}
 handler = "worker"

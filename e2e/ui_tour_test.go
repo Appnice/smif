@@ -12,12 +12,12 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/ui"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/ui"
 )
 
-// tourDump writes each screen of the tour to MAILROOM_TOUR_DIR (when set)
+// tourDump writes each screen of the tour to SMIF_TOUR_DIR (when set)
 // as NN-name.txt, and logs it.
 type tourDump struct {
 	t   *testing.T
@@ -72,15 +72,15 @@ func (u *liveUI) untilFresh(what string, timeout time.Duration, cond func(v stri
 	})
 }
 
-// UI-6: a tour of every screen and action of `mailroom ui` against one
+// UI-6: a tour of every screen and action of `smif ui` against one
 // daemon with five agents and mixed traffic: an ask answered by a command
 // handler, crash events triaged by workers, a needs_human item, a dead
 // letter, a fix branch, a long run with an item queued behind it and an
 // interactive session. The real binary also starts on a terminal, and
-// `mailroom watch` prints both of its modes. Set MAILROOM_TOUR_DIR to keep
+// `smif watch` prints both of its modes. Set SMIF_TOUR_DIR to keep
 // the screens as text files.
 func TestUITourLive(t *testing.T) {
-	d := &tourDump{t: t, dir: os.Getenv("MAILROOM_TOUR_DIR")}
+	d := &tourDump{t: t, dir: os.Getenv("SMIF_TOUR_DIR")}
 	if d.dir != "" {
 		if err := os.MkdirAll(d.dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -90,7 +90,7 @@ func TestUITourLive(t *testing.T) {
 [[agents.AGENT.rules]]
 match = { kind = "ask", intent = "store.status" }
 handler = "command"
-command = ["./scripts/mailroom/store-status.sh"]
+command = ["./scripts/smif/store-status.sh"]
 [[agents.AGENT.rules]]
 match = {}
 handler = "worker"
@@ -312,9 +312,9 @@ profile = "triage"
 	// this daemon and quits on q with exit 0.
 	raw, took, err := runInSilentPTY(t, e.env, "q", 2500*time.Millisecond, 10*time.Second, "ui")
 	plain := ansi.Strip(raw)
-	t.Logf("real mailroom ui on a PTY: exit %v after %v, %d bytes", err, took.Round(time.Millisecond), len(raw))
+	t.Logf("real smif ui on a PTY: exit %v after %v, %d bytes", err, took.Round(time.Millisecond), len(raw))
 	if err != nil || !strings.Contains(plain, "DONE TODAY") || !strings.Contains(plain, "DEAD · 1") || strings.Contains(raw, "\x1b]11;?") {
-		t.Fatalf("real mailroom ui: %v\n%q", err, plain)
+		t.Fatalf("real smif ui: %v\n%q", err, plain)
 	}
 
 	// Daemon down: the UI keeps the last data and says so; it recovers.

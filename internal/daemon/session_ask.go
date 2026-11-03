@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/auth"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/store"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/auth"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/store"
 )
 
 // Session asks (ADR-0013). The human writes to a session from the UI: an
@@ -110,7 +110,7 @@ func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.Sessio
 			case len(idle) == 0 && len(mine) == 1:
 				target = mine[0]
 			case len(mine) > 1:
-				return nil, api.Errf(api.CodeRejected, "%s has %d sessions; name one (mailroom sessions shows the names)", p.Name, len(mine))
+				return nil, api.Errf(api.CodeRejected, "%s has %d sessions; name one (smif sessions shows the names)", p.Name, len(mine))
 			}
 		}
 	default:

@@ -16,7 +16,7 @@
    acceptEdits, auto, bypassPermissions, manual, dontAsk, plan). Config keeps the RFC's four values.
 6. `--max-turns` is hidden from `--help` but accepted; verified by a live call.
 
-**Trade-off.** Each item is probed by `mailroom doctor` and falls back as RFC 10.2 describes when missing.
+**Trade-off.** Each item is probed by `smif doctor` and falls back as RFC 10.2 describes when missing.
 
 **Added 2026-11-02 (product review).**
 7. Workers run with `--settings '{"disableAllHooks":true}'` unless the profile sets `hooks = true`. RFC 10.2
@@ -24,12 +24,12 @@
    workspace would run its Stop hooks (memory distillation that can start further `claude -p` calls), Entire
    checkpoints and memory raw-capture, all side effects outside the worker. `--safe-mode` is not used for
    this because it also drops CLAUDE.md, which workers need.
-8. Workers get `--name "mailroom <agent>"`, so their sessions are recognisable in `claude --resume`.
+8. Workers get `--name "smif <agent>"`, so their sessions are recognisable in `claude --resume`.
 9. Workers get `--tools` with the base names of the profile's `allowed_tools` (e.g. `Read,Grep,Glob,Bash`).
    Allow rules alone leave every other built-in tool in place, and some (Agent, WebSearch, scheduling and
    messaging tools) run without a prompt.
 10. Every worker, whatever its profile, gets these deny rules: `Bash(*--output*)` (`git log/show/diff
-    --output=<file>` writes files through a read-only allowlist) and Read/Grep/Glob/Edit/Write on Mailroom's
+    --output=<file>` writes files through a read-only allowlist) and Read/Grep/Glob/Edit/Write on Smif's
     config dir (tokens) and data dir (other agents' mail and transcripts). This keeps D4 true from the
     worker side too.
 

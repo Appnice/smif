@@ -1,4 +1,4 @@
-module github.com/appnice/mailroom
+module github.com/appnice/smif
 
 go 1.27.2
 

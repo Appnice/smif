@@ -101,10 +101,10 @@ body.append(f'<g class="{show((4.4, 7.0))}">' + rect(x, CHIP_Y, CHIP_W, CHIP_H, 
             + text(COLS[0], CHIP_Y + 37, "web", 24, FG, 600, "middle")
             + text(COLS[0], CHIP_Y + 66, "✓ yes, it's live", 20, GREEN, 600, "middle") + "</g>")
 
-# mailroom box
+# smif box
 BOX_IDX = len(body)
 body.append(rect(20, BOX_Y, W - 40, BOX_H, fill="#131a2a", stroke=BLUE))
-body.append(text(44, BOX_Y + 40, "mailroom", 26, BLUE, 700))
+body.append(text(44, BOX_Y + 40, "smif", 26, BLUE, 700))
 body.append(text(W - 44, BOX_Y + 40, "rules for shop · first match wins", 20, MUTED, 400, "end"))
 RULES = [("ask", "store.status", "command", GREEN), ("event", "crash.*", "worker", ORANGE),
          ("any", "release.*", "you", PINK)]
@@ -150,7 +150,7 @@ pb = anim([(0, "transform:scaleX(0)"), (m2["t3"], "transform:scaleX(0)"), (10.1,
            (T, "transform:scaleX(1)")], "linear")
 body.append(f'<g class="{show(run_span)}">' + rect(wx + 20, BIN_Y + 90, CHIP_W - 40, 6, fill=LINE, stroke="none", rx=3)
             + f'<rect class="{pb} bar" x="{wx + 20}" y="{BIN_Y + 90}" width="{CHIP_W - 40}" height="6" rx="3" fill="{ORANGE}"/></g>')
-body.append(bin_overlay(1, [(10.3, END)], [("✓ summary ready", ORANGE, 600), ("read it in /mailroom", MUTED, 400)], ORANGE))
+body.append(bin_overlay(1, [(10.3, END)], [("✓ summary ready", ORANGE, 600), ("read it in /smif", MUTED, 400)], ORANGE))
 body.append(bin_overlay(2, [(m3["t3"], END)], [("⚑ ship v2.4?", PINK, 600), ("waits in one queue", MUTED, 400)], PINK))
 
 # the wall
@@ -216,7 +216,7 @@ rp = move([(0, cx, BIN_Y - 14, 0), (3.5, cx, BIN_Y - 14, 0), (3.7, cx, BIN_Y - 2
            (4.6, cx, CHIP_Y + CHIP_H - 6, 0), (T, cx, CHIP_Y + CHIP_H - 6, 0)])
 body.append(f'<g class="{rp}">{envelope(GREEN)}</g>')
 
-# envelopes go behind the mailroom box: they enter it and come out
+# envelopes go behind the smif box: they enter it and come out
 _env = body[_before:]; del body[_before:]; body[BOX_IDX:BOX_IDX] = _env
 # captions
 CAPS = [

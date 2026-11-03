@@ -1,10 +1,10 @@
-# Template. `mailroom install` writes the real unit to ~/.config/systemd/user/mailroom.service
+# Template. `smif install` writes the real unit to ~/.config/systemd/user/smif.service
 # with the absolute binary path and a PATH that contains claude and git.
 [Unit]
-Description=Mailroom daemon (messaging between Claude Code sessions)
+Description=Smif daemon (messaging between Claude Code sessions)
 
 [Service]
-ExecStart=%h/.local/bin/mailroom daemon
+ExecStart=%h/.local/bin/smif daemon
 Restart=on-failure
 RestartSec=5
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin

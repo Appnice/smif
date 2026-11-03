@@ -1,4 +1,4 @@
-// Command bench is Mailroom's benchmark (docs/rfc-benchmark.md, tiers S, R
+// Command bench is Smif's benchmark (docs/rfc-benchmark.md, tiers S, R
 // and T). It costs nothing: every scenario runs a throw-away daemon with
 // the fake claude. Only -real calls the real claude, on haiku, through the
 // existing login.
@@ -80,13 +80,13 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	tmp, err := os.MkdirTemp("", "mailroom-bench-bin-")
+	tmp, err := os.MkdirTemp("", "smif-bench-bin-")
 	if err != nil {
 		fail(err)
 	}
 	defer os.RemoveAll(tmp)
 	b := &bench{quick: *quick}
-	fmt.Fprintln(os.Stderr, "building mailroom and the fake claude…")
+	fmt.Fprintln(os.Stderr, "building smif and the fake claude…")
 	if b.bin, b.fake, err = buildBinaries(root, tmp); err != nil {
 		fail(err)
 	}
@@ -133,12 +133,12 @@ func main() {
 		fail(err)
 	}
 	var md strings.Builder
-	fmt.Fprintf(&md, "# Mailroom benchmark %s\n\n", time.Now().Format("2006-01-02 15:04"))
+	fmt.Fprintf(&md, "# Smif benchmark %s\n\n", time.Now().Format("2006-01-02 15:04"))
 	fmt.Fprintf(&md, "- commit `%s`%s, %s, Go %s\n- machine: %s, %d CPUs, %s\n- mode: %s; took %v; money spent: $0%s\n\n",
 		commit, dirty(root), runtime.GOOS+"/"+runtime.GOARCH, strings.TrimPrefix(runtime.Version(), "go"), cpuName(),
 		runtime.NumCPU(), osVersion(), mode(*quick), time.Since(start).Round(time.Second), realNote(*real))
 	md.WriteString("Every scenario starts a fresh daemon in /tmp with the fake claude (`testdata/fakeclaude`), so the numbers are " +
-		"Mailroom's own cost, not the model's. Plan and method: `docs/rfc-benchmark.md`. Token counts marked ≈ are bytes/4 " +
+		"Smif's own cost, not the model's. Plan and method: `docs/rfc-benchmark.md`. Token counts marked ≈ are bytes/4 " +
 		"estimates; T-real (with `-real`) has actual counts.\n\n")
 	order := []string{"S1", "S2", "S5", "S3", "S4", "R1", "R2", "R3", "T1", "T2", "TR"}
 	heads := map[string]string{"S1": "## S · system overhead\n\n", "R1": "## R · robustness and safety\n\n", "T1": "## T · tokens\n\n"}
@@ -182,7 +182,7 @@ func realNote(r bool) string {
 func repoRoot() (string, error) {
 	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
-		return "", fmt.Errorf("run from the mailroom repo: %v", err)
+		return "", fmt.Errorf("run from the smif repo: %v", err)
 	}
 	return strings.TrimSpace(string(out)), nil
 }

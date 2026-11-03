@@ -100,9 +100,9 @@ func Term() string {
 	return os.Getenv("TERM_PROGRAM")
 }
 
-// InWorker reports whether this process runs inside a Mailroom worker, where
+// InWorker reports whether this process runs inside a Smif worker, where
 // user hooks also fire but must not count as an interactive session.
-func InWorker() bool { return os.Getenv("MAILROOM_RUN_ID") != "" }
+func InWorker() bool { return os.Getenv("SMIF_RUN_ID") != "" }
 
 // transcriptTail is how much of the transcript end Transcript reads.
 // Claude Code appends the title and last-prompt records again on each

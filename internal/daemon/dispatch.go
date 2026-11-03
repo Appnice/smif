@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/appnice/mailroom/internal/api"
-	"github.com/appnice/mailroom/internal/config"
-	"github.com/appnice/mailroom/internal/envelope"
-	"github.com/appnice/mailroom/internal/runner"
-	"github.com/appnice/mailroom/internal/scheduler"
-	"github.com/appnice/mailroom/internal/store"
-	"github.com/appnice/mailroom/internal/workspace"
+	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/runner"
+	"github.com/appnice/smif/internal/scheduler"
+	"github.com/appnice/smif/internal/store"
+	"github.com/appnice/smif/internal/workspace"
 )
 
 // dispatchLoop starts handlers as soon as a queue allows (R-DEL-1). It is
