@@ -177,7 +177,7 @@ func (m *Model) liveLine(sv *api.SessionView, w int, now time.Time) string {
 			parts = append(parts, stDim.Render("thinking"))
 		}
 		if a := sv.Activity; a != nil && a.Tools > 0 {
-			parts = append(parts, stDim.Render(fmt.Sprintf("%d tools", a.Tools)))
+			parts = append(parts, stDim.Render(toolCount(a.Tools)))
 		}
 		if d := silentFor(sv, now); d > 0 {
 			parts = append(parts, stWarn.Render("silent "+ago(d)))
@@ -234,4 +234,12 @@ func (m *Model) othersNeedYou(sv *api.SessionView) int {
 		}
 	}
 	return n
+}
+
+// toolCount is "1 tool", "3 tools".
+func toolCount(n int) string {
+	if n == 1 {
+		return "1 tool"
+	}
+	return fmt.Sprintf("%d tools", n)
 }

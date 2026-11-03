@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>smif · every Claude Code session in one terminal</title>
+<meta name="description" content="smif finds every Claude Code session on your machine and shows, live, which one works, which one waits for you and what each one just said. Answer any of them without hunting for the tab.">
+<meta name="theme-color" content="#141617">
+<link rel="canonical" href="https://smif.dev/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://smif.dev/">
+<meta property="og:title" content="smif · every Claude Code session in one terminal">
+<meta property="og:description" content="See which session waits for you, what each one runs now, and answer any of them from one live view. Local, single binary, MIT.">
+<meta property="og:image" content="https://smif.dev/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav" id="top">
+  <div class="wrap nav__in">
+    <a class="brand" href="#top" aria-label="smif home"><span class="badge">smif</span></a>
+    <nav class="nav__links" aria-label="Sections">
+      <a href="#why">Why</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#keys">Keys</a>
+      <a href="#install">Install</a>
+    </nav>
+    <a class="btn btn--ghost btn--sm" href="https://github.com/appnice/smif">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero__glow" aria-hidden="true"></div>
+  <div class="wrap hero__copy">
+    <p class="pill reveal"><span class="dot dot--live" aria-hidden="true"></span> live view for Claude Code</p>
+    <h1 class="hero__title reveal">All your Claude Code sessions.<br><span class="hl">One calm terminal.</span></h1>
+    <p class="hero__lede reveal">smif finds every Claude Code session on your machine and shows, live, which one works, which one waits for you and what each one just said. Answer any of them without hunting for the tab.</p>
+    <div class="hero__cta reveal">
+      <div class="cmd" data-copy="go install github.com/appnice/smif/cmd/smif@latest">
+        <span class="cmd__prompt" aria-hidden="true">$</span>
+        <code>go install github.com/appnice/smif/cmd/smif@latest</code>
+        <button class="cmd__copy" type="button" aria-label="Copy the install command">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+      <a class="btn btn--primary" href="#demo">See it run <span aria-hidden="true">↓</span></a>
+    </div>
+    <ul class="facts reveal" aria-label="Facts">
+      <li>single binary</li><li>macOS &amp; Linux</li><li>nothing leaves your machine</li><li>MIT</li>
+    </ul>
+  </div>
+
+  <div class="wrap wrap--wide" id="demo">
+    <figure class="term term--hero reveal">
+      <div class="term__bar">
+        <span class="term__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="term__title">~ — smif</span>
+        <button class="term__sound" type="button" data-toggle-play aria-label="Pause the recording">
+          <svg class="i-pause" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+          <svg class="i-play" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M7 4v16l13-8z"/></svg>
+        </button>
+      </div>
+      <div class="term__screen">
+        <video id="hero-video" class="term__video" muted playsinline loop preload="auto" poster="media/hero.jpg" aria-label="Recording of smif: a list of eight Claude Code sessions with their live state; a saved prompt is sent to an idle session, which works and answers.">
+          <source src="media/hero.webm" type="video/webm">
+          <source src="media/hero.mp4" type="video/mp4">
+        </video>
+        <div class="callout" id="callout" aria-live="polite"><span class="callout__glyph"></span><span class="callout__text"></span></div>
+      </div>
+      <figcaption class="chapters" id="chapters" aria-label="Chapters of the recording"></figcaption>
+    </figure>
+    <p class="note">A real recording of smif on eight staged sessions. Nothing in it is mocked up: the list, the timers and the answer arrive live.</p>
+  </div>
+</section>
+
+<!-- ============ WHY ============ -->
+<section class="section" id="why">
+  <div class="wrap">
+    <p class="eyebrow reveal">Why</p>
+    <h2 class="h2 reveal">Ten tabs. One of them has waited<br>for you for twenty minutes.</h2>
+    <div class="tabs-demo reveal" aria-hidden="true">
+      <div class="tabbar">
+        <span class="tab" style="--d:0s">api</span>
+        <span class="tab tab--waiting" style="--d:.4s">storefront</span>
+        <span class="tab" style="--d:.8s">docs</span>
+        <span class="tab tab--busy" style="--d:1.2s">infra</span>
+        <span class="tab" style="--d:1.6s">ios</span>
+        <span class="tab tab--waiting" style="--d:2s">billing</span>
+        <span class="tab tab--busy" style="--d:2.4s">search</span>
+        <span class="tab" style="--d:2.8s">webhooks</span>
+      </div>
+      <div class="tabs-demo__q"><span>which one needs me?</span></div>
+    </div>
+    <div class="grid3">
+      <article class="pain reveal"><h3>You poll tabs</h3><p>to find out which session is done. Each check costs a context switch, and most of them find nothing.</p></article>
+      <article class="pain reveal"><h3>Prompts wait unseen</h3><p>A session stops on a permission or a question while you work somewhere else. It waits as long as you don't look.</p></article>
+      <article class="pain reveal"><h3>Answers scroll away</h3><p>A finished turn lands in a tab you are not looking at. By the time you get there, you have to read back to find it.</p></article>
+    </div>
+    <p class="punch reveal">smif puts every session in one list. The first column says what each one is doing now.</p>
+
+    <div class="states">
+      <article class="state state--wait reveal">
+        <div class="row"><span class="g">!</span><span class="t" data-ago="187">3m</span><b>storefront</b><em>Bash</em><span class="m">git push origin feat/checkout</span><span class="tag">needs you</span></div>
+        <h3>Waiting</h3><p>Stopped on a permission prompt or a question in its tab, and you see which one.</p>
+      </article>
+      <article class="state state--work reveal">
+        <div class="row"><span class="g">▶</span><span class="t" data-tick="134">2m14s</span><b>payments</b><em>Bash</em><span class="m">go test ./... -race</span><span class="c">5 tools</span></div>
+        <h3>Working</h3><p>A timer to the second and the tool it is running now, taken from the transcript as Claude writes it.</p>
+      </article>
+      <article class="state state--new reveal">
+        <div class="row"><span class="g">●</span><span class="t">new</span><b>handbook</b><span class="m m--b">Rewrote onboarding.md: 1,900 words down to 640</span></div>
+        <h3>New answer</h3><p>A finished turn you have not read yet. <kbd>tab</kbd> jumps to it.</p>
+      </article>
+      <article class="state state--idle reveal">
+        <div class="row"><span class="g">○</span><span class="t">idle</span><b>ios</b><span class="m">The list rebuilds on every timer tick…</span><span class="c">1h</span></div>
+        <h3>Idle</h3><p>Done and read. <kbd>z</kbd> hides these when the list gets long.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW ============ -->
+<section class="section section--alt" id="how">
+  <div class="wrap">
+    <p class="eyebrow reveal">How it works</p>
+    <h2 class="h2 reveal">It reads what Claude Code already writes.</h2>
+    <p class="lede reveal">No proxy, no wrapper around <code>claude</code>, no API key. smif follows the session files and transcripts Claude Code keeps on disk, and a small local daemon turns them into state.</p>
+
+    <div class="flow reveal" role="img" aria-label="Diagram: Claude Code's session files, transcripts and hooks flow into the local smif daemon, which feeds the smif view, the status line, notifications and your terminal tabs.">
+      <div class="flow__col">
+        <p class="flow__head">Claude Code</p>
+        <div class="node"><code>~/.claude/sessions/*.json</code><span>which sessions run, idle or busy</span></div>
+        <div class="node"><code>transcripts *.jsonl</code><span>each tool call as it starts, the answers</span></div>
+        <div class="node"><code>hooks</code><span>prompt sent, turn ended (optional)</span></div>
+      </div>
+      <div class="flow__wire" aria-hidden="true">
+        <svg viewBox="0 0 120 300" preserveAspectRatio="none"><path class="wire" d="M0 50 C60 50 60 150 120 150"/><path class="wire" d="M0 150 L120 150"/><path class="wire" d="M0 250 C60 250 60 150 120 150"/>
+          <circle r="3.5" class="pkt"><animateMotion dur="2.4s" repeatCount="indefinite" path="M0 50 C60 50 60 150 120 150"/></circle>
+          <circle r="3.5" class="pkt pkt--b"><animateMotion dur="2.4s" begin=".8s" repeatCount="indefinite" path="M0 150 L120 150"/></circle>
+          <circle r="3.5" class="pkt pkt--c"><animateMotion dur="2.4s" begin="1.6s" repeatCount="indefinite" path="M0 250 C60 250 60 150 120 150"/></circle>
+        </svg>
+      </div>
+      <div class="flow__col flow__col--core">
+        <div class="core">
+          <span class="badge badge--lg">smifd</span>
+          <p>local daemon</p>
+          <ul><li>SQLite, WAL</li><li>Unix socket, 0600</li><li>one per user</li></ul>
+          <span class="core__pulse" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="flow__wire" aria-hidden="true">
+        <svg viewBox="0 0 120 300" preserveAspectRatio="none"><path class="wire" d="M0 150 C60 150 60 38 120 38"/><path class="wire" d="M0 150 C60 150 60 112 120 112"/><path class="wire" d="M0 150 C60 150 60 188 120 188"/><path class="wire" d="M0 150 C60 150 60 262 120 262"/>
+          <circle r="3.5" class="pkt"><animateMotion dur="2s" begin=".3s" repeatCount="indefinite" path="M0 150 C60 150 60 38 120 38"/></circle>
+          <circle r="3.5" class="pkt pkt--b"><animateMotion dur="2s" begin=".8s" repeatCount="indefinite" path="M0 150 C60 150 60 112 120 112"/></circle>
+          <circle r="3.5" class="pkt pkt--c"><animateMotion dur="2s" begin="1.3s" repeatCount="indefinite" path="M0 150 C60 150 60 188 120 188"/></circle>
+          <circle r="3.5" class="pkt pkt--d"><animateMotion dur="2s" begin="1.8s" repeatCount="indefinite" path="M0 150 C60 150 60 262 120 262"/></circle>
+        </svg>
+      </div>
+      <div class="flow__col">
+        <p class="flow__head">You</p>
+        <div class="node node--out"><code>smif</code><span>the live list, preview and chat</span></div>
+        <div class="node node--out"><code>status line</code><span>who waits, inside every session</span></div>
+        <div class="node node--out"><code>notifications</code><span>a wait, an answer, a stall</span></div>
+        <div class="node node--out"><code>your tabs</code><span>Terminal.app · iTerm2 · tmux</span></div>
+      </div>
+    </div>
+
+    <ol class="steps">
+      <li class="reveal"><span class="steps__n">1</span><div><h3>Run <code>smif</code></h3><p>It starts its daemon on first use. There is no config to write.</p></div></li>
+      <li class="reveal"><span class="steps__n">2</span><div><h3>Every session shows up</h3><p>Sessions already open, in any folder, appear at once. Hooks are not needed to start.</p></div></li>
+      <li class="reveal"><span class="steps__n">3</span><div><h3>Add <code>smif install</code> when you like it</h3><p>Hooks for instant updates, the status line and <code>/smif</code>. <code>smif uninstall</code> puts every file back as it was.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="section" id="features">
+  <div class="wrap">
+    <p class="eyebrow reveal">Features</p>
+    <h2 class="h2 reveal">Built for the moment a session needs you.</h2>
+
+    <div class="bento">
+      <article class="card card--wide reveal">
+        <div class="card__copy">
+          <h3>Write to any session</h3>
+          <p>Press <kbd>enter</kbd> for the chat, type, send. If the session is idle, smif types into its tab as if you did. If it is busy and an agent owns its folder, a fork of the session answers from what it knows, and nothing is typed. A permission prompt is never answered for you.</p>
+        </div>
+        <figure class="term term--card">
+          <div class="term__bar"><span class="term__lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="term__title">chat · payments</span></div>
+          <div class="term__screen">
+            <video class="term__video" data-inview muted playsinline loop preload="none" poster="media/chat.jpg" aria-label="Recording: the chat with a session; a follow-up is typed, the session works and answers.">
+              <source src="media/chat.webm" type="video/webm">
+              <source src="media/chat.mp4" type="video/mp4">
+            </video>
+          </div>
+        </figure>
+      </article>
+
+      <article class="card reveal">
+        <h3>Watchdogs</h3>
+        <p>A reminder while a session still waits (10, 20, 30 minutes, then quiet). One alert when a working session goes silent. An optional one when a turn runs long.</p>
+        <div class="toasts" aria-hidden="true">
+          <div class="toast"><span class="toast__app">smif</span><b>storefront still waits for you (12m)</b><span>Bash: git push origin feat/checkout</span></div>
+          <div class="toast"><span class="toast__app">smif</span><b>infra is silent</b><span>nothing written for 10m: a long command, or stuck</span></div>
+          <div class="toast"><span class="toast__app">smif</span><b>payments answered</b><span>All 214 tests pass with -race</span></div>
+        </div>
+      </article>
+
+      <article class="card reveal">
+        <h3>Saved prompts</h3>
+        <p>The prompts you type ten times a day, under a name. <kbd>p</kbd> on a session, then <kbd>1</kbd>–<kbd>9</kbd>. Or write <code>@tests</code> in any prompt.</p>
+        <pre class="code" aria-label="Example config"><span class="k">[prompts]</span>
+<span class="n">tests</span>  = <span class="s">"run the tests, report failures"</span>
+<span class="n">review</span> = <span class="s">"review your last change"</span>
+<span class="n">ship</span>   = <span class="s">"commit and open a PR"</span></pre>
+      </article>
+
+      <article class="card reveal">
+        <h3>The status line knows</h3>
+        <p>Inside every Claude Code session, the others that need you. One glance, no tab switch.</p>
+        <div class="statusline" aria-label="Example status line">
+          <span class="sl__model">opus</span><span class="sl__sep">│</span><span class="sl__dir">~/code/api</span><span class="sl__sep">│</span><span class="sl__wait">! storefront, billing wait</span><span class="sl__sep">·</span><span class="sl__new">● payments answered</span>
+        </div>
+      </article>
+
+      <article class="card reveal">
+        <h3>A new session in one key</h3>
+        <p><kbd>n</kbd>, a name, <kbd>enter</kbd>. <code>claude --name api</code> opens in the selected session's folder: a new Terminal.app window, iTerm2 tab or tmux window.</p>
+        <div class="newsess" aria-hidden="true"><span class="ns__k">n</span><span class="ns__line">new session in ~/code/payments-api · name: <span class="ns__type" data-type="refunds-v2"></span><span class="caret"></span></span></div>
+      </article>
+
+      <article class="card reveal">
+        <h3>Plain text for tmux and ssh</h3>
+        <p><code>smif watch</code> prints the same picture as text: for a tmux pane, an ssh session or a pipe. <code>smif sessions</code> lists them for scripts.</p>
+        <pre class="code" aria-label="Example output of smif watch"><span class="k">!</span> billing     asks  Round VAT per line…
+<span class="n">▶</span> infra       Bash  terraform plan  <span class="k">silent 7m</span>
+<span class="s">●</span> payments    All 214 tests pass</pre>
+      </article>
+
+      <article class="card reveal">
+        <h3>Agents that ask each other</h3>
+        <p>Background agents can send each other questions and events, routed by rules you write. A message's text never reaches a shell, and no tool reads inbound mail.</p>
+        <div class="mail" aria-hidden="true">
+          <span class="mail__a">checkout</span><span class="mail__arrow"><i></i></span><span class="mail__b">inventory</span>
+          <span class="mail__msg">stock.level → answered in 0.37 s, no LLM</span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KEYS ============ -->
+<section class="section section--alt" id="keys">
+  <div class="wrap">
+    <p class="eyebrow reveal">Keys</p>
+    <h2 class="h2 reveal">Ten keys you will use.<br><span class="dim">Press one.</span></h2>
+    <div class="keys reveal">
+      <div class="keys__board" role="group" aria-label="Keys">
+        <button type="button" class="key key--wide" data-key="Tab" data-desc="Jump to the next session that needs you: one that waits, or a new answer.">tab</button>
+        <button type="button" class="key" data-key="ArrowUp" data-desc="Move through the list. The preview on the right follows.">↑</button>
+        <button type="button" class="key" data-key="ArrowDown" data-desc="Move through the list. The preview on the right follows.">↓</button>
+        <button type="button" class="key key--wide" data-key="Enter" data-desc="Open the chat with the session: its conversation, live, and a box to write in.">enter</button>
+        <button type="button" class="key" data-key="s" data-desc="Write to the session under the preview: typed into its tab when idle; when busy, a fork answers if an agent owns the folder.">s</button>
+        <button type="button" class="key" data-key="p" data-desc="Saved prompts. Then 1–9 sends one the way s would.">p</button>
+        <button type="button" class="key" data-key="n" data-desc="A new terminal that runs claude in this session's folder. It asks for the name.">n</button>
+        <button type="button" class="key" data-key="o" data-desc="Bring the session's tab to the front, to answer its permission prompt or question there.">o</button>
+        <button type="button" class="key" data-key="z" data-desc="Hide or show the quiet sessions: idle, answer read.">z</button>
+        <button type="button" class="key" data-key="/" data-desc="Filter the list by text. enter keeps it, esc clears it.">/</button>
+      </div>
+      <p class="keys__desc" id="keydesc" aria-live="polite">Press <kbd>tab</kbd>, <kbd>enter</kbd>, <kbd>p</kbd> or any key above.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRINCIPLES ============ -->
+<section class="section" id="principles">
+  <div class="wrap">
+    <p class="eyebrow reveal">Principles</p>
+    <h2 class="h2 reveal">It stays out of the way.</h2>
+    <div class="grid4">
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><h3>Local only</h3><p>Files on disk and a Unix socket. No account, no telemetry, no server of ours.</p></article>
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 6l12 12" stroke="currentColor" stroke-width="1.8"/></svg></span><h3>Never answers for you</h3><p>A permission prompt or a question in a tab waits for you. smif shows it and brings the tab forward.</p></article>
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><h3>Zero setup</h3><p>No config file needed. Run it and every open session is there.</p></article>
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 5 6v5.5c0 4.4 3 8 7 9.5 4-1.5 7-5.1 7-9.5V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>Your config is the law</h3><p>Commands come from your config only. Nothing a message says can reach a shell.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSTALL ============ -->
+<section class="section section--alt" id="install">
+  <div class="wrap wrap--narrow">
+    <p class="eyebrow reveal">Install</p>
+    <h2 class="h2 reveal">One binary. Two commands.</h2>
+    <div class="install reveal">
+      <div class="install__tabs" role="tablist" aria-label="Install method">
+        <button type="button" role="tab" aria-selected="true" aria-controls="inst-go" id="tab-go">Go</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="inst-src" id="tab-src">From source</button>
+      </div>
+      <div class="install__panel" role="tabpanel" id="inst-go" aria-labelledby="tab-go">
+        <div class="cmd" data-copy="go install github.com/appnice/smif/cmd/smif@latest"><span class="cmd__prompt" aria-hidden="true">$</span><code>go install github.com/appnice/smif/cmd/smif@latest</code><button class="cmd__copy" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
+      </div>
+      <div class="install__panel" role="tabpanel" id="inst-src" aria-labelledby="tab-src" hidden>
+        <div class="cmd" data-copy="git clone https://github.com/appnice/smif && cd smif && make install-local"><span class="cmd__prompt" aria-hidden="true">$</span><code>git clone https://github.com/appnice/smif &amp;&amp; cd smif &amp;&amp; make install-local</code><button class="cmd__copy" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
+      </div>
+      <ol class="install__then">
+        <li><div class="cmd cmd--plain" data-copy="smif"><span class="cmd__prompt" aria-hidden="true">$</span><code>smif</code><span class="cmd__note">the live view; starts the daemon</span></div></li>
+        <li><div class="cmd cmd--plain" data-copy="smif install"><span class="cmd__prompt" aria-hidden="true">$</span><code>smif install</code><span class="cmd__note">optional: hooks, status line, <code>/smif</code></span></div></li>
+      </ol>
+      <p class="install__req">Needs Claude Code. Typing into tabs works in Terminal.app and iTerm2 on macOS, and in tmux anywhere. The view works in any terminal.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="section" id="faq">
+  <div class="wrap wrap--narrow">
+    <p class="eyebrow reveal">Questions</p>
+    <h2 class="h2 reveal">Fair questions.</h2>
+    <div class="faq reveal">
+      <details><summary>Does anything leave my machine?</summary><p>No. smif reads files Claude Code keeps on disk and talks to its daemon over a Unix socket that only your user can open. Notifications go through the system notifier.</p></details>
+      <details><summary>Does it need an API key?</summary><p>No. Reading sessions needs nothing. A fork that answers for a busy session runs <code>claude</code> with your own login.</p></details>
+      <details><summary>Will it ever approve a permission prompt?</summary><p>Never. It shows you what the session asks and brings its tab to the front with <kbd>o</kbd>. The answer stays yours.</p></details>
+      <details><summary>What does <code>smif install</code> change?</summary><p>It adds four hooks and a status line segment to <code>~/.claude/settings.json</code>, a <code>/smif</code> command and an MCP server, and a launchd or systemd service. Every file is backed up first, and <code>smif uninstall</code> restores it.</p></details>
+      <details><summary>Which terminals can it type into?</summary><p>Terminal.app and iTerm2 on macOS, and tmux anywhere. Before typing it checks that <code>claude</code> is in the foreground of that tab. Elsewhere you still get the full view, the chat history and <kbd>o</kbd>.</p></details>
+      <details><summary>Is smif made by Anthropic?</summary><p>No. smif is an independent open-source tool for people who use Claude Code. It is not affiliated with or endorsed by Anthropic.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="final">
+  <div class="wrap final__in reveal">
+    <span class="badge badge--xl">smif</span>
+    <h2 class="h2">Stop checking tabs.</h2>
+    <div class="cmd" data-copy="go install github.com/appnice/smif/cmd/smif@latest"><span class="cmd__prompt" aria-hidden="true">$</span><code>go install github.com/appnice/smif/cmd/smif@latest</code><button class="cmd__copy" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__in">
+    <p><span class="badge">smif</span> made by <a href="https://appnice.dev">appnice</a> · MIT licence · <a href="https://github.com/appnice/smif">source</a></p>
+    <p class="foot__legal">Claude Code is a product of Anthropic. smif is an independent project and is not affiliated with Anthropic.</p>
+  </div>
+</footer>
+
+<div class="toast-copy" id="copied" role="status" aria-live="polite">Copied</div>
+<script src="main.js" defer></script>
+</body>
+</html>

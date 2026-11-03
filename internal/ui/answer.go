@@ -454,7 +454,7 @@ func answerMeta(you, answer *api.SessionTurn, now time.Time) string {
 		parts = append(parts, dur(answer.At.Sub(you.At)))
 	}
 	if answer.Tools > 0 {
-		parts = append(parts, fmt.Sprintf("%d tools", answer.Tools))
+		parts = append(parts, toolCount(answer.Tools))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -498,7 +498,7 @@ func (m *Model) sessionRowLine(r homeRow, selected bool, w int, now time.Time) s
 		}
 		var t []string
 		if a := sv.Activity; a != nil && a.Tools > 0 {
-			t = append(t, stDim.Render(fmt.Sprintf("%d tools", a.Tools)))
+			t = append(t, stDim.Render(toolCount(a.Tools)))
 		}
 		if d := silentFor(sv, now); d > 0 {
 			t = append(t, stWarn.Render("silent "+ago(d)))
@@ -697,7 +697,7 @@ func (m *Model) liveBody(sv *api.SessionView, turns []api.SessionTurn, w int, no
 			done = done[len(done)-5:]
 		}
 		if len(done) > 0 {
-			out = append(out, rule(stDim.Render("steps so far"), fmt.Sprintf("%d tools", a.Tools), w))
+			out = append(out, rule(stDim.Render("steps so far"), toolCount(a.Tools), w))
 			out = append(out, stepRows(done, w, now)...)
 			out = append(out, "")
 		}
@@ -705,7 +705,7 @@ func (m *Model) liveBody(sv *api.SessionView, turns []api.SessionTurn, w int, no
 		if len(done) > 3 {
 			done = done[len(done)-3:]
 		}
-		out = append(out, rule(stDim.Render("before it asked"), fmt.Sprintf("%d tools", a.Tools), w))
+		out = append(out, rule(stDim.Render("before it asked"), toolCount(a.Tools), w))
 		out = append(out, stepRows(done, w, now)...)
 		out = append(out, "")
 	}
