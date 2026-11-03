@@ -335,6 +335,7 @@ Four surfaces: the daemon socket API, an MCP server for sessions, a CLI for huma
 | `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their turn, last answer and what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux) **(ADR-0012)** |
 | `stats.get` | Human only: counts over a window, per agent and day (ADR-0011) |
 | `inbox.counts` | Per-agent counters for the status line; for the human, also the other sessions that wait or answered (**ADR-0014**) |
+| `prompts.list` / `session.new` | Human only (**ADR-0015**): the saved prompts (`[prompts]`; `@name` in `session.send` and `session.prompt` stands for one); open `claude --name <name>` in a folder in a new Terminal.app window, iTerm2 tab or tmux window |
 | `digest.get` | Summaries of handled items since a cursor (human pull only); optional `until` bounds the advance **(ADR-0008)** |
 | `audit.since` | Audit rows after a cursor, for the live feed of `mailroom ui` and `mailroom watch` (human only) **(ADR-0008)** |
 | `blob.put` / `blob.get` | Attachment storage |
@@ -389,6 +390,9 @@ default_ttl = "24h"
 presence_ttl = "30m"
 notify = "os"
 session_notify = "waiting,answered"  # or "waiting", "answered", "none" (ADR-0014)
+remind_waiting = "10m"     # watchdogs (ADR-0015): a duration or "off"
+alert_silent = "10m"
+alert_long_turn = "off"
 terminal = "auto"          # session prompts: "auto" (Terminal.app, iTerm2, tmux), "none", "log:<path>" (ADR-0012)
 
 [defaults]

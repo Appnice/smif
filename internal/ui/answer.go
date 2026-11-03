@@ -779,6 +779,8 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 	out := []string{m.sessionHeader(sv, w, m.now()), ""}
 	var bottom []string
 	switch {
+	case m.home.picking:
+		bottom = m.pickLines(sv, w)
 	case m.home.typing:
 		bottom = append([]string{""}, m.home.draft.boxLines(stAccent.Render("› "), w, 6)...)
 		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" esc cancels.", w, "…")))

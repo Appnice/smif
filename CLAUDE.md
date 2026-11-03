@@ -57,7 +57,8 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   `session.list` also reads Claude Code's `~/.claude/sessions/<pid>.json` (`discover.go`; e2e uses `$CLAUDE_CONFIG_DIR`).
   Answers: `presence.Conversation` keeps only the text after the last tool call; the UI draws it in `internal/ui/answer.go`.
   What a session does now: `presence.Read` → `SessionView.Activity` (steps, pending call); state cells, counts, `tab` in `internal/ui/live.go`;
-  notifications and the status line's session names in `internal/daemon/session_watch.go` (ADR-0014).
+  notifications, the status line's session names and the watchdogs in `internal/daemon/session_watch.go` (ADR-0014, 0015);
+  saved prompts (`p`, `@name`) and new sessions (`n`, `session.new`, `terminal.Open`) in `internal/ui/quick.go` (ADR-0015).
 - No config = defaults, no agents; `mailroom`/`sessions` start the daemon (`autostart.go`, off with `MAILROOM_NO_AUTOSTART=1`,
   which the e2e harness sets). `daemon.lock` allows one daemon per data dir. `docs/img/home.svg` = `docs/img/home.py <golden>`.
   Busy sessions: `session.send` / an ask to a session's name → a fork worker (`session_ask.go`, ADR-0013); `go test -run TestSessionAsk ./e2e/`.

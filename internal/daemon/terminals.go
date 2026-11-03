@@ -34,6 +34,9 @@ type terminal interface {
 	Supports(p store.Presence) string
 	// Focus brings the session's tab or pane to the front.
 	Focus(ctx context.Context, p store.Presence) error
+	// Open starts argv in dir in a new tab or window of the terminal term
+	// ("" = Terminal.app on macOS, else tmux), for a new session (ADR-0015).
+	Open(ctx context.Context, term, dir string, argv []string) error
 }
 
 func newTerminal(spec string) terminal {
@@ -76,6 +79,9 @@ func (offTerminal) Type(context.Context, store.Presence, string) error {
 func (offTerminal) Focus(context.Context, store.Presence) error {
 	return errors.New("prompts are off")
 }
+func (offTerminal) Open(context.Context, string, string, []string) error {
+	return errors.New("terminals are off (daemon.terminal = \"none\")")
+}
 func (offTerminal) Supports(store.Presence) string {
 	return "prompts are off (daemon.terminal = \"none\")"
 }
@@ -107,6 +113,10 @@ func (l logTerminal) Type(_ context.Context, p store.Presence, text string) erro
 
 func (l logTerminal) Focus(_ context.Context, p store.Presence) error {
 	return l.write(map[string]any{"session_id": p.SessionID, "tty": p.TTY, "term": p.Term, "focus": true})
+}
+
+func (l logTerminal) Open(_ context.Context, term, dir string, argv []string) error {
+	return l.write(map[string]any{"open": true, "term": term, "dir": dir, "argv": argv})
 }
 
 // Supports applies the same terminal rule as the real terminals, on any OS.
@@ -176,7 +186,60 @@ func (autoTerminal) Focus(ctx context.Context, p store.Presence) error {
 	return runAppleScript(ctx, "Terminal", appleFocusScript, p.TTY)
 }
 
+func (autoTerminal) Open(ctx context.Context, term, dir string, argv []string) error {
+	if term == "" {
+		term = termTmux
+		if runtime.GOOS == "darwin" {
+			term = termApple
+		}
+	}
+	line := "cd " + shellQuote(dir) + " && " + shellJoin(argv)
+	switch term {
+	case termApple, termITerm:
+		if runtime.GOOS != "darwin" {
+			return errors.New("new sessions in Terminal.app and iTerm2 open on macOS only")
+		}
+		if term == termITerm {
+			return runAppleScript(ctx, "iTerm2", iTermOpenScript, line)
+		}
+		return runAppleScript(ctx, "Terminal", appleOpenScript, line)
+	case termTmux:
+		if tmuxPath() == "" {
+			return errors.New("the daemon cannot find the tmux command")
+		}
+		ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+		args := append([]string{"new-window", "-c", dir, "--"}, argv...)
+		if out, err := exec.CommandContext(ctx, tmuxPath(), args...).CombinedOutput(); err != nil {
+			return fmt.Errorf("tmux new-window: %v: %s", err, strings.TrimSpace(string(out)))
+		}
+		return nil
+	}
+	return fmt.Errorf("new sessions open in Terminal.app, iTerm2 or tmux, not %s", term)
+}
+
+// shellQuote quotes s for sh: 'it'\”s'.
+func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
+
+// shellJoin quotes each word for sh.
+func shellJoin(argv []string) string {
+	q := make([]string, len(argv))
+	for i, a := range argv {
+		q[i] = shellQuote(a)
+	}
+	return strings.Join(q, " ")
+}
+
 // ---- Terminal.app ----
+
+// appleOpenScript runs a command line in a new Terminal window.
+const appleOpenScript = `on run argv
+	tell application "Terminal"
+		do script (item 1 of argv)
+		activate
+	end tell
+	return "ok"
+end run`
 
 const appleTypeScript = `on run argv
 	set want to item 1 of argv
@@ -213,6 +276,21 @@ const appleFocusScript = `on run argv
 end run`
 
 // ---- iTerm2 ----
+
+// iTermOpenScript runs a command line in a new tab (a new window when
+// there is none).
+const iTermOpenScript = `on run argv
+	tell application "iTerm2"
+		if (count of windows) is 0 then
+			create window with default profile
+		else
+			tell current window to create tab with default profile
+		end if
+		tell current session of current window to write text (item 1 of argv)
+		activate
+	end tell
+	return "ok"
+end run`
 
 // iTerm2 keeps sessions (panes) inside tabs; `write text … newline no`
 // types without Enter, and `write text ""` is Enter.
@@ -273,8 +351,10 @@ func runAppleScript(ctx context.Context, app, script string, argv ...string) err
 		return fmt.Errorf("macOS does not let Mailroom control %s: allow it in System Settings → Privacy & Security → Automation", app)
 	case err != nil:
 		return fmt.Errorf("osascript: %v: %s", err, msg)
-	case msg != "ok":
+	case msg == "no tab":
 		return fmt.Errorf("no %s tab on %s", app, argv[0])
+	case msg != "ok":
+		return fmt.Errorf("%s: %s", app, msg)
 	}
 	return nil
 }

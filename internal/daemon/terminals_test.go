@@ -31,3 +31,12 @@ func TestTmuxPaneAndKeys(t *testing.T) {
 		t.Fatalf("send-keys calls %q", calls)
 	}
 }
+
+// A new session's command line for Terminal.app and iTerm2: every word
+// quoted for sh, so a folder or name with spaces or quotes stays one word.
+func TestShellQuote(t *testing.T) {
+	if got := "cd " + shellQuote("/Users/a b/it's") + " && " + shellJoin([]string{"/opt/claude", "--name", "api work"}); got !=
+		`cd '/Users/a b/it'\''s' && '/opt/claude' '--name' 'api work'` {
+		t.Fatalf("line: %s", got)
+	}
+}

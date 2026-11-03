@@ -33,6 +33,8 @@ type Snapshot struct {
 	DigestCursor int64
 	// Sessions are the live interactive sessions (session.list, ADR-0012).
 	Sessions []api.SessionView
+	// Prompts are the human's saved prompts (prompts.list, ADR-0015).
+	Prompts []api.SavedPrompt
 	// Events are the newest audit events (audit.since), oldest first, at
 	// most EventKeep.
 	Events []api.AuditEvent
@@ -145,6 +147,13 @@ func (s *DaemonSource) fetchOnce() (attempt, error) {
 			s.c = nil
 			return a, err
 		}
+	}
+	// Saved prompts: an older daemon has no prompts.list; that is no error.
+	var rpcErr0 *api.Error
+	if err := s.c.Call("prompts.list", nil, &a.Prompts, timeout); err != nil && !errors.As(err, &rpcErr0) {
+		s.c.Close()
+		s.c = nil
+		return a, err
 	}
 	a.Waiting = append(a.Waiting, retrying...)
 	a.Unread, a.DigestCursor = map[string]bool{}, digest.Cursor

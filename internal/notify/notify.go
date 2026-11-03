@@ -88,6 +88,12 @@ func title(e Event) string {
 		return "Mailroom: " + e.Agent + " waits for you"
 	case "session_answered":
 		return "Mailroom: " + e.Agent + " answered"
+	case "session_reminder":
+		return "Mailroom: " + e.Agent + " still waits for you"
+	case "session_silent":
+		return "Mailroom: " + e.Agent + " is silent"
+	case "session_long":
+		return "Mailroom: " + e.Agent + " works long"
 	default:
 		return "Mailroom: " + e.Agent
 	}

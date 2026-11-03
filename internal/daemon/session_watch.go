@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/appnice/mailroom/internal/api"
+	"github.com/appnice/mailroom/internal/config"
 	"github.com/appnice/mailroom/internal/notify"
 	"github.com/appnice/mailroom/internal/presence"
 	"github.com/appnice/mailroom/internal/store"
@@ -90,10 +92,17 @@ func viewName(v api.SessionView) string {
 
 // watchedSession is what the watcher saw of a session at its last look.
 type watchedSession struct {
-	turn     string
-	answerAt time.Time
-	since    time.Time // when the running prompt started
+	turn      string
+	answerAt  time.Time
+	since     time.Time // when the running prompt started
+	waitSince time.Time // when it started to wait in its tab
+	reminded  int       // reminders sent for this wait
+	silent    bool      // the silence of this turn was told
+	long      bool      // the long turn was told
 }
+
+// maxReminders caps the reminders for one wait.
+const maxReminders = 3
 
 // sessionWatchLoop notifies on session state changes until the daemon
 // stops.
@@ -106,19 +115,21 @@ func (d *Daemon) sessionWatchLoop() {
 		case <-d.ctx.Done():
 			return
 		case <-t.C:
-			seen = d.watchSessions(seen)
+			seen = d.watchSessions(seen, time.Now())
 		}
 	}
 }
 
 // watchSessions compares the sessions with the last look and sends the
-// notifications the config asks for (daemon.session_notify).
-func (d *Daemon) watchSessions(prev map[string]watchedSession) map[string]watchedSession {
+// notifications the config asks for: a session starts to wait or answers
+// after a long turn (daemon.session_notify, ADR-0014), and the watchdogs
+// (ADR-0015): it still waits, it is silent, its turn is long.
+func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) map[string]watchedSession {
 	cfg := d.Config()
 	want := cfg.Daemon.SessionNotify
-	if want == "none" {
-		return prev
-	}
+	remind, _ := config.WatchdogEvery(cfg.Daemon.RemindWaiting)
+	silentAfter, _ := config.WatchdogEvery(cfg.Daemon.AlertSilent)
+	longAfter, _ := config.WatchdogEvery(cfg.Daemon.AlertLongTurn)
 	ps, err := d.liveSessions()
 	if err != nil {
 		return prev
@@ -126,29 +137,75 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession) map[string]watche
 	next := map[string]watchedSession{}
 	for _, p := range ps {
 		v := d.sessionView(cfg, p)
-		w := watchedSession{turn: v.Turn, answerAt: v.LastAnswerAt}
-		if a := v.Activity; a != nil {
-			w.since = a.PromptAt
-		}
 		old, known := prev[v.SessionID]
+		w := old
+		w.turn, w.answerAt = v.Turn, v.LastAnswerAt
+		var step string
+		if a := v.Activity; a != nil {
+			if !a.PromptAt.Equal(old.since) {
+				w.since, w.silent, w.long = a.PromptAt, false, false // a new prompt: a new turn
+			}
+			if a.Now != nil {
+				step = presence.StepText(a.Now.Tool, a.Now.Target)
+			}
+		}
+		if v.Turn == "waiting" && old.turn != "waiting" {
+			w.waitSince, w.reminded = now, 0
+		}
 		next[v.SessionID] = w
 		if !known {
 			continue // a session seen for the first time is not news
 		}
 		name := viewName(v)
 		switch {
-		case v.Turn == "waiting" && old.turn != "waiting" && strings.Contains(want, "waiting"):
-			what := "it waits for you in its tab"
-			if a := v.Activity; a != nil && a.Now != nil {
-				what = presence.StepText(a.Now.Tool, a.Now.Target)
+		case v.Turn == "waiting" && old.turn != "waiting":
+			if strings.Contains(want, "waiting") {
+				d.notifySession("session_waiting", name, v, nonEmpty(step, "it waits for you in its tab"))
 			}
-			d.notifySession("session_waiting", name, v, what)
+		case v.Turn == "waiting" && remind > 0 && w.reminded < maxReminders && now.Sub(w.waitSince) >= remind*time.Duration(w.reminded+1):
+			w.reminded++
+			next[v.SessionID] = w
+			d.notifySession("session_reminder", name, v, "still waits ("+shortDur(now.Sub(w.waitSince))+"): "+nonEmpty(step, "in its tab"))
 		case v.Turn == "idle" && old.turn == "busy" && v.LastAnswerAt.After(old.answerAt) &&
 			!old.since.IsZero() && v.LastAnswerAt.Sub(old.since) >= notifyMinWork && strings.Contains(want, "answered"):
 			d.notifySession("session_answered", name, v, firstLine(v.LastAnswer))
+		case v.Turn == "busy":
+			quiet := time.Duration(0)
+			if a := v.Activity; a != nil && !a.WroteAt.IsZero() {
+				quiet = now.Sub(a.WroteAt)
+			}
+			switch {
+			case silentAfter > 0 && quiet >= silentAfter && !w.silent:
+				w.silent = true
+				next[v.SessionID] = w
+				d.notifySession("session_silent", name, v, "nothing written for "+shortDur(quiet)+": "+nonEmpty(step, "thinking"))
+			case silentAfter > 0 && quiet < silentAfter:
+				w.silent = false // it writes again: a later silence is news
+				next[v.SessionID] = w
+			}
+			if longAfter > 0 && !w.since.IsZero() && now.Sub(w.since) >= longAfter && !w.long {
+				w.long = true
+				next[v.SessionID] = w
+				prompt := ""
+				if v.Activity != nil {
+					prompt = firstLine(v.Activity.Prompt)
+				}
+				d.notifySession("session_long", name, v, "works "+shortDur(now.Sub(w.since))+" on: "+nonEmpty(prompt, "your prompt"))
+			}
 		}
 	}
 	return next
+}
+
+// shortDur is a duration for a notification: 40s, 12m, 1h05m.
+func shortDur(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	}
+	return fmt.Sprintf("%dh%02dm", int(d.Hours()), int(d.Minutes())%60)
 }
 
 // notifySession raises one OS notification about a session. The audit

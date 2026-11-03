@@ -39,6 +39,9 @@ You do not have to watch the screen:
   of more than 30 s. Set `daemon.session_notify` to `"waiting"`, `"answered"` or `"none"`.
 - **Status line.** With `mailroom install`, the status line of each session names the others:
   `! shop waits · ● docs, scraper answered`.
+- **Watchdogs.** A reminder while a session still waits (`daemon.remind_waiting`, default every 10 min, at most
+  3 times), and one alert when a working session writes nothing for `daemon.alert_silent` (default 10 min) or works
+  longer than `daemon.alert_long_turn` (off by default).
 
 Write to a session from the same screen. `enter` opens a chat with it:
 
@@ -48,6 +51,17 @@ Write to a session from the same screen. `enter` opens a chat with it:
 | **busy** or **waiting** | Is not typed. A fork of the session answers (`claude -p --resume … --fork-session`): it knows what the session knows, works read-only, and leaves the session untouched. Needs an agent for the folder (`mailroom init`). |
 
 Mailroom never answers a permission prompt for you.
+
+Prompts you send often go in the config, and `p` on a session sends one (`@tests` in any prompt stands for it):
+
+```toml
+[prompts]
+tests = "run the tests and report what failed"
+review = "review your last change for bugs, then list them"
+```
+
+`n` opens a new session: `claude --name <name>` in the selected session's folder, in a new Terminal.app window,
+iTerm2 tab or tmux window.
 
 ### Optional: messages between sessions
 
@@ -149,6 +163,7 @@ byte for byte.
   state (`!` waiting, `▶` working, `●` new answer, `○` idle) and what it does now or the first line of its last
   answer. Sessions need no config: an agent is needed only for messages, workers and forks.
 - `tab` goes to the next row that needs you. `z` hides the quiet sessions. Empty groups take no room.
+- `p` sends a saved prompt to the session. `n` opens a new session in its folder.
 - `enter` on a session opens the chat. `s` writes from the preview. Idle: typed in. Busy: a fork of the session
   answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front.
 - `:` opens a command prompt with tab completion: `ask`, `tell`, `prompt`, `answer`, `retry`, `agent`, `filter`, `digest`.

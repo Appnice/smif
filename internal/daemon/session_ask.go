@@ -74,7 +74,7 @@ func (d *Daemon) forkTarget(s store.Presence) (agent, cwd string, err error) {
 // sessionSend is session.send (human only): type into an idle session, or
 // ask a fork of a busy or waiting one.
 func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.SessionSendParams) (*api.SessionSendResult, error) {
-	text, err := checkPrompt(p.Text)
+	text, err := checkPrompt(d.expandPrompt(p.Text))
 	if err != nil {
 		return nil, err
 	}

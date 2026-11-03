@@ -259,6 +259,22 @@ func (d *Daemon) registerMethods() {
 		}
 		return d.sessionList()
 	})
+	s.Handle("prompts.list", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		return d.savedPrompts(), nil
+	})
+	s.Handle("session.new", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		var p api.SessionNewParams
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		return d.sessionNew(ctx, p)
+	})
 	s.Handle("session.send", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
 		if err := humanOnly(c); err != nil {
 			return nil, err

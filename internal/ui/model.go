@@ -168,6 +168,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onTail(msg)
 	case focusedMsg:
 		m.onFocused(msg)
+	case openedMsg:
+		m.onOpened(msg)
 	case sentMsg:
 		return m, m.onSent(msg)
 	case transcriptMsg:
@@ -193,6 +195,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.item.draft.insert([]rune(msg.Content))
 		case m.homeActive() && m.home.typing:
 			m.home.draft.insert([]rune(msg.Content))
+		case m.homeActive() && m.home.newing:
+			m.home.newName.insert([]rune(strings.ReplaceAll(msg.Content, "\n", " ")))
 		case m.homeActive() && m.home.filtering:
 			m.home.filter.insert([]rune(strings.ReplaceAll(msg.Content, "\n", " ")))
 		}

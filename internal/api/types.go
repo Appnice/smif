@@ -275,6 +275,21 @@ type SessionPromptParams struct {
 	Text string `json:"text"`
 }
 
+// SavedPrompt is one of the human's saved prompts (prompts.list, ADR-0015).
+type SavedPrompt struct {
+	Name string `json:"name"`
+	Text string `json:"text"`
+}
+
+// SessionNewParams is session.new: open a new terminal tab that runs claude
+// in Dir, named Name (ADR-0015). Term picks the terminal ("Apple_Terminal",
+// "iTerm.app", "tmux"; "" = the daemon's default).
+type SessionNewParams struct {
+	Dir  string `json:"dir"`
+	Name string `json:"name,omitempty"`
+	Term string `json:"term,omitempty"`
+}
+
 // SessionFocusParams is session.focus: bring the session's terminal tab to
 // the front.
 type SessionFocusParams struct {

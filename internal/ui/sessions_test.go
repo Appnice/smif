@@ -32,6 +32,11 @@ func (f *fakePrompter) SendSession(ctx context.Context, id, text string) (*api.S
 	return &api.SessionSendResult{Mode: mode, Agent: "cafe", SessionID: id}, nil
 }
 
+func (f *fakePrompter) NewSession(ctx context.Context, dir, name, term string) error {
+	f.prompts = append(f.prompts, "new "+dir+" "+name+" "+term)
+	return nil
+}
+
 func (f *fakePrompter) FocusSession(ctx context.Context, id string) error {
 	f.prompts = append(f.prompts, "focus "+id)
 	return nil
@@ -291,5 +296,49 @@ func TestSessionNewAnswerWhileSelected(t *testing.T) {
 	key(m, "j", "k") // away and back
 	if out := view(m); strings.Contains(out, "1 new") {
 		t.Fatalf("moving onto the session did not read it:\n%s", out)
+	}
+}
+
+// p on a session: the saved prompts, sent like s; n: a new session in the
+// selected session's folder and terminal, with the name typed in.
+func TestSavedPromptsAndNewSession(t *testing.T) {
+	m, f := newSessionModel(t)
+	key(m, "j") // release, idle
+	key(m, "p")
+	if !strings.Contains(m.Status(), "No saved prompts") {
+		t.Fatalf("p without prompts: %q", m.Status())
+	}
+	saved := []api.SavedPrompt{{Name: "review", Text: "review your last change"}, {Name: "tests", Text: "run the tests and report"}}
+	m.snap.Prompts = saved
+	for i := range f.snaps {
+		f.snaps[i].Prompts = saved // the refresh after a send keeps them
+	}
+	key(m, "p")
+	out := view(m)
+	for _, want := range []string{"saved prompts", "1 review", "2 tests", "run the tests and report", "enter or 1-9 sends"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("picker lacks %q:\n%s", want, out)
+		}
+	}
+	golden(t, "home_session_prompts_120x40.golden", out)
+	key(m, "2")
+	if m.home.picking || len(f.prompts) != 1 || f.prompts[0] != "idle-session-0001 run the tests and report" {
+		t.Fatalf("picked: %v %q", m.home.picking, f.prompts)
+	}
+	key(m, "p", "down", "up", "enter")
+	if len(f.prompts) != 2 || f.prompts[1] != "idle-session-0001 review your last change" {
+		t.Fatalf("picked with enter: %q", f.prompts)
+	}
+	key(m, "n")
+	if !m.home.newing || !strings.Contains(view(m), "new session in /r/cafe · name:") {
+		t.Fatalf("n:\n%s", view(m))
+	}
+	key(m, "api", "enter")
+	if m.home.newing || len(f.prompts) != 3 || f.prompts[2] != "new /r/cafe api Apple_Terminal" || !strings.HasPrefix(m.Status(), "Opened api in /r/cafe") {
+		t.Fatalf("new session: %q %q", f.prompts, m.Status())
+	}
+	key(m, "n", "esc")
+	if m.home.newing || len(f.prompts) != 3 {
+		t.Fatal("esc did not cancel the new session")
 	}
 }

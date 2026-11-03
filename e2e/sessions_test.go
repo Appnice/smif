@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -403,5 +404,114 @@ func TestSessionNotify(t *testing.T) {
 	c = api.Counts{}
 	if err := ac.Call("inbox.counts", api.CountsParams{}, &c, 5e9); err != nil || len(c.SessionsAnswered) != 0 {
 		t.Fatalf("agent counts: %v %+v", err, c)
+	}
+}
+
+// WATCHDOGS, SAVED PROMPTS, NEW SESSIONS (ADR-0015): a working session that
+// writes nothing, or works long, is told once; a waiting one is reminded.
+// @name in session.send stands for a saved prompt (a file mention that is
+// no saved prompt stays). session.new opens claude in a folder, human only.
+func TestWatchdogsPromptsNew(t *testing.T) {
+	typed := filepath.Join(t.TempDir(), "typed.jsonl")
+	e := NewEnv(t, `terminal = "log:`+typed+`"`+"\nremind_waiting = \"2s\"\nalert_silent = \"2s\"\nalert_long_turn = \"3s\"",
+		"[prompts]\ntests = \"run the tests and report\"\n", AgentSpec{ID: "app", Rules: digestRule()})
+	e.Start()
+	dir := filepath.Join(e.Home, ".claude", "sessions")
+	pdir := filepath.Join(e.Home, ".claude", "projects", "-r-app")
+	for _, d := range []string{dir, pdir} {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status := func(s string) {
+		t.Helper()
+		b, _ := json.Marshal(map[string]any{"pid": os.Getpid(), "sessionId": "dog-session-01", "cwd": e.Repos["app"], "kind": "interactive",
+			"name": "build", "status": s, "startedAt": time.Now().UnixMilli() - 60000, "statusUpdatedAt": time.Now().UnixMilli()})
+		if err := os.WriteFile(filepath.Join(dir, "d.json"), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	at := time.Now().Add(-2 * time.Minute).UTC().Format(time.RFC3339)
+	tp := filepath.Join(pdir, "dog-session-01.jsonl")
+	if err := os.WriteFile(tp, []byte(`{"type":"user","timestamp":"`+at+`","message":{"content":"build it"}}`+"\n"+
+		`{"type":"assistant","timestamp":"`+at+`","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"make release"}}]}}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-time.Minute)
+	if err := os.Chtimes(tp, old, old); err != nil {
+		t.Fatal(err)
+	}
+	notes := func() string {
+		b, _ := os.ReadFile(filepath.Join(e.Root, "notify.jsonl"))
+		return string(b)
+	}
+	waitFor := func(what string, ok func() bool) {
+		t.Helper()
+		for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+			if ok() {
+				return
+			}
+		}
+		t.Fatalf("no %s; notifications:\n%s", what, notes())
+	}
+	status("busy")
+	waitFor("silent and long alerts", func() bool {
+		n := notes()
+		return strings.Contains(n, `"kind":"session_silent","agent":"build","summary":"nothing written for 1m: Bash: make release"`) &&
+			strings.Contains(n, `"kind":"session_long","agent":"build","summary":"works 2m on: build it"`)
+	})
+	time.Sleep(3 * time.Second)
+	if n := notes(); strings.Count(n, "session_silent") != 1 || strings.Count(n, "session_long") != 1 {
+		t.Fatalf("an alert came twice for one turn:\n%s", n)
+	}
+	status("waiting")
+	waitFor("two reminders", func() bool { return strings.Count(notes(), `"kind":"session_reminder","agent":"build"`) >= 2 })
+	if !regexp.MustCompile(`"summary":"still waits \(\d+s\): Bash: make release"`).MatchString(notes()) {
+		t.Fatalf("reminder text:\n%s", notes())
+	}
+
+	// Saved prompts: listed for the human, @name expands, a file mention stays.
+	var ps []api.SavedPrompt
+	e.Call("prompts.list", nil, &ps)
+	if len(ps) != 1 || ps[0].Name != "tests" || ps[0].Text != "run the tests and report" {
+		t.Fatalf("prompts: %+v", ps)
+	}
+	status("idle")
+	e.Call("presence.update", api.PresenceParams{Event: "idle", Agent: "app", SessionID: "dog-session-01", PID: os.Getpid(),
+		TTY: "/dev/ttys998", Term: "Apple_Terminal"}, nil)
+	var res api.SessionSendResult
+	e.Call("session.send", api.SessionSendParams{SessionID: "dog-session-01", Text: "@tests then push"}, &res)
+	time.Sleep(10 * time.Millisecond)
+	status("idle") // typing turned it busy; it is idle again
+	e.Call("session.send", api.SessionSendParams{SessionID: "dog-session-01", Text: "@README.md fix the typo"}, &res)
+	if b, _ := os.ReadFile(typed); !strings.Contains(string(b), `"text":"run the tests and report then push"`) ||
+		!strings.Contains(string(b), `"text":"@README.md fix the typo"`) {
+		t.Fatalf("typed: %s", b)
+	}
+
+	// session.new: claude in the folder, named; agents cannot; bad input is refused.
+	var x any
+	e.Call("session.new", api.SessionNewParams{Dir: e.Repos["app"], Name: "api work", Term: "tmux"}, &x)
+	if b, _ := os.ReadFile(typed); !strings.Contains(string(b), `"open":true`) || !strings.Contains(string(b), `"--name","api work"`) ||
+		!strings.Contains(string(b), `"term":"tmux"`) {
+		t.Fatalf("new session: %s", b)
+	}
+	c, err := e.Client()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	for _, p := range []api.SessionNewParams{{Dir: "relative/dir"}, {Dir: e.Repos["app"], Name: "x; rm -rf /"}, {Dir: e.Repos["app"], Term: "xterm"}} {
+		if err := c.Call("session.new", p, &x, 5e9); !api.IsCode(err, api.CodeParams) {
+			t.Errorf("session.new %+v: %v", p, err)
+		}
+	}
+	ac := e.AgentClient("app")
+	defer ac.Close()
+	if err := ac.Call("session.new", api.SessionNewParams{Dir: e.Repos["app"]}, &x, 5e9); !api.IsCode(err, api.CodeForbidden) {
+		t.Errorf("an agent opened a session: %v", err)
+	}
+	if err := ac.Call("prompts.list", nil, &x, 5e9); !api.IsCode(err, api.CodeForbidden) {
+		t.Errorf("an agent read the prompts: %v", err)
 	}
 }

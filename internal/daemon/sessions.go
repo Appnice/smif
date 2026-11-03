@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"syscall"
@@ -147,6 +149,43 @@ func (d *Daemon) sessionList() ([]api.SessionView, error) {
 	return out, nil
 }
 
+// sessionNameRe is a name for a new session: letters, digits, spaces and
+// . _ & -, at most 40.
+var sessionNameRe = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N} ._&-]{0,39}$`)
+
+// sessionNew opens a new terminal tab that runs claude in a folder, named
+// (session.new, human only, ADR-0015). Only the folder and the name come
+// from the call; the command is the configured claude.
+func (d *Daemon) sessionNew(ctx context.Context, p api.SessionNewParams) (any, error) {
+	dir := filepath.Clean(p.Dir)
+	if !filepath.IsAbs(dir) {
+		return nil, api.Errf(api.CodeParams, "the folder must be an absolute path")
+	}
+	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
+		return nil, api.Errf(api.CodeParams, "no folder %s", dir)
+	}
+	name := strings.TrimSpace(p.Name)
+	if name != "" && !sessionNameRe.MatchString(name) {
+		return nil, api.Errf(api.CodeParams, "a session name is letters, digits, spaces and . _ & -, at most 40")
+	}
+	switch p.Term {
+	case "", termApple, termITerm, termTmux:
+	default:
+		return nil, api.Errf(api.CodeParams, "new sessions open in Terminal.app, iTerm2 or tmux, not %s", p.Term)
+	}
+	argv := []string{d.Config().Defaults.ClaudeCommand}
+	if name != "" {
+		argv = append(argv, "--name", name)
+	}
+	if err := d.terminal.Open(ctx, p.Term, dir, argv); err != nil {
+		return nil, api.Errf(api.CodeUnavailable, "%v", err)
+	}
+	_ = d.store.Update(func(tx *store.Tx) error {
+		return tx.Audit("session.new", agentForRepo(d.Config(), gitRoot(dir)), "", "", "", map[string]any{"dir": dir, "name": name, "term": p.Term})
+	})
+	return map[string]any{"ok": true}, nil
+}
+
 // sessionFocus brings a live session's Terminal tab to the front
 // (session.focus, human only).
 func (d *Daemon) sessionFocus(ctx context.Context, p api.SessionFocusParams) (any, error) {
@@ -235,8 +274,37 @@ func checkPrompt(text string) (string, error) {
 	return t, nil
 }
 
+// savedPrompts are the config's saved prompts, sorted by name (ADR-0015).
+func (d *Daemon) savedPrompts() []api.SavedPrompt {
+	out := []api.SavedPrompt{}
+	for name, text := range d.Config().Prompts {
+		out = append(out, api.SavedPrompt{Name: name, Text: text})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// expandPrompt turns "@name rest" into the saved prompt name, then rest.
+// Text whose first word is no saved prompt stays as it is: "@README.md"
+// is Claude Code's file mention.
+func (d *Daemon) expandPrompt(text string) string {
+	t := strings.TrimSpace(text)
+	if !strings.HasPrefix(t, "@") {
+		return text
+	}
+	name, rest, _ := strings.Cut(t[1:], " ")
+	saved, ok := d.Config().Prompts[name]
+	if !ok {
+		return text
+	}
+	if rest = strings.TrimSpace(rest); rest != "" {
+		return saved + " " + rest
+	}
+	return saved
+}
+
 func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (*api.SessionPromptResult, error) {
-	text, err := checkPrompt(p.Text)
+	text, err := checkPrompt(d.expandPrompt(p.Text))
 	if err != nil {
 		return nil, err
 	}

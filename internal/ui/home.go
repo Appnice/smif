@@ -58,6 +58,12 @@ type homeState struct {
 	full       bool                  // the selected session's whole answer fills the screen
 	fullScroll int
 	hideQuiet  bool // z: idle sessions whose answer was read are hidden
+	picking    bool // p: the saved prompts are open (quick.go)
+	pickIdx    int
+	newing     bool // n: the new session's name is asked (quick.go)
+	newName    lineInput
+	newDir     string
+	newTerm    string
 }
 
 // previewEntry caches the thread of a previewed message.
@@ -366,6 +372,12 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 	if m.home.typing {
 		return m.homeAnswerKey(msg)
 	}
+	if m.home.picking {
+		return m.pickKey(k)
+	}
+	if m.home.newing {
+		return m.newKey(msg)
+	}
 	if m.home.filtering {
 		switch k {
 		case "enter":
@@ -451,6 +463,12 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 		if r != nil && r.sess != nil {
 			return m.focusSession(r.sess)
 		}
+	case "p":
+		if r != nil && r.sess != nil {
+			m.pickOpen(r)
+		}
+	case "n":
+		m.newOpen()
 	case "enter":
 		if r == nil {
 			return nil
@@ -1052,6 +1070,12 @@ func (m *Model) homeKeys() string {
 	if m.home.filtering {
 		return "type to filter · enter keep · esc clear"
 	}
+	if m.home.newing {
+		return m.newLine()
+	}
+	if m.home.picking {
+		return "↑↓ choose · enter or 1-9 sends · esc closes"
+	}
 	if m.prompt != nil {
 		return "tab complete · ↑↓ choose · enter run · esc close"
 	}
@@ -1071,6 +1095,10 @@ func (m *Model) homeKeys() string {
 		case canWrite(r.sess):
 			ks = append(ks, "s ask a fork")
 		}
+		if canWrite(r.sess) && len(m.prompts()) > 0 {
+			ks = append(ks, "p prompts")
+		}
+		ks = append(ks, "n new session")
 		if focus && r.sess.Turn != "waiting" {
 			ks = append(ks, "o its tab")
 		}

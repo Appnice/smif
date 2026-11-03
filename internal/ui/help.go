@@ -39,6 +39,8 @@ var helpText = []helpEntry{
 	{"e", "mark the handled items read (the • dot)"},
 	{"s", "on a session: write to it under the preview (idle: typed into its tab; busy or waiting: a fork of the session answers, nothing is typed)"},
 	{"o", "on a session: bring its terminal tab to the front (a waiting session: answer its permission prompt or question there)"},
+	{"p", "on a session: the saved prompts ([prompts] in the config); enter or 1-9 sends one the way s would. In a prompt, @name stands for it"},
+	{"n", "open a new terminal tab that runs claude in the selected session's folder (asks for its name)"},
 	{"v", "dashboard: the six-panel overview (agents, events); v or esc there comes back"},
 	{"i, d, r, ?, q", "inbox, digest, refresh, this help, quit"},
 

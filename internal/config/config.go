@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	toml "github.com/pelletier/go-toml/v2"
 
@@ -53,6 +54,9 @@ type Config struct {
 	Defaults Defaults           `toml:"defaults"`
 	Profiles map[string]Profile `toml:"profiles"`
 	Agents   map[string]*Agent  `toml:"agents"`
+	// Prompts are the human's saved prompts (ADR-0015): name → one line of
+	// text, sent to a session with `p` in the UI or as @name.
+	Prompts map[string]string `toml:"prompts"`
 
 	// Path is where the config was loaded from (not part of the file).
 	Path string `toml:"-"`
@@ -71,6 +75,13 @@ type Daemon struct {
 	// (ADR-0014): "waiting,answered" (default), "waiting", "answered" or
 	// "none".
 	SessionNotify string `toml:"session_notify"`
+	// Watchdogs (ADR-0015), each a duration or "off": remind again while a
+	// session waits in its tab (every RemindWaiting, at most 3 times), and
+	// tell once when a working session writes nothing for AlertSilent or
+	// works longer than AlertLongTurn.
+	RemindWaiting string `toml:"remind_waiting"`
+	AlertSilent   string `toml:"alert_silent"`
+	AlertLongTurn string `toml:"alert_long_turn"`
 	// Terminal types the human's prompts into idle sessions (ADR-0012):
 	// "auto" (Terminal.app on macOS), "none" (off) or "log:<path>" (tests).
 	Terminal           string     `toml:"terminal"`
@@ -224,6 +235,25 @@ var forbiddenExtra = []string{
 	"--safe-mode", "--bare", "--restricted", "--brief", "--chrome", "--name", "-n",
 }
 
+// promptNameRe is a saved prompt's name.
+var promptNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
+
+// WatchdogEvery reads a watchdog setting: a duration of a second or more,
+// or "off" (0).
+func WatchdogEvery(v string) (time.Duration, error) {
+	if v == "off" {
+		return 0, nil
+	}
+	d, err := time.ParseDuration(v)
+	switch {
+	case err != nil:
+		return 0, fmt.Errorf("%q is not a duration or \"off\"", v)
+	case d < time.Second:
+		return 0, fmt.Errorf("%q is under 1s; use \"off\" to turn it off", v)
+	}
+	return d, nil
+}
+
 // Load reads, decodes, defaults and validates a config file.
 func Load(file string) (*Config, error) {
 	if file == "" {
@@ -285,6 +315,15 @@ func (c *Config) applyDefaults() {
 	}
 	if d.SessionNotify == "" {
 		d.SessionNotify = "waiting,answered"
+	}
+	if d.RemindWaiting == "" {
+		d.RemindWaiting = "10m"
+	}
+	if d.AlertSilent == "" {
+		d.AlertSilent = "10m"
+	}
+	if d.AlertLongTurn == "" {
+		d.AlertLongTurn = "off"
 	}
 	if d.Notify == "" {
 		d.Notify = "os"
@@ -474,6 +513,20 @@ func (c *Config) Validate() error {
 	n := c.Daemon.Notify
 	if n != "os" && n != "none" && !strings.HasPrefix(n, "log:") {
 		add("daemon.notify must be \"os\", \"none\" or \"log:<path>\"")
+	}
+	for key, v := range map[string]string{"remind_waiting": c.Daemon.RemindWaiting, "alert_silent": c.Daemon.AlertSilent,
+		"alert_long_turn": c.Daemon.AlertLongTurn} {
+		if _, err := WatchdogEvery(v); err != nil {
+			add("daemon.%s: %v", key, err)
+		}
+	}
+	for name, text := range c.Prompts {
+		switch {
+		case !promptNameRe.MatchString(name):
+			add("prompts.%s: a name is a-z, 0-9, - and _, at most 32", name)
+		case strings.TrimSpace(text) == "" || strings.ContainsAny(text, "\n\r\t") || utf8.RuneCountInString(text) > 4000:
+			add("prompts.%s: one line of text, at most 4000 characters", name)
+		}
 	}
 	switch c.Daemon.SessionNotify {
 	case "waiting,answered", "answered,waiting", "waiting", "answered", "none":
