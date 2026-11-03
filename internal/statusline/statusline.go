@@ -53,13 +53,43 @@ func Segment(c *api.Counts, err error) string {
 		parts = append(parts, "claude unavailable")
 	}
 	name := c.Agent
+	sessions := sessionParts(c)
 	if len(parts) == 0 {
-		return "" // nothing to act on: stay out of the status line
+		return sessions // "" when nothing needs you: stay out of the status line
 	}
-	if name == "" {
-		return "mail: " + strings.Join(parts, " · ")
+	mail := "mail: " + strings.Join(parts, " · ")
+	if name != "" {
+		mail = "mail: " + name + " " + strings.Join(parts, " · ")
 	}
-	return "mail: " + name + " " + strings.Join(parts, " · ")
+	if sessions == "" {
+		return mail
+	}
+	return sessions + " · " + mail
+}
+
+// maxNames is how many session names the status line spells out.
+const maxNames = 3
+
+// sessionParts names the other sessions that need you: "! mifi, digi
+// wait · ● rfc answered" (ADR-0014).
+func sessionParts(c *api.Counts) string {
+	names := func(ns []string) string {
+		if len(ns) > maxNames {
+			return strings.Join(ns[:maxNames], ", ") + fmt.Sprintf(" +%d", len(ns)-maxNames)
+		}
+		return strings.Join(ns, ", ")
+	}
+	var out []string
+	switch n := len(c.SessionsWaiting); {
+	case n == 1:
+		out = append(out, "! "+names(c.SessionsWaiting)+" waits")
+	case n > 1:
+		out = append(out, "! "+names(c.SessionsWaiting)+" wait")
+	}
+	if len(c.SessionsAnswered) > 0 {
+		out = append(out, "● "+names(c.SessionsAnswered)+" answered")
+	}
+	return strings.Join(out, " · ")
 }
 
 // RunWrapped runs the user's original status-line command with the same

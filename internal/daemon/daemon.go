@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/appnice/mailroom/internal/api"
@@ -57,6 +58,7 @@ type Daemon struct {
 	blobs     *blob.Store
 	audit     *audit.Log
 	notifier  notify.Notifier
+	lock      *os.File    // daemon.lock, held while the daemon lives
 	terminal  terminal    // types the human's prompts into sessions (ADR-0012)
 	promptMu  sync.Mutex  // one prompt typed at a time
 	procs     procCache   // tty and terminal of discovered claude processes
@@ -117,7 +119,17 @@ func New(o Options) (*Daemon, error) {
 			return nil, err
 		}
 	}
-	d := &Daemon{opts: o, dataDir: o.DataDir, socket: o.Socket, startedAt: time.Now(),
+	// One daemon per data dir: a second one (started by the UI while the
+	// service starts too) stops here, before it opens the store.
+	lock, err := os.OpenFile(filepath.Join(o.DataDir, "daemon.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		lock.Close()
+		return nil, fmt.Errorf("another daemon runs with the data dir %s", o.DataDir)
+	}
+	d := &Daemon{opts: o, dataDir: o.DataDir, socket: o.Socket, startedAt: time.Now(), lock: lock,
 		running: map[string]*activeRun{}, directLocks: map[string]string{}, waiters: map[string][]chan struct{}{},
 		wake: make(chan struct{}, 1)}
 	d.cfg.Store(cfg)
@@ -197,10 +209,11 @@ func (d *Daemon) Start() error {
 	if err := d.srv.Listen(d.socket); err != nil {
 		return err
 	}
-	d.wg.Add(3)
+	d.wg.Add(4)
 	go func() { defer d.wg.Done(); _ = d.srv.Serve() }()
 	go func() { defer d.wg.Done(); d.dispatchLoop() }()
 	go func() { defer d.wg.Done(); d.housekeepingLoop() }()
+	go func() { defer d.wg.Done(); d.sessionWatchLoop() }()
 	d.log.Info("daemon started", "version", Version, "socket", d.socket, "data_dir", d.dataDir, "pid", os.Getpid(),
 		"agents", d.Config().AgentIDs(), "claude_ok", d.isClaudeOK())
 	d.kick()
@@ -221,6 +234,7 @@ func (d *Daemon) Stop() {
 	d.wg.Wait()
 	d.store.Close()
 	d.logFile.Close()
+	d.lock.Close()
 }
 
 // Wait blocks until the daemon stops.

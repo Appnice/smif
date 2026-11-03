@@ -335,6 +335,9 @@ type SessionPromptResult struct {
 type CountsParams struct {
 	Cwd   string `json:"cwd,omitempty"`
 	Agent string `json:"agent,omitempty"`
+	// SessionID is the asking session (the status line): it is left out of
+	// SessionsWaiting and SessionsAnswered.
+	SessionID string `json:"session_id,omitempty"`
 }
 
 // Counts is inbox.counts and mailroom_status.
@@ -349,6 +352,11 @@ type Counts struct {
 	GlobalNeedsHuman int    `json:"global_needs_human"`
 	GlobalDLQ        int    `json:"global_dlq"`
 	ClaudeOK         bool   `json:"claude_ok"`
+	// The other live sessions that need the human (human callers only,
+	// ADR-0014): the names of those that wait in their tab, and of those
+	// with an answer the human has not seen (the UI's seen file).
+	SessionsWaiting  []string `json:"sessions_waiting,omitempty"`
+	SessionsAnswered []string `json:"sessions_answered,omitempty"`
 }
 
 // DigestParams is digest.get.

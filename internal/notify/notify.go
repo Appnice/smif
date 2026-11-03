@@ -17,7 +17,7 @@ import (
 
 // Event is one notification.
 type Event struct {
-	Kind      string    `json:"kind"` // needs_human | dead_letter | budget | claude_unavailable
+	Kind      string    `json:"kind"` // needs_human | dead_letter | budget | claude_unavailable | session_waiting | session_answered
 	Agent     string    `json:"agent"`
 	Summary   string    `json:"summary"`
 	MessageID string    `json:"message_id,omitempty"`
@@ -84,6 +84,10 @@ func title(e Event) string {
 		return "Mailroom: " + e.Agent + " dead letter"
 	case "budget":
 		return "Mailroom: " + e.Agent + " budget exhausted"
+	case "session_waiting":
+		return "Mailroom: " + e.Agent + " waits for you"
+	case "session_answered":
+		return "Mailroom: " + e.Agent + " answered"
 	default:
 		return "Mailroom: " + e.Agent
 	}

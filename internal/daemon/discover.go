@@ -321,20 +321,32 @@ func (d *Daemon) sessionsCanary() (state, detail string) {
 	if parsed == 0 {
 		return "changed", fmt.Sprintf("none of %d session files has pid, sessionId and kind", len(files))
 	}
-	read, turns := 0, 0
+	read, turns, steps, bad := 0, 0, 0, 0
 	for _, id := range ids {
 		p := transcriptPath(id)
 		if p == "" {
 			continue
 		}
 		read++
-		turns += len(presence.Conversation(p, 4))
+		ts, act := presence.Read(p, 4)
+		turns += len(ts)
+		// Tool calls (ADR-0014): each needs its id and name, or the step
+		// that runs and its result can no longer be matched.
+		for _, s := range act.Steps {
+			steps++
+			if s.ID == "" || s.Tool == "" {
+				bad++
+			}
+		}
 		if read == 3 {
 			break
 		}
 	}
-	if read > 0 && turns == 0 {
+	switch {
+	case read > 0 && turns == 0:
 		return "changed", fmt.Sprintf("%d transcripts read, no prompt or answer found in them", read)
+	case bad > 0:
+		return "changed", fmt.Sprintf("%d of %d tool calls in the transcripts have no id or name: the live step cannot be read", bad, steps)
 	}
-	return "ok", fmt.Sprintf("%d live sessions, %d transcripts read", live, read)
+	return "ok", fmt.Sprintf("%d live sessions, %d transcripts read, %d tool calls", live, read, steps)
 }

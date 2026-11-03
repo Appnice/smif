@@ -22,6 +22,7 @@ func cmdSessions() *cobra.Command {
 		Short: "List the live Claude Code sessions: agent, idle or busy, terminal",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ensureDaemon()
 			var ss []api.SessionView
 			if err := call("session.list", nil, &ss, 10*time.Second); err != nil {
 				return err

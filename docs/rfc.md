@@ -334,7 +334,7 @@ Four surfaces: the daemon socket API, an MCP server for sessions, a CLI for huma
 | `presence.update` | From hooks: session start, heartbeat, end, and the turn (`busy` on `UserPromptSubmit`, `idle` on `Stop`) with the claude pid, tty and terminal, and the session's name and last prompt from its transcript (human token only); `session.list` also reads Claude Code's session files **(ADR-0012)**; `agent` (from `MAILROOM_AGENT`) wins over `cwd` |
 | `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their turn, last answer and what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux) **(ADR-0012)** |
 | `stats.get` | Human only: counts over a window, per agent and day (ADR-0011) |
-| `inbox.counts` | Per-agent counters for the status line |
+| `inbox.counts` | Per-agent counters for the status line; for the human, also the other sessions that wait or answered (**ADR-0014**) |
 | `digest.get` | Summaries of handled items since a cursor (human pull only); optional `until` bounds the advance **(ADR-0008)** |
 | `audit.since` | Audit rows after a cursor, for the live feed of `mailroom ui` and `mailroom watch` (human only) **(ADR-0008)** |
 | `blob.put` / `blob.get` | Attachment storage |
@@ -374,9 +374,9 @@ There is deliberately no MCP tool that reads another agent's inbound mail or the
 All read commands support `--json`.
 ### 7.4 Hooks, status line and slash command
 - `mailroom install` adds hooks for `SessionStart`, `SessionEnd`, `UserPromptSubmit` and `Stop`, each running `mailroom hook <event>`. Hook commands read the hook payload from stdin, call `presence.update`, print nothing, and always exit 0 within 200 ms (fail open, log errors). Printing nothing is mandatory: hook stdout can enter the session context.
-- Status line: `mailroom statusline` prints one segment, e.g. `mail: puzzle 1 running, 2 handled, 1 needs you`. If the user already has a `statusLine` command, install wraps it (`mailroom statusline --wrap '<existing command>'`) and appends the segment. The status line call also counts as a presence heartbeat.
+- Status line: `mailroom statusline` prints one segment, e.g. `! shop waits · ● docs answered · mail: puzzle 1 running, 2 handled, 1 needs you`: first the other live sessions that wait in their tab or have an unseen answer **(ADR-0014)**, then the mail counts. If the user already has a `statusLine` command, install wraps it (`mailroom statusline --wrap '<existing command>'`) and appends the segment. The status line call also counts as a presence heartbeat.
 - Slash command `~/.claude/commands/mailroom.md` runs `mailroom digest --cwd "$PWD" --since last` through the command file's shell-execution syntax, so digest content enters the session only when the human types `/mailroom`.
-- Notifications: `terminal-notifier` or `osascript` on macOS, `notify-send` on Linux, for `needs_human`, dead letters and budget exhaustion. Title = agent, body = summary (≤ 280 chars), never the raw inbound body.
+- Notifications: `terminal-notifier` or `osascript` on macOS, `notify-send` on Linux, for `needs_human`, dead letters and budget exhaustion. Title = agent, body = summary (≤ 280 chars), never the raw inbound body. Also for a session that starts to wait in its tab, or answers after a turn of 30 s or more (`daemon.session_notify`, **ADR-0014**); title = the session's name, body = what it asks for or the answer's first line.
 ### 7.5 Command handler contract
 Stdin: the envelope JSON. Env: `MAILROOM_AGENT`, `MAILROOM_MESSAGE_ID`, `MAILROOM_ATTEMPT`, `MAILROOM_BLOB_DIR`. Cwd: the agent's repo. Stdout: one JSON object `{status, summary, reply, reply_data, artifacts}`. Exit non-zero, timeout (default 30 s) or invalid JSON is a failed attempt; stderr is stored on the run.
 ### 7.6 Configuration
@@ -388,6 +388,7 @@ command_pool = 4
 default_ttl = "24h"
 presence_ttl = "30m"
 notify = "os"
+session_notify = "waiting,answered"  # or "waiting", "answered", "none" (ADR-0014)
 terminal = "auto"          # session prompts: "auto" (Terminal.app, iTerm2, tmux), "none", "log:<path>" (ADR-0012)
 
 [defaults]

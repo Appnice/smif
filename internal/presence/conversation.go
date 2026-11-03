@@ -239,6 +239,20 @@ func Read(path string, limit int) ([]Turn, Activity) {
 	return turns, act
 }
 
+// StepText is a step in words: "Bash: git push origin main", a question
+// as itself.
+func StepText(tool, target string) string {
+	switch {
+	case tool == "AskUserQuestion" && target != "":
+		return "asks: " + target
+	case tool == "ExitPlanMode":
+		return "a plan to approve"
+	case target == "":
+		return tool
+	}
+	return tool + ": " + target
+}
+
 // toolName is a tool's short name: an MCP tool (mcp__server__tool) loses
 // its server prefix.
 func toolName(name string) string {

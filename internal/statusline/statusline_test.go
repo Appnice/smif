@@ -18,6 +18,11 @@ func TestSegment(t *testing.T) {
 			"mail: cafe 1 running · 2 handled · 1 needs you · 2 need you elsewhere"},
 		{api.Counts{Agent: "web", RepliesReady: 1, DirectLock: true, ClaudeOK: true}, "mail: web 1 reply ready · worker holds repo"},
 		{api.Counts{GlobalDLQ: 2}, "mail: 2 dead · claude unavailable"},
+		{api.Counts{ClaudeOK: true, SessionsWaiting: []string{"mifi"}}, "! mifi waits"},
+		{api.Counts{ClaudeOK: true, SessionsWaiting: []string{"a", "b", "c", "d"}, SessionsAnswered: []string{"rfc"}},
+			"! a, b, c +1 wait · ● rfc answered"},
+		{api.Counts{Agent: "web", NeedsHuman: 1, GlobalNeedsHuman: 1, ClaudeOK: true, SessionsAnswered: []string{"rfc"}},
+			"● rfc answered · mail: web 1 needs you"},
 	}
 	for _, c := range cases {
 		if got := Segment(&c.c, nil); got != c.want {

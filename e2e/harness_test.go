@@ -103,6 +103,9 @@ func NewEnv(t *testing.T, daemonExtra, profiles string, agents ...AgentSpec) *En
 		"MAILROOM_FAKE_LOG="+filepath.Join(root, "fake"),
 		"CLAUDE_CONFIG_DIR="+filepath.Join(e.Home, ".claude"),
 		"GIT_CONFIG_GLOBAL="+filepath.Join(root, "gitconfig"),
+		// The harness starts its own daemon; a CLI call must not start
+		// another one that outlives the test (TestAutostart turns it on).
+		"MAILROOM_NO_AUTOSTART=1",
 	)
 	os.WriteFile(filepath.Join(root, "gitconfig"), []byte("[user]\n\temail = test@example.com\n\tname = Test\n[init]\n\tdefaultBranch = main\n"), 0o644)
 	var cfg strings.Builder

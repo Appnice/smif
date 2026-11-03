@@ -1,4 +1,4 @@
-# ADR-0014: What a session does now, on the home screen
+# ADR-0014: What a session does now, and telling the human
 
 **Status:** accepted, 2026-11-03.
 
@@ -47,12 +47,35 @@ subscription nothing is billed.
   - Empty groups take no room.
 - **Live.** The UI already polls once a second (ADR-0007). Timers and steps redraw on each poll, so no push channel
   is added.
+- **When the human looks elsewhere.**
+  - Status line: `inbox.counts` for the human also names the other live sessions that wait in their tab, and those
+    with an answer the human has not seen. "Not seen" uses the UI's seen file; with no seen entry, it means an
+    answer younger than 15 minutes. The status line puts them first: `! shop waits · ● docs answered`. An agent's
+    counts never name sessions.
+  - Notifications: the daemon looks at the sessions every 2 s. It notifies when a session starts to wait (body:
+    what it asks for), and when a session that worked 30 s or more answers (body: the first line of the answer).
+    A session it sees for the first time is not news. `daemon.session_notify` is `"waiting,answered"` (default),
+    `"waiting"`, `"answered"` or `"none"`. The audit records only the kind and the session, never the text.
+- **No setup.**
+  - With no config file, the daemon runs with the defaults and no agents. The session view needs no agent; messages,
+    workers and forks do. `mailroom doctor` says so instead of failing.
+  - `mailroom` and `mailroom sessions` start the daemon in the background when none answers
+    (`MAILROOM_NO_AUTOSTART=1` turns this off). That daemon runs until a reboot; `mailroom install` makes it a
+    service.
+  - `daemon.lock` in the data dir lets one daemon run per data dir: a second one stops before it opens the store.
+- **Canary.** The doctor canary (ADR-0012) also checks that the tool calls in the transcripts it reads have an id and
+  a name. Without them, the step that runs cannot be matched to its result.
+- **Trial.** The trial ends on 16 November 2026. If its numbers (`mailroom stats`, the sessions line) show that the
+  mail part is not used, it moves behind a flag; the session view stays the product.
 
 **Limits.**
 
-- Transcripts and session files are not a documented interface (docs/compat.md). The doctor canary (ADR-0012)
-  catches a change of the session files, not of the tool records. A change there makes `now` empty, and the rows
+- Transcripts and session files are not a documented interface (docs/compat.md). The canary catches a change of the
+  session files and of the tool records' id and name. A change elsewhere can still make `now` empty; the rows then
   fall back to "thinking".
+- A session's status line redraws only when Claude Code redraws it (on that session's own activity), so an idle
+  session shows the others' state as of its last redraw. The notification covers that case.
+- A notification also comes for the session the human is looking at; Mailroom does not know which tab is in front.
 - Claude Code writes a tool call to the transcript a second or so after it starts (checked live on 2.1.316), so the
   step that runs shows with that delay plus the poll's second.
 - A long command that prints nothing also shows "silent"; the word does not mean stuck.
@@ -61,4 +84,9 @@ subscription nothing is billed.
 
 - `internal/presence` `TestReadActivity`: steps, targets, MCP names, pending, questions, sidechains.
 - `e2e/sessions_test.go` `TestSessionDiscovery`: the activity in `session.list` from a real file, with relative paths.
+  `TestSessionNotify`: no notification on first sight, then waiting and answered; the counts name others, not self,
+  and never for an agent; the canary on a tool call without an id.
+- `e2e/autostart_test.go` `TestAutostart`: no config, `mailroom sessions` starts the daemon, a second daemon stops on
+  the lock.
+- `internal/statusline` `TestSegment`: the session names in the segment.
 - `internal/ui/sessions_test.go`: busy, waiting and new rows, the previews (goldens), `tab`, `z`, the chat.

@@ -321,8 +321,11 @@ func (d *Daemon) registerMethods() {
 		}
 		if !c.IsHuman() {
 			p.Agent, p.Cwd = c.Agent, ""
+			return d.counts(p), nil
 		}
-		return d.counts(p), nil
+		out := d.counts(p)
+		out.SessionsWaiting, out.SessionsAnswered = d.sessionAttention(p.SessionID)
+		return out, nil
 	})
 	s.Handle("stats.get", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
 		if err := humanOnly(c); err != nil {

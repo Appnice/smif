@@ -303,3 +303,105 @@ func TestSessionDiscovery(t *testing.T) {
 		t.Fatalf("activity: %+v %+v", s, s.Activity)
 	}
 }
+
+// SESSION NOTIFY (ADR-0014): a session that starts to wait in its tab, or
+// answers after a long turn, raises an OS notification; the status line's
+// counts name the other sessions that wait or answered.
+func TestSessionNotify(t *testing.T) {
+	e := NewEnv(t, "", "", AgentSpec{ID: "app", Rules: digestRule()})
+	e.Start()
+	dir := filepath.Join(e.Home, ".claude", "sessions")
+	pdir := filepath.Join(e.Home, ".claude", "projects", "-r-app")
+	for _, d := range []string{dir, pdir} {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status := func(s string) {
+		t.Helper()
+		b, _ := json.Marshal(map[string]any{"pid": os.Getpid(), "sessionId": "note-session-1", "cwd": e.Repos["app"], "kind": "interactive",
+			"name": "shop", "status": s, "startedAt": time.Now().UnixMilli() - 60000, "statusUpdatedAt": time.Now().UnixMilli()})
+		if err := os.WriteFile(filepath.Join(dir, "n.json"), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	at := time.Now().Add(-2 * time.Minute).UTC().Format(time.RFC3339)
+	lines := []string{
+		`{"type":"user","timestamp":"` + at + `","message":{"content":"ship it"}}`,
+		`{"type":"assistant","timestamp":"` + at + `","message":{"content":[{"type":"tool_use","id":"p1","name":"Bash","input":{"command":"git push origin main"}}]}}`,
+	}
+	transcript := func(ls ...string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(pdir, "note-session-1.jsonl"), []byte(strings.Join(ls, "\n")+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notes := func() string {
+		b, _ := os.ReadFile(filepath.Join(e.Root, "notify.jsonl"))
+		return string(b)
+	}
+	waitFor := func(what string, ok func() bool) {
+		t.Helper()
+		for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+			if ok() {
+				return
+			}
+		}
+		t.Fatalf("no %s; notifications:\n%s", what, notes())
+	}
+	transcript(lines...)
+	status("busy")
+	time.Sleep(5 * time.Second) // the watcher sees it busy first: not news
+	if n := notes(); strings.Contains(n, "session_") {
+		t.Fatalf("a session seen for the first time notified: %s", n)
+	}
+	status("waiting")
+	waitFor("waiting notification", func() bool {
+		return strings.Contains(notes(), `"kind":"session_waiting","agent":"shop","summary":"Bash: git push origin main"`)
+	})
+	var c api.Counts
+	e.Call("inbox.counts", api.CountsParams{SessionID: "other-session"}, &c)
+	if len(c.SessionsWaiting) != 1 || c.SessionsWaiting[0] != "shop" {
+		t.Fatalf("counts: %+v", c)
+	}
+	c = api.Counts{}
+	e.Call("inbox.counts", api.CountsParams{SessionID: "note-session-1"}, &c)
+	if len(c.SessionsWaiting) != 0 {
+		t.Fatalf("a session counts itself: %+v", c)
+	}
+
+	// Back to work, then the answer after two minutes: answered.
+	status("busy")
+	time.Sleep(3 * time.Second)
+	transcript(append(lines,
+		`{"type":"user","timestamp":"`+at+`","message":{"content":[{"type":"tool_result","tool_use_id":"p1","content":"ok"}]}}`,
+		`{"type":"assistant","timestamp":"`+time.Now().UTC().Format(time.RFC3339)+`","message":{"content":[{"type":"text","text":"**Pushed**: main is at abc123."}]}}`)...)
+	status("idle")
+	waitFor("answered notification", func() bool {
+		return strings.Contains(notes(), `"kind":"session_answered","agent":"shop","summary":"Pushed: main is at abc123."`)
+	})
+	c = api.Counts{}
+	e.Call("inbox.counts", api.CountsParams{SessionID: "other-session"}, &c)
+	if len(c.SessionsAnswered) != 1 || c.SessionsAnswered[0] != "shop" || len(c.SessionsWaiting) != 0 {
+		t.Fatalf("counts after the answer: %+v", c)
+	}
+	// The doctor canary reads the tool calls; one without its id is a
+	// changed transcript shape.
+	var h api.HealthView
+	e.Call("admin.health", nil, &h)
+	if h.Sessions != "ok" || !strings.Contains(h.SessionsDetail, "1 tool calls") {
+		t.Fatalf("canary: %s %s", h.Sessions, h.SessionsDetail)
+	}
+	transcript(lines[0], `{"type":"assistant","timestamp":"`+at+`","message":{"content":[{"type":"tool_use","tool":"Bash"}]}}`)
+	e.Call("admin.health", nil, &h)
+	if h.Sessions != "changed" || !strings.Contains(h.SessionsDetail, "no id or name") {
+		t.Fatalf("canary on a changed tool call: %s %s", h.Sessions, h.SessionsDetail)
+	}
+	// An agent's counts never name sessions.
+	ac := e.AgentClient("app")
+	defer ac.Close()
+	c = api.Counts{}
+	if err := ac.Call("inbox.counts", api.CountsParams{}, &c, 5e9); err != nil || len(c.SessionsAnswered) != 0 {
+		t.Fatalf("agent counts: %v %+v", err, c)
+	}
+}

@@ -178,7 +178,7 @@ func cmdStatusline() *cobra.Command {
 			var counts api.Counts
 			cl, err := humanClient(150 * time.Millisecond)
 			if err == nil {
-				err = cl.Call("inbox.counts", api.CountsParams{Cwd: p.Cwd, Agent: os.Getenv("MAILROOM_AGENT")}, &counts, 250*time.Millisecond)
+				err = cl.Call("inbox.counts", api.CountsParams{Cwd: p.Cwd, Agent: os.Getenv("MAILROOM_AGENT"), SessionID: p.SessionID}, &counts, 250*time.Millisecond)
 				if !presence.InWorker() {
 					_ = cl.Call("presence.update", api.PresenceParams{Event: "heartbeat", Cwd: p.Cwd, SessionID: p.SessionID, Agent: os.Getenv("MAILROOM_AGENT")}, nil, 150*time.Millisecond)
 				}
@@ -469,7 +469,11 @@ func cmdDoctor() *cobra.Command {
 			}
 			warn := func(what string) { fmt.Printf("[warn] %s\n", what) }
 			cfg, err := loadConfig()
-			check(err == nil, "config "+paths.ConfigFile(), errString(err))
+			if _, serr := os.Stat(paths.ConfigFile()); err == nil && os.IsNotExist(serr) {
+				warn("no config at " + paths.ConfigFile() + ": the session view works; `mailroom init` adds agents for messages and workers")
+			} else {
+				check(err == nil, "config "+paths.ConfigFile(), errString(err))
+			}
 			cc := "claude"
 			if cfg != nil {
 				cc = cfg.Defaults.ClaudeCommand
@@ -510,6 +514,10 @@ func cmdDoctor() *cobra.Command {
 			check(gerr == nil, "git", errString(gerr))
 			permCheck := func(p string, want os.FileMode) {
 				fi, err := os.Stat(p)
+				if os.IsNotExist(err) {
+					warn(p + " does not exist yet: the daemon makes it on its first start (`mailroom` starts it)")
+					return
+				}
 				if err != nil {
 					check(false, p, err.Error())
 					return

@@ -2,7 +2,7 @@
 
 # Mailroom
 
-**One terminal view of all your Claude Code sessions.<br>Read only the final answers. Write to any session, busy or idle.**
+**One terminal view of all your Claude Code sessions.<br>See which one needs you and what each one does now. Write to any of them.**
 
 [![Go](https://img.shields.io/badge/Go-1.27-00add8?logo=go)](go.mod)
 [![Platforms](https://img.shields.io/badge/macOS%20%7C%20Linux-single%20binary-555)](#install)
@@ -10,29 +10,48 @@
 
 </div>
 
-Run `mailroom`. It finds every open Claude Code session on the machine, in any folder, with no setup:
+Run `mailroom`. It finds every open Claude Code session on the machine, in any folder, with no setup, and
+shows what each one does right now:
 
 ```
-SESSIONS · 9 · 1 new answer
-  ~/work · 8
-    ○ api          Done: the migration ran and the tests pass.        2m
-    ◓ web          working · 4m                                       4m
-    ● docs         The new page is up at /guides/install.             1m
+ mailroom   1 waiting  2 new  2 working  3 quiet                         ● live
+SESSIONS · 8
+  ~/work · 7
+    ○ idle   api      Done: the migration ran and the tests pass.          2h
+    ▶ 4m12s  web      Bash  npm run build                       14 tools
+    ! 3m     shop     Bash  git push origin main                needs you
+    ● new    docs     The new page is up at /guides/install.               1m
+    ▶ 18m    worker   Bash  make e2e                      9 tools · silent 6m
   ~/side · 1
-    ! scraper      waits for you in its tab                          12m
+    ● new    scraper  Found 412 listings; 3 pages failed (timeouts).       5m
 ```
 
-| You do | Mailroom does |
+| You see | It means |
 |---|---|
-| Select a session | Shows your last prompt and only the final answer: no steps, no tool output, a count of tools. |
-| `enter` | Opens a chat with the session: the conversation and a box to write in. |
-| Write to an **idle** session | Types your text into it and presses Enter, as if you typed it in its tab (Terminal.app, iTerm2 or tmux). |
-| Write to a **busy** session | Does not type. A worker resumes a fork of the session (`claude -p --resume … --fork-session`): it knows what the session knows, answers read-only, and the session is not touched. |
-| `o` | Brings the session's Terminal tab to the front, for a permission prompt or a question. |
+| `! 3m … needs you` | The session stopped on a permission prompt or a question in its tab: the row says what it asks for. `o` brings the tab to the front. |
+| `▶ 4m12s … Bash npm run build` | It works on your prompt; the row shows the step that runs now. `silent 6m`: it has written nothing for 6 minutes (a long command, or stuck). |
+| `● new` | An answer you have not read. The preview shows your prompt and only the final answer, no steps or tool output. |
+| `tab` | Goes to the next session that needs you. |
 
-### Messages between sessions
+You do not have to watch the screen:
 
-Sessions and scripts can also send messages to a project. Mailroom sorts them with your rules, and no message
+- **Notifications.** An OS notification comes when a session starts to wait in its tab, or answers after a turn
+  of more than 30 s. Set `daemon.session_notify` to `"waiting"`, `"answered"` or `"none"`.
+- **Status line.** With `mailroom install`, the status line of each session names the others:
+  `! shop waits · ● docs, scraper answered`.
+
+Write to a session from the same screen. `enter` opens a chat with it:
+
+| The session is | Your text |
+|---|---|
+| **idle** | Is typed into its tab and sent, as if you typed it there (Terminal.app, iTerm2 or tmux). |
+| **busy** or **waiting** | Is not typed. A fork of the session answers (`claude -p --resume … --fork-session`): it knows what the session knows, works read-only, and leaves the session untouched. Needs an agent for the folder (`mailroom init`). |
+
+Mailroom never answers a permission prompt for you.
+
+### Optional: messages between sessions
+
+With `mailroom init`, sessions and scripts can also send messages to a project. Mailroom sorts them with your rules, and no message
 text enters a session that you type in:
 
 <div align="center">
@@ -93,11 +112,13 @@ mkdir -p ~/.local/bin && mv mailroom ~/.local/bin/
 Then:
 
 ```sh
-mailroom          # the session view works now, with no setup
-mailroom init     # optional, for messages: finds your git repos and gives each one an agent id
-mailroom install  # hooks, status line, /mailroom, MCP server, launchd or systemd
+mailroom          # the session view, with no setup: it starts the daemon in the background
+mailroom install  # optional: the status line, hooks, /mailroom, the MCP server, and the daemon as a service
+mailroom init     # optional, for messages and forks: finds your git repos and gives each one an agent id
 mailroom doctor   # checks the setup
 ```
+
+Without `mailroom install`, the daemon that `mailroom` starts runs until a reboot.
 
 `mailroom install` makes a backup of each file that it changes. `mailroom uninstall` puts back each file
 byte for byte.
@@ -118,17 +139,18 @@ byte for byte.
 <summary><b>The terminal UI</b></summary>
 <br>
 
-<img alt="The mailroom home screen: items that need you, a running worker with its live tool calls, the queue, items done today, dead letters" src="docs/img/home.svg" width="100%">
+<img alt="The mailroom home screen: sessions with their state, a working session with the step that runs now, its steps so far and a fork's answer; then a question for you, a running worker, the queue, items done today and a dead letter" src="docs/img/home.svg" width="100%">
 
 - The list shows the items that need you first, then your sessions, running workers, the queue, the items done
-  today and dead letters. The right pane shows the selected item. For a running worker, it shows the live tool calls.
+  today and dead letters (each group only when it has rows). The right pane shows the selected item. For a running worker, it shows the live tool calls.
 - `a` answers, `c` cancels, `t` retries, `e` marks as read. `enter` opens the thread or the run: record,
   transcript and branch diff. On a run, `a` merges the branch after a y/N question.
-- The SESSIONS group shows every open Claude Code session, grouped by root folder, with its name, state and the
-  first line of its last answer (`●` = new, `!` = it waits for you in its tab). Sessions need no config: an agent
-  is needed only for messages and workers.
-- `enter` on a session opens the chat. `s` writes from the preview. Idle: typed in. Busy: a worker with the
-  session's context answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front.
+- The SESSIONS group shows every open Claude Code session, grouped by root folder, in a fixed order, with its
+  state (`!` waiting, `▶` working, `●` new answer, `○` idle) and what it does now or the first line of its last
+  answer. Sessions need no config: an agent is needed only for messages, workers and forks.
+- `tab` goes to the next row that needs you. `z` hides the quiet sessions. Empty groups take no room.
+- `enter` on a session opens the chat. `s` writes from the preview. Idle: typed in. Busy: a fork of the session
+  answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front.
 - `:` opens a command prompt with tab completion: `ask`, `tell`, `prompt`, `answer`, `retry`, `agent`, `filter`, `digest`.
 - `[` and `]` change the agent. `/` filters. `v` opens the dashboard (agents, runs, audit log). `?` shows all keys.
 - In a pipe, `mailroom` prints one summary. `mailroom watch` gives a live view for tmux or ssh.

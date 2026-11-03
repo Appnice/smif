@@ -75,7 +75,7 @@ func EnsureToken(name string) (string, error) {
 func ReadToken(name string) (string, error) {
 	b, err := os.ReadFile(TokenPath(name))
 	if err != nil {
-		return "", fmt.Errorf("no token for %q (run `mailroom init` or start the daemon once): %w", name, err)
+		return "", fmt.Errorf("no token for %q (run `mailroom`: it starts the daemon, which makes the tokens): %w", name, err)
 	}
 	return strings.TrimSpace(string(b)), nil
 }

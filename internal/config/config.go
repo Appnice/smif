@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -66,6 +67,10 @@ type Daemon struct {
 	DefaultTTL  Duration `toml:"default_ttl"`
 	PresenceTTL Duration `toml:"presence_ttl"`
 	Notify      string   `toml:"notify"` // "os", "none" or "log:<path>"
+	// SessionNotify says which session changes raise a notification
+	// (ADR-0014): "waiting,answered" (default), "waiting", "answered" or
+	// "none".
+	SessionNotify string `toml:"session_notify"`
 	// Terminal types the human's prompts into idle sessions (ADR-0012):
 	// "auto" (Terminal.app on macOS), "none" (off) or "log:<path>" (tests).
 	Terminal           string     `toml:"terminal"`
@@ -225,7 +230,12 @@ func Load(file string) (*Config, error) {
 		file = paths.ConfigFile()
 	}
 	b, err := os.ReadFile(file)
-	if err != nil {
+	switch {
+	case errors.Is(err, fs.ErrNotExist) && file == paths.ConfigFile():
+		// No config yet: the defaults and no agents. The session view
+		// works; messages need `mailroom init`.
+		b = nil
+	case err != nil:
 		return nil, err
 	}
 	c, err := Parse(b)
@@ -272,6 +282,9 @@ func (c *Config) applyDefaults() {
 	}
 	if d.PresenceTTL.Duration == 0 {
 		d.PresenceTTL.Duration = 30 * time.Minute
+	}
+	if d.SessionNotify == "" {
+		d.SessionNotify = "waiting,answered"
 	}
 	if d.Notify == "" {
 		d.Notify = "os"
@@ -462,11 +475,13 @@ func (c *Config) Validate() error {
 	if n != "os" && n != "none" && !strings.HasPrefix(n, "log:") {
 		add("daemon.notify must be \"os\", \"none\" or \"log:<path>\"")
 	}
+	switch c.Daemon.SessionNotify {
+	case "waiting,answered", "answered,waiting", "waiting", "answered", "none":
+	default:
+		add("daemon.session_notify must be \"waiting,answered\", \"waiting\", \"answered\" or \"none\"")
+	}
 	if t := c.Daemon.Terminal; t != "auto" && t != "none" && !strings.HasPrefix(t, "log:") {
 		add("daemon.terminal must be \"auto\", \"none\" or \"log:<path>\"")
-	}
-	if len(c.Agents) == 0 {
-		add("no agents configured")
 	}
 
 	for name, p := range c.Profiles {
