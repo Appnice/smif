@@ -1,29 +1,40 @@
-<div align="center">
+<p align="center">
+  <a href="https://smif.dev">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/brand/logo-dark.svg">
+      <img alt="smif" src="docs/brand/logo-light.svg" height="76">
+    </picture>
+  </a>
+</p>
 
-# Smif
+<p align="center">
+  <b>All your Claude Code sessions. One calm terminal.</b><br>
+  See which one waits for you, what each one runs now, and answer any of them without hunting for the tab.
+</p>
 
-**One terminal view of all your Claude Code sessions.<br>See which one needs you and what each one does now. Write to any of them.**
+<p align="center">
+  <a href="https://smif.dev"><b>smif.dev</b></a> ·
+  <a href="#install">Install</a> ·
+  <a href="docs/rfc.md">Spec</a> ·
+  <a href="docs/adr">Decisions</a>
+</p>
 
-[![Go](https://img.shields.io/badge/Go-1.27-00add8?logo=go)](go.mod)
-[![Platforms](https://img.shields.io/badge/macOS%20%7C%20Linux-single%20binary-555)](#install)
-[![License: MIT](https://img.shields.io/badge/license-MIT-d29922)](LICENSE)
+<p align="center">
+  <a href="go.mod"><img alt="Go 1.27" src="https://img.shields.io/badge/Go-1.27-00add8?logo=go&logoColor=white"></a>
+  <a href="#install"><img alt="macOS and Linux" src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux-single%20binary-555"></a>
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-fabd2f"></a>
+</p>
 
-</div>
+<p align="center">
+  <img alt="smif with eight Claude Code sessions: one waits on a question, one just answered, one works on terraform plan. Tab jumps to the next session that needs you, a saved prompt is typed into an idle session, its tool calls show live, and its answer lands." src="docs/img/hero.gif" width="100%">
+</p>
 
-Run `smif`. It finds every open Claude Code session on the machine, in any folder, with no setup, and
-shows what each one does right now:
+Run `smif`. It finds every open Claude Code session on the machine, in any folder, with no setup, and shows
+what each one does right now. The recording above is real smif on staged sessions
+([how it was made](site/README.md#recordings)).
 
-```
- smif   1 waiting  2 new  2 working  3 quiet                         ● live
-SESSIONS · 8
-  ~/work · 7
-    ○ idle   api      Done: the migration ran and the tests pass.          2h
-    ▶ 4m12s  web      Bash  npm run build                       14 tools
-    ! 3m     shop     Bash  git push origin main                needs you
-    ● new    docs     The new page is up at /guides/install.               1m
-    ▶ 18m    worker   Bash  make e2e                      9 tools · silent 6m
-  ~/side · 1
-    ● new    scraper  Found 412 listings; 3 pages failed (timeouts).       5m
+```sh
+go install github.com/appnice/smif/cmd/smif@latest && smif
 ```
 
 | You see | It means |
@@ -45,6 +56,10 @@ You do not have to watch the screen:
 
 Write to a session from the same screen. `enter` opens a chat with it:
 
+<p align="center">
+  <img alt="The chat with an idle session: a saved prompt is typed into its tab, its steps show as they run, and the answer arrives." src="docs/img/chat.gif" width="100%">
+</p>
+
 | The session is | Your text |
 |---|---|
 | **idle** | Is typed into its tab and sent, as if you typed it there (Terminal.app, iTerm2 or tmux). |
@@ -63,14 +78,20 @@ review = "review your last change for bugs, then list them"
 `n` opens a new session: `claude --name <name>` in the selected session's folder, in a new Terminal.app window,
 iTerm2 tab or tmux window.
 
+## How it works
+
+<p align="center">
+  <img alt="Claude Code's session files, transcripts and hooks feed the local smifd daemon (SQLite, a Unix socket with mode 0600, one per user), which feeds the smif view, the status line inside every session, notifications and your terminal tabs." src="docs/img/flow.png" width="100%">
+</p>
+
+smif reads what Claude Code already writes: the session files, the transcripts and, after `smif install`, two
+hooks. One local daemon keeps the state. Nothing leaves the machine: no server, no cloud, no telemetry.
+
 ### Optional: messages between sessions
 
 With `smif init`, sessions and scripts can also send messages to a project. Smif sorts them with your rules, and no message
 text enters a session that you type in:
 
-<div align="center">
-<img alt="Three messages arrive for one agent while you work in its session: a script answers an ask, a read-only worker examines a crash, and a decision waits for you. Your session shows only counts." src="docs/img/how-it-works.svg" width="560">
-</div>
 
 | Message | Handler | Result |
 |---|---|---|
@@ -112,16 +133,13 @@ is in [docs/rfc-benchmark.md](docs/rfc-benchmark.md).
 
 You need Claude Code 2.1 (checked with 2.1.316) and git, on macOS or Linux.
 
-**A release binary** (darwin and linux, amd64 and arm64), from [Releases](https://github.com/appnice/smif/releases):
+**With Go** (1.27.2 or newer):
 
 ```sh
-curl -L https://github.com/appnice/smif/releases/latest/download/smif_$(uname -s | tr A-Z a-z)_$(uname -m | sed -e s/x86_64/amd64/ -e s/aarch64/arm64/).tar.gz | tar -xz smif
-mkdir -p ~/.local/bin && mv smif ~/.local/bin/
+go install github.com/appnice/smif/cmd/smif@latest
 ```
 
-**Or with Go** (1.27.2 or newer): `go install github.com/appnice/smif/cmd/smif@latest`
-
-**Or from source:** `git clone https://github.com/appnice/smif && cd smif && make build && make install-local`
+**From source:** `git clone https://github.com/appnice/smif && cd smif && make build && make install-local`
 
 Then:
 
@@ -152,8 +170,6 @@ byte for byte.
 <details>
 <summary><b>The terminal UI</b></summary>
 <br>
-
-<img alt="The smif home screen: sessions with their state, a working session with the step that runs now, its steps so far and a fork's answer; then a question for you, a running worker, the queue, items done today and a dead letter" src="docs/img/home.svg" width="100%">
 
 - The list shows the items that need you first, then your sessions, running workers, the queue, the items done
   today and dead letters (each group only when it has rows). The right pane shows the selected item. For a running worker, it shows the live tool calls.
