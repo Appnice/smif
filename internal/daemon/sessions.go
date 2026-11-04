@@ -395,6 +395,13 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 	// A real terminal can take the keys and claude still start no turn
 	// (the text sits in its input box). Wait for the turn: the hook or the
 	// session file says busy. Never type again: the human looks (o).
+	// One more Enter (never the text) when the first one went into the
+	// paste: an Enter in an empty input box does nothing.
+	if _, real := d.terminal.(autoTerminal); real && !d.turnStarted(target.SessionID, typedAt, 3*time.Second) {
+		if err := d.terminal.Enter(ctx, *target); err != nil {
+			return nil, api.Errf(api.CodeUnavailable, "typed, but Enter failed: %v", err)
+		}
+	}
 	if _, real := d.terminal.(autoTerminal); real && !d.turnStarted(target.SessionID, typedAt, promptStartWait) {
 		_ = d.store.Update(func(tx *store.Tx) error {
 			return tx.Audit("session.prompt_unsent", v.Agent, "", "", "", map[string]any{"session_id": target.SessionID,

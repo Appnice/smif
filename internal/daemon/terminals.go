@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/appnice/smif/internal/store"
 )
@@ -28,8 +29,12 @@ type terminal interface {
 	// Ready checks that the session's claude process still owns the
 	// foreground of its terminal, so the text cannot land in a shell.
 	Ready(p store.Presence) error
-	// Type types text, then Enter as a separate key press.
+	// Type types text, then Enter as a separate key press (enterDelay
+	// later, so claude has taken the text in).
 	Type(ctx context.Context, p store.Presence, text string) error
+	// Enter presses Enter once more: for text that sits unsent in the
+	// input box because the first Enter came in with it as one paste.
+	Enter(ctx context.Context, p store.Presence) error
 	// Supports says why this terminal cannot reach the session ("" = it can).
 	Supports(p store.Presence) string
 	// Focus brings the session's tab or pane to the front.
@@ -37,6 +42,14 @@ type terminal interface {
 	// Open starts argv in dir in a new tab or window of the terminal term
 	// ("" = Terminal.app on macOS, else tmux), for a new session (ADR-0015).
 	Open(ctx context.Context, term, dir string, argv []string) error
+}
+
+// enterDelay is the pause between the text and Enter. Claude Code reads a
+// burst of keys as a paste and keeps an Enter that comes too soon inside
+// it as a plain newline, longer text taking longer to settle.
+func enterDelay(text string) time.Duration {
+	d := 500*time.Millisecond + time.Duration(utf8.RuneCountInString(text))*8*time.Millisecond
+	return min(d, 2*time.Second)
 }
 
 func newTerminal(spec string) terminal {
@@ -76,6 +89,10 @@ func (offTerminal) Ready(store.Presence) error {
 func (offTerminal) Type(context.Context, store.Presence, string) error {
 	return errors.New("prompts are off")
 }
+func (offTerminal) Enter(context.Context, store.Presence) error {
+	return errors.New("prompts are off")
+}
+
 func (offTerminal) Focus(context.Context, store.Presence) error {
 	return errors.New("prompts are off")
 }
@@ -109,6 +126,10 @@ func (l logTerminal) write(v map[string]any) error {
 
 func (l logTerminal) Type(_ context.Context, p store.Presence, text string) error {
 	return l.write(map[string]any{"session_id": p.SessionID, "tty": p.TTY, "pid": p.PID, "term": p.Term, "text": text})
+}
+
+func (l logTerminal) Enter(_ context.Context, p store.Presence) error {
+	return l.write(map[string]any{"session_id": p.SessionID, "tty": p.TTY, "enter": true})
 }
 
 func (l logTerminal) Focus(_ context.Context, p store.Presence) error {
@@ -169,11 +190,25 @@ func (autoTerminal) Ready(p store.Presence) error {
 func (autoTerminal) Type(ctx context.Context, p store.Presence, text string) error {
 	switch p.Term {
 	case termITerm:
-		return runAppleScript(ctx, "iTerm2", iTermTypeScript, p.TTY, text)
+		return runAppleScript(ctx, "iTerm2", iTermTypeScript, p.TTY, text, delayMS(text))
 	case termTmux:
 		return tmuxType(ctx, p.TTY, text)
 	}
-	return runAppleScript(ctx, "Terminal", appleTypeScript, p.TTY, text)
+	return runAppleScript(ctx, "Terminal", appleTypeScript, p.TTY, text, delayMS(text))
+}
+
+// delayMS is enterDelay in whole milliseconds, for AppleScript (an integer:
+// a decimal point would depend on the locale).
+func delayMS(text string) string { return strconv.FormatInt(enterDelay(text).Milliseconds(), 10) }
+
+func (autoTerminal) Enter(ctx context.Context, p store.Presence) error {
+	switch p.Term {
+	case termITerm:
+		return runAppleScript(ctx, "iTerm2", iTermEnterScript, p.TTY)
+	case termTmux:
+		return tmuxEnter(ctx, p.TTY)
+	}
+	return runAppleScript(ctx, "Terminal", appleEnterScript, p.TTY)
 }
 
 func (autoTerminal) Focus(ctx context.Context, p store.Presence) error {
@@ -248,7 +283,22 @@ const appleTypeScript = `on run argv
 			repeat with t in tabs of w
 				if tty of t is want then
 					do script (item 2 of argv) in t
-					delay 0.4
+					delay ((item 3 of argv as integer) / 1000)
+					do script "" in t
+					return "ok"
+				end if
+			end repeat
+		end repeat
+	end tell
+	return "no tab"
+end run`
+
+const appleEnterScript = `on run argv
+	set want to item 1 of argv
+	tell application "Terminal"
+		repeat with w in windows
+			repeat with t in tabs of w
+				if tty of t is want then
 					do script "" in t
 					return "ok"
 				end if
@@ -302,7 +352,24 @@ const iTermTypeScript = `on run argv
 				repeat with s in sessions of t
 					if tty of s is want then
 						tell s to write text (item 2 of argv) newline no
-						delay 0.4
+						delay ((item 3 of argv as integer) / 1000)
+						tell s to write text ""
+						return "ok"
+					end if
+				end repeat
+			end repeat
+		end repeat
+	end tell
+	return "no tab"
+end run`
+
+const iTermEnterScript = `on run argv
+	set want to item 1 of argv
+	tell application "iTerm2"
+		repeat with w in windows
+			repeat with t in tabs of w
+				repeat with s in sessions of t
+					if tty of s is want then
 						tell s to write text ""
 						return "ok"
 					end if
@@ -415,11 +482,24 @@ func tmuxType(ctx context.Context, tty, text string) error {
 	}
 	for i, args := range tmuxTypeArgs(pane, text) {
 		if i > 0 {
-			time.Sleep(400 * time.Millisecond)
+			time.Sleep(enterDelay(text))
 		}
 		if out, err := exec.CommandContext(ctx, tmuxPath(), args...).CombinedOutput(); err != nil {
 			return fmt.Errorf("tmux %s: %v: %s", args[0], err, strings.TrimSpace(string(out)))
 		}
+	}
+	return nil
+}
+
+func tmuxEnter(ctx context.Context, tty string) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	pane, err := tmuxPane(ctx, tty)
+	if err != nil {
+		return err
+	}
+	if out, err := exec.CommandContext(ctx, tmuxPath(), "send-keys", "-t", pane, "Enter").CombinedOutput(); err != nil {
+		return fmt.Errorf("tmux send-keys: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
