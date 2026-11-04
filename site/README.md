@@ -24,10 +24,11 @@ The videos are real smif runs on staged sessions, recorded with [VHS](https://gi
 - After a new hero recording, check the scene times in `main.js` (`ffmpeg -i demo/out/hero.mp4 -vf fps=1,tile=3x7`).
 - The README GIFs come from the same clips: for each of `hero` and `chat`,
   `ffmpeg -i site/media/hero.mp4 -vf "fps=15,scale=1280:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle" docs/img/hero.gif`.
-  `docs/img/flow.png` is a 2x screenshot of the `.flow` diagram on the page.
+  `docs/img/flow.gif` is the `.flow` diagram on the page, one 12 s loop shot frame by frame (animations paused and stepped, 15 fps).
 
 ## Logo
 
 `docs/brand/make.py` draws `mark.svg` (also `site/favicon.svg`), `logo-dark.svg` (also `site/logo.svg`) and
-`logo-light.svg`; the wordmark is Bricolage Grotesque ExtraBold as paths. `apple-touch-icon.png` and `og.png` are
+`logo-light.svg`. The mark is three stacked windows, the front one yellow with a status dot; the wordmark is
+Geist Bold as paths. `apple-touch-icon.png` and `og.png` are
 screenshots (`og.png` of `demo/og.html` at 1200x630).

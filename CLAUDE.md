@@ -60,7 +60,7 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   notifications, the status line's session names and the watchdogs in `internal/daemon/session_watch.go` (ADR-0014, 0015);
   saved prompts (`p`, `@name`) and new sessions (`n`, `session.new`, `terminal.Open`) in `internal/ui/quick.go` (ADR-0015).
 - No config = defaults, no agents; `smif`/`sessions` start the daemon (`autostart.go`, off with `SMIF_NO_AUTOSTART=1`,
-  which the e2e harness sets). `daemon.lock` allows one daemon per data dir. README media: `docs/img/{hero,chat}.gif` from `site/media` (ffmpeg, `site/README.md`), `flow.png` from the site; logo `docs/brand/make.py`.
+  which the e2e harness sets). `daemon.lock` allows one daemon per data dir. README media: `docs/img/{hero,chat}.gif` from `site/media` (ffmpeg, `site/README.md`), `flow.gif` from the site; logo `docs/brand/make.py`.
   Busy sessions: `session.send` / an ask to a session's name → a fork worker (`session_ask.go`, ADR-0013); `go test -run TestSessionAsk ./e2e/`.
 - macOS Unix socket paths max 104 bytes: tests use `/tmp/mr-*` and `SMIF_SOCKET`.
 - Hooks must print nothing and exit 0 fast; the status line must stay under ~300 ms.

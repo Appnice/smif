@@ -29,10 +29,6 @@
   <img alt="smif with eight Claude Code sessions: one waits on a question, one just answered, one works on terraform plan. Tab jumps to the next session that needs you, a saved prompt is typed into an idle session, its tool calls show live, and its answer lands." src="docs/img/hero.gif" width="100%">
 </p>
 
-Run `smif`. It finds every open Claude Code session on the machine, in any folder, with no setup, and shows
-what each one does right now. The recording above is real smif on staged sessions
-([how it was made](site/README.md#recordings)).
-
 ```sh
 go install github.com/appnice/smif/cmd/smif@latest && smif
 ```
@@ -81,7 +77,7 @@ iTerm2 tab or tmux window.
 ## How it works
 
 <p align="center">
-  <img alt="Claude Code's session files, transcripts and hooks feed the local smifd daemon (SQLite, a Unix socket with mode 0600, one per user), which feeds the smif view, the status line inside every session, notifications and your terminal tabs." src="docs/img/flow.png" width="100%">
+  <img alt="Claude Code's session files, transcripts and hooks feed the local smifd daemon (SQLite, a Unix socket with mode 0600, one per user), which feeds the smif view, the status line inside every session, notifications and your terminal tabs." src="docs/img/flow.gif" width="100%">
 </p>
 
 smif reads what Claude Code already writes: the session files, the transcripts and, after `smif install`, two
