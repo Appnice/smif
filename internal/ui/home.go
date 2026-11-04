@@ -54,6 +54,7 @@ type homeState struct {
 	preview    map[string]*previewEntry
 	tails      map[string]*tailEntry // session conversations (sessions.go)
 	seen       map[string]time.Time  // last answer the human saw, per session (answer.go)
+	pending    map[string]time.Time  // prompts the daemon types in the background, per session (sessions.go)
 	seenFile   string                // where seen is kept ("" = memory only)
 	full       bool                  // the selected session's whole answer fills the screen
 	fullScroll int

@@ -60,7 +60,9 @@ type Daemon struct {
 	notifier  notify.Notifier
 	lock      *os.File    // daemon.lock, held while the daemon lives
 	terminal  terminal    // types the human's prompts into sessions (ADR-0012)
-	promptMu  sync.Mutex  // one prompt typed at a time
+	promptMu  sync.Mutex  // one prompt checked at a time
+	typeMu    sync.Mutex  // one prompt typed at a time
+	prompts   promptState // prompts typed in the background (sessions.go)
 	procs     procCache   // tty and terminal of discovered claude processes
 	answers   answerCache // each session's last answer (discover.go)
 	sessDir   string      // Claude Code's session files (discover.go)

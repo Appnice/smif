@@ -83,6 +83,24 @@ func (m *Model) noteSessions() {
 	if added {
 		m.saveSeen()
 	}
+	m.notePending()
+}
+
+// notePending reports a prompt sent in the background that started no
+// turn; after 20 s without that, the prompt counts as taken.
+func (m *Model) notePending() {
+	for i := range m.snap.Sessions {
+		sv := &m.snap.Sessions[i]
+		at, ok := m.home.pending[sv.SessionID]
+		switch {
+		case !ok:
+		case sv.Unsent != "" && !sv.UnsentAt.Before(at):
+			m.setStatus("Not sent to "+sessionName(sv)+": "+sv.Unsent, true)
+			delete(m.home.pending, sv.SessionID)
+		case time.Since(at) > 20*time.Second:
+			delete(m.home.pending, sv.SessionID)
+		}
+	}
 }
 
 // markAnswerRead marks the session's answer read: the human moved onto

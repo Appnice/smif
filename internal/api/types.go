@@ -234,6 +234,10 @@ type SessionView struct {
 	// says what is missing otherwise.
 	CanPrompt bool   `json:"can_prompt"`
 	Why       string `json:"why,omitempty"`
+	// Unsent says why the last prompt typed in the background started no
+	// turn (since UnsentAt; cleared by the session's next turn).
+	Unsent   string    `json:"unsent,omitempty"`
+	UnsentAt time.Time `json:"unsent_at,omitzero"`
 	// Activity is what the newest exchange does now, from the transcript
 	// (nil when there is none).
 	Activity *SessionActivity `json:"activity,omitempty"`
@@ -273,6 +277,9 @@ type SessionPromptParams struct {
 	// does not matter); with no session of that name, it is an agent.
 	Name string `json:"name,omitempty"`
 	Text string `json:"text"`
+	// Async returns once the session is checked: the text is typed in the
+	// background and a session that took no turn shows Unsent.
+	Async bool `json:"async,omitempty"`
 }
 
 // SavedPrompt is one of the human's saved prompts (prompts.list, ADR-0015).
@@ -322,6 +329,7 @@ type SessionSendParams struct {
 	SessionID string `json:"session_id,omitempty"`
 	Name      string `json:"name,omitempty"`
 	Text      string `json:"text"`
+	Async     bool   `json:"async,omitempty"` // as in SessionPromptParams
 }
 
 // SessionSendResult says where the text went: "typed" into the session or

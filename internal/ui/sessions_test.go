@@ -126,8 +126,19 @@ func TestHomeSessions(t *testing.T) {
 	if len(f.prompts) != 1 || f.prompts[0] != "idle-session-0001 run the tests" {
 		t.Fatalf("prompts %q", f.prompts)
 	}
-	if m.home.typing || !strings.HasPrefix(m.Status(), "Typed into release") {
+	if m.home.typing || !strings.HasPrefix(m.Status(), "Sent to release") {
 		t.Fatalf("after enter: typing %v status %q", m.home.typing, m.Status())
+	}
+	// The daemon types in the background: a prompt that took no turn
+	// comes back on the session and shows in the status line.
+	for i := range m.snap.Sessions {
+		if sv := &m.snap.Sessions[i]; sv.SessionID == "idle-session-0001" {
+			sv.Unsent, sv.UnsentAt = "claude started no turn", time.Now()
+		}
+	}
+	m.notePending()
+	if !strings.HasPrefix(m.Status(), "Not sent to release: claude started no turn") {
+		t.Fatalf("unsent prompt: status %q", m.Status())
 	}
 	// A busy session: what it does now, and the text goes to a fork.
 	key(m, "j")

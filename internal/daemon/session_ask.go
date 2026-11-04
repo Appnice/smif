@@ -121,7 +121,7 @@ func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.Sessio
 	}
 	v := d.sessionView(d.Config(), *target)
 	if v.CanPrompt {
-		r, err := d.sessionPrompt(ctx, api.SessionPromptParams{SessionID: target.SessionID, Text: text})
+		r, err := d.sessionPrompt(ctx, api.SessionPromptParams{SessionID: target.SessionID, Text: text, Async: p.Async})
 		if err != nil {
 			return nil, err
 		}

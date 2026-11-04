@@ -41,6 +41,12 @@ text, worker output and agent requests never go into a session.
   foreground process group of that tty (`ps` stat `+`). Without this check, the text could go to a shell after
   claude exits. After the prompt, the turn is `busy` and an audit row `session.prompt` keeps the first 80
   characters. Prompts are typed one at a time.
+  *Amended 2026-11-04.* Enter comes `0.5 s + 8 ms` a character after the text (at most 2 s): Claude Code
+  reads the keys as a paste and keeps an Enter that comes too soon inside it. The daemon then waits for the
+  turn (hook or session file): after 3 s it presses Enter once more (never the text), after 8 s the prompt is
+  unsent (audit `session.prompt_unsent`, an error). With `async: true` (the UI, through `session.send`) the
+  call returns once the checks pass, the session shows `busy` while the keys go in, and an unsent prompt
+  shows as the session's `unsent` until its next turn.
 - **Answers.** `session.tail {session_id, limit}` (human only) reads the last turns (default 20, at most 100)
   from the session's transcript, `<claude config>/projects/*/<session id>.jsonl`. A turn is the human's prompt
   or Claude's answer, and an answer holds only its final message: the text after its last tool call. Notes

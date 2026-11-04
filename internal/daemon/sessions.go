@@ -3,11 +3,13 @@ package daemon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unicode"
@@ -77,19 +79,20 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 	if v.Turn == "" {
 		v.Turn = "unknown"
 	}
+	d.prompts.apply(&v, p.TurnAt)
 	switch {
 	case p.PID == 0 || p.TTY == "":
 		v.Why = "Smif has not seen this session's terminal yet; it learns it at the next prompt or turn end"
 	case d.terminal.Supports(p) != "":
 		v.Why = d.terminal.Supports(p)
-	case p.Turn == "busy":
+	case v.Turn == "busy":
 		v.Why = "a prompt is running"
-	case p.Turn == "" || p.Turn == "unknown":
+	case v.Turn == "unknown":
 		v.Why = "no turn seen yet"
-	case p.Turn == "waiting":
+	case v.Turn == "waiting":
 		v.Why = "it waits for you in its tab (a permission or a question); o shows the tab"
-	case p.Turn != "idle":
-		v.Why = "claude reports " + p.Turn
+	case v.Turn != "idle":
+		v.Why = "claude reports " + v.Turn
 	default:
 		v.CanPrompt = true
 	}
@@ -388,46 +391,118 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 	if err := d.terminal.Ready(*target); err != nil {
 		return nil, api.Errf(api.CodeRejected, "cannot type into %s: %v", api.ShortSession(target.SessionID), err)
 	}
-	typedAt := time.Now()
-	if err := d.terminal.Type(ctx, *target, text); err != nil {
+	res := &api.SessionPromptResult{Agent: v.Agent, SessionID: target.SessionID}
+	if _, real := d.terminal.(autoTerminal); real && p.Async {
+		// The human does not wait for the keys: the row shows busy now,
+		// and Unsent if claude takes no turn.
+		d.prompts.start(target.SessionID)
+		go func(t store.Presence) {
+			if err := d.deliverPrompt(context.Background(), t, v.Agent, text); err != nil {
+				d.prompts.fail(t.SessionID, err.Error())
+			} else {
+				d.prompts.done(t.SessionID)
+			}
+		}(*target)
+		return res, nil
+	}
+	if err := d.deliverPrompt(ctx, *target, v.Agent, text); err != nil {
 		return nil, api.Errf(api.CodeUnavailable, "%v", err)
+	}
+	return res, nil
+}
+
+// deliverPrompt types text into the session's tab and, on a real terminal,
+// waits for claude to start the turn. A terminal can take the keys and
+// claude still start no turn (the text sits in its input box): after 3 s
+// it presses Enter once more (an Enter in an empty box does nothing), never
+// the text again; after promptStartWait the human looks (o).
+func (d *Daemon) deliverPrompt(ctx context.Context, target store.Presence, agent, text string) error {
+	d.typeMu.Lock()
+	defer d.typeMu.Unlock()
+	typedAt := time.Now()
+	if err := d.terminal.Type(ctx, target, text); err != nil {
+		return err
 	}
 	typeMS := time.Since(typedAt).Milliseconds()
 	retried := false
-	// A real terminal can take the keys and claude still start no turn
-	// (the text sits in its input box). Wait for the turn: the hook or the
-	// session file says busy. Never type again: the human looks (o).
-	// One more Enter (never the text) when the first one went into the
-	// paste: an Enter in an empty input box does nothing.
-	if _, real := d.terminal.(autoTerminal); real && !d.turnStarted(target.SessionID, typedAt, 3*time.Second) {
+	_, real := d.terminal.(autoTerminal)
+	if real && !d.turnStarted(target.SessionID, typedAt, 3*time.Second) {
 		retried = true
-		if err := d.terminal.Enter(ctx, *target); err != nil {
-			return nil, api.Errf(api.CodeUnavailable, "typed, but Enter failed: %v", err)
+		if err := d.terminal.Enter(ctx, target); err != nil {
+			return fmt.Errorf("typed, but Enter failed: %v", err)
 		}
 	}
-	if _, real := d.terminal.(autoTerminal); real && !d.turnStarted(target.SessionID, typedAt, promptStartWait) {
+	if real && !d.turnStarted(target.SessionID, typedAt, promptStartWait) {
 		_ = d.store.Update(func(tx *store.Tx) error {
-			return tx.Audit("session.prompt_unsent", v.Agent, "", "", "", map[string]any{"session_id": target.SessionID,
+			return tx.Audit("session.prompt_unsent", agent, "", "", "", map[string]any{"session_id": target.SessionID,
 				"chars": utf8.RuneCountInString(text), "type_ms": typeMS})
 		})
-		return nil, api.Errf(api.CodeUnavailable, "typed into the tab of %s, but claude started no turn in %s: "+
-			"the text may sit unsent in its input; o shows the tab", api.ShortSession(target.SessionID), promptStartWait)
+		return fmt.Errorf("typed into its tab, but claude started no turn in %s: "+
+			"the text may sit unsent in its input; o shows the tab", promptStartWait)
 	}
 	preview := text
 	if utf8.RuneCountInString(preview) > 80 {
 		preview = string([]rune(preview)[:80]) + "…"
 	}
-	err = d.store.Update(func(tx *store.Tx) error {
+	return d.store.Update(func(tx *store.Tx) error {
 		// A discovered session may have no hook row yet: write the full row.
 		if err := tx.UpsertPresence(target.Repo, target.SessionID, "active", store.PresenceUpdate{Turn: "busy",
 			TTY: target.TTY, PID: target.PID, Term: target.Term, Title: target.Title}); err != nil {
 			return err
 		}
-		return tx.Audit("session.prompt", v.Agent, "", "", "", map[string]any{"session_id": target.SessionID,
+		return tx.Audit("session.prompt", agent, "", "", "", map[string]any{"session_id": target.SessionID,
 			"chars": utf8.RuneCountInString(text), "text": preview,
-			// How long the human waited: typing (with the pause before
-			// Enter) and until claude started the turn.
+			// Typing (with the pause before Enter), and until claude
+			// started the turn.
 			"type_ms": typeMS, "total_ms": time.Since(typedAt).Milliseconds(), "enter_retry": retried})
 	})
-	return &api.SessionPromptResult{Agent: v.Agent, SessionID: target.SessionID}, err
+}
+
+// promptState keeps the prompts typed in the background: the sessions
+// being typed into (shown busy) and the last prompt that took no turn.
+type promptState struct {
+	mu      sync.Mutex
+	sending map[string]time.Time
+	unsent  map[string]unsentNote
+}
+
+type unsentNote struct {
+	at  time.Time
+	why string
+}
+
+func (s *promptState) start(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sending == nil {
+		s.sending, s.unsent = map[string]time.Time{}, map[string]unsentNote{}
+	}
+	s.sending[id] = time.Now()
+	delete(s.unsent, id)
+}
+
+func (s *promptState) done(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.sending, id)
+}
+
+func (s *promptState) fail(id, why string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.sending, id)
+	s.unsent[id] = unsentNote{at: time.Now(), why: why}
+}
+
+// apply shows a prompt being typed as busy and a failed one as Unsent,
+// unless the session has had a newer turn.
+func (s *promptState) apply(v *api.SessionView, turnAt time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if at, ok := s.sending[v.SessionID]; ok && !turnAt.After(at) {
+		v.Turn, v.TurnAt = "busy", at
+	}
+	if u, ok := s.unsent[v.SessionID]; ok && !turnAt.After(u.at) {
+		v.Unsent, v.UnsentAt = u.why, u.at
+	}
 }

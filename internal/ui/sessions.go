@@ -94,7 +94,13 @@ func (m *Model) onPrompted(msg promptedMsg) tea.Cmd {
 	case msg.sent != nil && msg.sent.Mode == "worker":
 		m.setStatus(msg.agent+" is busy, so a fork of it answers here.", false)
 	case msg.sent != nil:
-		m.setStatus("Typed into "+msg.agent+". It is working now.", false)
+		// The daemon types in the background; a prompt that starts no
+		// turn comes back as the session's Unsent (notePending).
+		if m.home.pending == nil {
+			m.home.pending = map[string]time.Time{}
+		}
+		m.home.pending[msg.sent.SessionID] = time.Now()
+		m.setStatus("Sent to "+msg.agent+".", false)
 	default:
 		m.setStatus(fmt.Sprintf("Sent to %s (session %s). It is working now.", msg.res.Agent, api.ShortSession(msg.res.SessionID)), false)
 	}

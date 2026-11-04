@@ -75,7 +75,7 @@ type SessionSender interface {
 // Send writes text to a session.
 func (s *DaemonSource) SendSession(ctx context.Context, sessionID, text string) (*api.SessionSendResult, error) {
 	var res api.SessionSendResult
-	if err := s.callT(ctx, "session.send", api.SessionSendParams{SessionID: sessionID, Text: text}, &res, 30*time.Second); err != nil {
+	if err := s.callT(ctx, "session.send", api.SessionSendParams{SessionID: sessionID, Text: text, Async: true}, &res, 30*time.Second); err != nil {
 		return nil, err
 	}
 	return &res, nil
