@@ -392,12 +392,15 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 	if err := d.terminal.Type(ctx, *target, text); err != nil {
 		return nil, api.Errf(api.CodeUnavailable, "%v", err)
 	}
+	typeMS := time.Since(typedAt).Milliseconds()
+	retried := false
 	// A real terminal can take the keys and claude still start no turn
 	// (the text sits in its input box). Wait for the turn: the hook or the
 	// session file says busy. Never type again: the human looks (o).
 	// One more Enter (never the text) when the first one went into the
 	// paste: an Enter in an empty input box does nothing.
 	if _, real := d.terminal.(autoTerminal); real && !d.turnStarted(target.SessionID, typedAt, 3*time.Second) {
+		retried = true
 		if err := d.terminal.Enter(ctx, *target); err != nil {
 			return nil, api.Errf(api.CodeUnavailable, "typed, but Enter failed: %v", err)
 		}
@@ -405,7 +408,7 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 	if _, real := d.terminal.(autoTerminal); real && !d.turnStarted(target.SessionID, typedAt, promptStartWait) {
 		_ = d.store.Update(func(tx *store.Tx) error {
 			return tx.Audit("session.prompt_unsent", v.Agent, "", "", "", map[string]any{"session_id": target.SessionID,
-				"chars": utf8.RuneCountInString(text)})
+				"chars": utf8.RuneCountInString(text), "type_ms": typeMS})
 		})
 		return nil, api.Errf(api.CodeUnavailable, "typed into the tab of %s, but claude started no turn in %s: "+
 			"the text may sit unsent in its input; o shows the tab", api.ShortSession(target.SessionID), promptStartWait)
@@ -421,7 +424,10 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 			return err
 		}
 		return tx.Audit("session.prompt", v.Agent, "", "", "", map[string]any{"session_id": target.SessionID,
-			"chars": utf8.RuneCountInString(text), "text": preview})
+			"chars": utf8.RuneCountInString(text), "text": preview,
+			// How long the human waited: typing (with the pause before
+			// Enter) and until claude started the turn.
+			"type_ms": typeMS, "total_ms": time.Since(typedAt).Milliseconds(), "enter_retry": retried})
 	})
 	return &api.SessionPromptResult{Agent: v.Agent, SessionID: target.SessionID}, err
 }
