@@ -165,7 +165,7 @@ func New(o Options) (*Daemon, error) {
 	d.ws = &workspace.Manager{Root: filepath.Join(o.DataDir, "worktrees")}
 	d.notifier = o.Notifier
 	if d.notifier == nil {
-		d.notifier = notify.New(cfg.Daemon.Notify)
+		d.notifier = notify.New(cfg.Daemon.Notify, o.DataDir)
 	}
 	d.terminal = newTerminal(cfg.Daemon.Terminal)
 	d.sessDir = claudeSessionsDir()
@@ -398,7 +398,7 @@ func (d *Daemon) Reload() error {
 	d.claude.MaxOutput = cfg.Defaults.MaxOutputBytes
 	d.mu.Unlock()
 	if d.opts.Notifier == nil {
-		d.notifier = notify.New(cfg.Daemon.Notify)
+		d.notifier = notify.New(cfg.Daemon.Notify, d.dataDir)
 	}
 	_ = d.store.Update(func(tx *store.Tx) error {
 		return tx.Audit("config.reloaded", "", "", "", "", map[string]any{"agents": cfg.AgentIDs()})

@@ -1,6 +1,7 @@
 """Builds the smif logo files in this folder from the site's fonts (fonttools + brotli needed).
 
-python3 docs/brand/make.py  ->  mark.svg, logo-dark.svg (for dark backgrounds), logo-light.svg
+python3 docs/brand/make.py  ->  mark.svg, logo-dark.svg (for dark backgrounds), logo-light.svg, icon.svg
+(the macOS app icon; docs/brand/icns.sh turns it into internal/notify/smif.icns)
 The mark: three stacked windows, the front one yellow with a status dot (many sessions, the one that needs
 you in front). The wordmark is Geist Bold (OFL, site/fonts), turned into paths so the SVGs need no font.
 """
@@ -46,6 +47,10 @@ def write(name, body, w, h):
 
 
 write("mark.svg", mark(), 64, 64)
+# macOS app icon (notifications): the tile on the 1024 grid, 824 wide with the usual margin.
+with open(os.path.join(HERE, "icon.svg"), "w") as fh:
+    fh.write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">'
+             f'<g transform="translate(100 100) scale(12.875)">{mark()}</g></svg>\n')
 for name, color in (("logo-dark.svg", CREAM), ("logo-light.svg", INK)):
     p, wd = word("smif", 62, 80, 51, color)
     write(name, mark() + p, 80 + wd + 4, 64)

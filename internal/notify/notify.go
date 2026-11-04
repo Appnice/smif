@@ -30,14 +30,15 @@ type Notifier interface {
 }
 
 // New builds a notifier from the config value: "os", "none" or "log:<path>".
-func New(spec string) Notifier {
+// dataDir holds the macOS notifier app (app.go).
+func New(spec, dataDir string) Notifier {
 	switch {
 	case spec == "none":
 		return none{}
 	case strings.HasPrefix(spec, "log:"):
 		return &fileLog{path: strings.TrimPrefix(spec, "log:")}
 	default:
-		return osNotifier{}
+		return osNotifier{app: appFor(dataDir)}
 	}
 }
 
@@ -74,7 +75,26 @@ func (f *fileLog) Notify(e Event) error {
 	return err
 }
 
-type osNotifier struct{}
+type osNotifier struct{ app *macApp }
+
+var (
+	appsMu sync.Mutex
+	apps   = map[string]*macApp{}
+)
+
+// appFor shares one app per data dir, so a config reload does not build it
+// again.
+func appFor(dataDir string) *macApp {
+	if dataDir == "" {
+		return nil
+	}
+	appsMu.Lock()
+	defer appsMu.Unlock()
+	if apps[dataDir] == nil {
+		apps[dataDir] = &macApp{dir: dataDir}
+	}
+	return apps[dataDir]
+}
 
 func title(e Event) string {
 	switch e.Kind {
@@ -99,10 +119,15 @@ func title(e Event) string {
 	}
 }
 
-func (osNotifier) Notify(e Event) error {
+func (n osNotifier) Notify(e Event) error {
 	body := Clip(e.Summary, 280)
 	t := title(e)
 	if runtime.GOOS == "darwin" {
+		// Smif.app shows smif's icon; the name is on the icon, so the title
+		// drops "Smif: ". Any failure falls back to the tools below.
+		if n.app != nil && n.app.notify(strings.TrimPrefix(t, "Smif: "), body) == nil {
+			return nil
+		}
 		if p, err := exec.LookPath("terminal-notifier"); err == nil {
 			return exec.Command(p, "-title", t, "-message", body, "-group", "smif-"+e.Agent).Run()
 		}

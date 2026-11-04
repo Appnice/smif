@@ -562,7 +562,8 @@ func cmdDoctor() *cobra.Command {
 			case "darwin":
 				_, e1 := exec.LookPath("terminal-notifier")
 				_, e2 := exec.LookPath("osascript")
-				check(e1 == nil || e2 == nil, "notifier (terminal-notifier or osascript)", "")
+				_, e3 := exec.LookPath("osacompile")
+				check(e1 == nil || e2 == nil, "notifier (Smif.app via osacompile, terminal-notifier or osascript)", errString(e3))
 			default:
 				_, e := exec.LookPath("notify-send")
 				check(e == nil, "notifier (notify-send)", errString(e))
