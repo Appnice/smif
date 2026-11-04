@@ -19,7 +19,7 @@ import (
 
 // Session discovery (ADR-0012). Claude Code keeps one file for each running
 // session in $CLAUDE_CONFIG_DIR/sessions/<pid>.json (default ~/.claude):
-// its session id, cwd, name and status (idle, busy, or shell while a Bash command runs). Smif reads these
+// its session id, cwd, name and status (idle, busy; shell while a shell it started runs). Smif reads these
 // files, so every open session shows up at once, also one that had no hook
 // since Smif was installed. The files are not a documented interface:
 // a missing or changed file only means the hooks alone decide (docs/compat.md).
@@ -36,12 +36,13 @@ type claudeSession struct {
 	StatusUpdatedAt int64  `json:"statusUpdatedAt"`
 }
 
-// fileTurn maps a session file's status to a turn. Claude Code 2.1.318
-// writes "shell" while a turn runs a Bash command: for Smif that is busy
-// (nothing may be typed in, a fork can answer).
+// fileTurn maps a session file's status to a turn ("" = the file says
+// nothing). Since Claude Code 2.1.316 the status is "shell" while a shell
+// the session started runs, also a background one after the turn ended, so
+// it tells neither busy nor idle: the hooks decide then.
 func fileTurn(status string) string {
 	if status == "shell" {
-		return "busy"
+		return ""
 	}
 	return status
 }
@@ -216,8 +217,8 @@ func (d *Daemon) mergeSessions(cfg *config.Config, rows []store.Presence, found 
 			p.Title = s.Name
 		}
 		at := time.UnixMilli(s.StatusUpdatedAt)
-		if s.Status != "" && (p.TurnAt.IsZero() || !at.Before(p.TurnAt)) {
-			p.Turn, p.TurnAt = fileTurn(s.Status), at
+		if t := fileTurn(s.Status); t != "" && (p.TurnAt.IsZero() || !at.Before(p.TurnAt)) {
+			p.Turn, p.TurnAt = t, at
 		}
 		if at.After(p.LastSeen) {
 			p.LastSeen = at

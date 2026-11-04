@@ -303,6 +303,29 @@ func (d *Daemon) expandPrompt(text string) string {
 	return saved
 }
 
+// promptStartWait is how long session.prompt waits for claude to start the
+// turn after typing.
+const promptStartWait = 8 * time.Second
+
+// turnStarted polls the live sessions until the session's turn is busy or
+// waiting with a time after since, or wait runs out.
+func (d *Daemon) turnStarted(sessionID string, since time.Time, wait time.Duration) bool {
+	end := time.Now().Add(wait)
+	for {
+		if ps, err := d.liveSessions(); err == nil {
+			for _, p := range ps {
+				if p.SessionID == sessionID && p.Turn != "idle" && p.Turn != "" && p.TurnAt.After(since) {
+					return true
+				}
+			}
+		}
+		if time.Now().After(end) {
+			return false
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+}
+
 func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (*api.SessionPromptResult, error) {
 	text, err := checkPrompt(d.expandPrompt(p.Text))
 	if err != nil {
@@ -365,8 +388,20 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 	if err := d.terminal.Ready(*target); err != nil {
 		return nil, api.Errf(api.CodeRejected, "cannot type into %s: %v", api.ShortSession(target.SessionID), err)
 	}
+	typedAt := time.Now()
 	if err := d.terminal.Type(ctx, *target, text); err != nil {
 		return nil, api.Errf(api.CodeUnavailable, "%v", err)
+	}
+	// A real terminal can take the keys and claude still start no turn
+	// (the text sits in its input box). Wait for the turn: the hook or the
+	// session file says busy. Never type again: the human looks (o).
+	if _, real := d.terminal.(autoTerminal); real && !d.turnStarted(target.SessionID, typedAt, promptStartWait) {
+		_ = d.store.Update(func(tx *store.Tx) error {
+			return tx.Audit("session.prompt_unsent", v.Agent, "", "", "", map[string]any{"session_id": target.SessionID,
+				"chars": utf8.RuneCountInString(text)})
+		})
+		return nil, api.Errf(api.CodeUnavailable, "typed into the tab of %s, but claude started no turn in %s: "+
+			"the text may sit unsent in its input; o shows the tab", api.ShortSession(target.SessionID), promptStartWait)
 	}
 	preview := text
 	if utf8.RuneCountInString(preview) > 80 {
