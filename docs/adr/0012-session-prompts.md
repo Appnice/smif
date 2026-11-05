@@ -67,7 +67,8 @@ text, worker output and agent requests never go into a session.
   off. `"log:<path>"` writes JSONL instead (tests). This setting needs a daemon restart.
 - **Surfaces.** In the UI, a SESSIONS group on the home screen (grouped by root folder when there is more than one, then a fixed order by name, so rows do not move when a session turns idle or busy), `s` on an idle session
   opens the box under the preview, and `: prompt <name | agent> <text>`. In the CLI, `smif sessions` and
-  `smif prompt <session name | agent> [--session <prefix>] <text…>`. A name (any case) picks the session
+  `smif prompt (<session name | agent> | --session <prefix>) <text…>`. With `--session` every word is prompt
+  text, so no name goes before the text (amended 2026-11-05). A name (any case) picks the session
   with that name (`session.prompt {name}`); with no such session it is an agent with one idle session.
 
 **Limits.**

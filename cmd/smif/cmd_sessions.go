@@ -71,11 +71,11 @@ func cmdPrompt() *cobra.Command {
 	var session string
 	c := &cobra.Command{
 		Use:   "prompt (<session name> | --session <prefix>) <text…>",
-		Short: "Write to a session: typed in when idle (Terminal.app, iTerm2, tmux), else a worker with its context answers",
+		Short: "Write to a session: typed in when idle (Terminal.app, iTerm2, tmux, herdr), else a worker with its context answers",
 		Long: "The first word names the session (its name from `smif sessions`, case does not matter; quote a\n" +
 			"name with spaces). With --session an id prefix picks the session and every word is prompt text:\n" +
 			"no session name goes before the text. An idle session gets one line typed in and\n" +
-			"Enter (Terminal.app, iTerm2 or tmux; claude in the foreground of its tab). A busy session is not touched: a worker resumes\n" +
+			"Enter (Terminal.app, iTerm2, tmux or herdr; claude in the foreground of its tab). A busy session is not touched: a worker resumes\n" +
 			"a fork of it (read only) and answers (ADR-0013).",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

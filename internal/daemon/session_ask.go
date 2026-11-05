@@ -140,7 +140,7 @@ func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.Sessio
 	}
 	if target == nil {
 		if n := countNamed(ps, p.Name); n > 1 {
-			return nil, api.Errf(api.CodeRejected, "%d sessions are named %q; pick one with --session", n, p.Name)
+			return nil, api.Errf(api.CodeRejected, "%d sessions are named %q; use `smif prompt --session <id prefix> <text>`, without the name", n, p.Name)
 		}
 		return nil, api.Errf(api.CodeNotFound, "no live session %s%s", p.SessionID, p.Name)
 	}
