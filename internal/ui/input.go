@@ -2,6 +2,7 @@ package ui
 
 import (
 	"strings"
+	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -89,6 +90,16 @@ func (in *lineInput) edit(k tea.KeyPressMsg) bool {
 		}
 		in.r = append(in.r[:i], in.r[in.pos:]...)
 		in.pos = i
+	case "alt+backspace", "ctrl+backspace":
+		i := in.wordStart()
+		in.r = append(in.r[:i], in.r[in.pos:]...)
+		in.pos = i
+	case "alt+delete", "alt+d":
+		in.r = append(in.r[:in.pos], in.r[in.wordEnd():]...)
+	case "alt+left", "alt+b", "ctrl+left":
+		in.pos = in.wordStart()
+	case "alt+right", "alt+f", "ctrl+right":
+		in.pos = in.wordEnd()
 	case "alt+enter", "shift+enter", "ctrl+j":
 		in.insert([]rune{'\n'})
 	case "enter", "esc":
@@ -102,6 +113,33 @@ func (in *lineInput) edit(k tea.KeyPressMsg) bool {
 	}
 	return true
 }
+
+// wordStart is the start of the word before the cursor, the way option+delete
+// counts on macOS: it skips what is not a word, then the word.
+func (in *lineInput) wordStart() int {
+	i := in.pos
+	for i > 0 && !wordRune(in.r[i-1]) {
+		i--
+	}
+	for i > 0 && wordRune(in.r[i-1]) {
+		i--
+	}
+	return i
+}
+
+// wordEnd is the end of the word after the cursor.
+func (in *lineInput) wordEnd() int {
+	i := in.pos
+	for i < len(in.r) && !wordRune(in.r[i]) {
+		i++
+	}
+	for i < len(in.r) && wordRune(in.r[i]) {
+		i++
+	}
+	return i
+}
+
+func wordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' }
 
 // view renders the text in w cells with the cursor drawn reversed. When
 // the text is wider, it shows the part around the cursor.

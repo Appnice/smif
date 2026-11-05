@@ -381,6 +381,52 @@ func TestReadOnlySourceCannotAct(t *testing.T) {
 	}
 }
 
+func TestLineInputWords(t *testing.T) {
+	// These are the keys Bubble Tea decodes from the terminal's bytes.
+	optDelete := tea.KeyPressMsg{Code: tea.KeyBackspace, Mod: tea.ModAlt} // ESC DEL
+	optLeft := tea.KeyPressMsg{Code: 'b', Mod: tea.ModAlt}                // ESC b, Terminal.app
+	optRight := tea.KeyPressMsg{Code: 'f', Mod: tea.ModAlt}               // ESC f, Terminal.app
+	optForward := tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModAlt}   // CSI 3;3~
+	optLeftCSI := tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModAlt}     // CSI 1;3D, iTerm2
+	press := func(in *lineInput, k tea.KeyPressMsg) {
+		t.Helper()
+		if !in.edit(k) {
+			t.Fatalf("%s not handled", k.String())
+		}
+	}
+	var in lineInput
+	in.insert([]rune("git commit --amend, zażółć"))
+	press(&in, optDelete)
+	if in.Value() != "git commit --amend, " {
+		t.Fatalf("option+delete: %q", in.Value())
+	}
+	press(&in, optDelete)
+	if in.Value() != "git commit --" {
+		t.Fatalf("option+delete over punctuation: %q", in.Value())
+	}
+	press(&in, optLeft)
+	if in.pos != 4 {
+		t.Fatalf("option+left: %d", in.pos)
+	}
+	press(&in, optRight)
+	if in.pos != 10 {
+		t.Fatalf("option+right: %d", in.pos)
+	}
+	in.pos = 3
+	press(&in, optForward)
+	if in.Value() != "git --" || in.pos != 3 {
+		t.Fatalf("option+forward delete: %q at %d", in.Value(), in.pos)
+	}
+	press(&in, optLeftCSI)
+	if in.pos != 0 {
+		t.Fatalf("option+left, CSI form: %d", in.pos)
+	}
+	press(&in, optDelete) // at the start: nothing to delete, no panic
+	if in.Value() != "git --" {
+		t.Fatalf("option+delete at the start: %q", in.Value())
+	}
+}
+
 func TestLineInput(t *testing.T) {
 	var in lineInput
 	in.edit(keyText("hello world", false))

@@ -104,6 +104,9 @@ var helpText = []helpEntry{
 	{"ctrl+u", "delete from the start of the text to the text cursor"},
 	{"ctrl+k", "delete from the text cursor to the end of the text"},
 	{"ctrl+w", "delete the word before the text cursor"},
+	{"alt+backspace", "option+delete: delete the word before the text cursor, up to punctuation"},
+	{"alt+delete", "delete the word after the text cursor"},
+	{"alt+←/→", "option+arrow: move the text cursor one word"},
 	{"esc", "close the box (the text stays for the next a)"},
 
 	section("KEYS: RUN (record, transcript, diff of the worker branch)"),

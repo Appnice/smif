@@ -1,7 +1,7 @@
 smif  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
 queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  HELP · lines 1-45 of 116 · ↑/↓ scroll · q quit · any other key closes
+  HELP · lines 1-45 of 119 · ↑/↓ scroll · q quit · any other key closes
 
   KEYS: HOME (the start screen: what asks you, sessions with their state, then workers; empty groups hide)
   ↑/k, ↓/j              move through the list; the preview on the right follows
