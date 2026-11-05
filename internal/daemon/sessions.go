@@ -172,15 +172,15 @@ func (d *Daemon) sessionNew(ctx context.Context, p api.SessionNewParams) (any, e
 		return nil, api.Errf(api.CodeParams, "a session name is letters, digits, spaces and . _ & -, at most 40")
 	}
 	switch p.Term {
-	case "", termApple, termITerm, termTmux:
+	case "", termApple, termITerm, termTmux, termHerdr:
 	default:
-		return nil, api.Errf(api.CodeParams, "new sessions open in Terminal.app, iTerm2 or tmux, not %s", p.Term)
+		return nil, api.Errf(api.CodeParams, "new sessions open in Terminal.app, iTerm2, tmux or herdr, not %s", p.Term)
 	}
 	argv := []string{d.Config().Defaults.ClaudeCommand}
 	if name != "" {
 		argv = append(argv, "--name", name)
 	}
-	if err := d.terminal.Open(ctx, p.Term, dir, argv); err != nil {
+	if err := d.terminal.Open(ctx, p.Term, dir, name, argv); err != nil {
 		return nil, api.Errf(api.CodeUnavailable, "%v", err)
 	}
 	_ = d.store.Update(func(tx *store.Tx) error {

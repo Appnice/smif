@@ -203,7 +203,8 @@ type PresenceParams struct {
 	// Agent, when set ($SMIF_AGENT in the session), wins over Cwd.
 	Agent string `json:"agent,omitempty"`
 	// Where the session runs, from the hook: its terminal device, the
-	// claude process and $TERM_PROGRAM ("tmux" inside tmux).
+	// claude process and $TERM_PROGRAM ("tmux" inside tmux, "herdr" in a
+	// herdr pane).
 	TTY  string `json:"tty,omitempty"`
 	PID  int    `json:"pid,omitempty"`
 	Term string `json:"term,omitempty"`
@@ -290,7 +291,7 @@ type SavedPrompt struct {
 
 // SessionNewParams is session.new: open a new terminal tab that runs claude
 // in Dir, named Name (ADR-0015). Term picks the terminal ("Apple_Terminal",
-// "iTerm.app", "tmux"; "" = the daemon's default).
+// "iTerm.app", "tmux", "herdr"; "" = the daemon's default).
 type SessionNewParams struct {
 	Dir  string `json:"dir"`
 	Name string `json:"name,omitempty"`

@@ -8,7 +8,7 @@ import (
 )
 
 func TestTerminalSupport(t *testing.T) {
-	for term, ok := range map[string]bool{"Apple_Terminal": true, "iTerm.app": true, "tmux": true, "WezTerm": false, "": false} {
+	for term, ok := range map[string]bool{"Apple_Terminal": true, "iTerm.app": true, "tmux": true, "herdr": true, "WezTerm": false, "": false} {
 		if got := termSupport(store.Presence{Term: term}) == ""; got != ok {
 			t.Errorf("%q supported = %v, want %v", term, got, ok)
 		}

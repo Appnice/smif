@@ -174,7 +174,7 @@
         <div class="node node--out"><code>smif</code><span>the live list, preview and chat</span></div>
         <div class="node node--out"><code>status line</code><span>who waits, inside every session</span></div>
         <div class="node node--out"><code>notifications</code><span>a wait, an answer, a stall</span></div>
-        <div class="node node--out"><code>your tabs</code><span>Terminal.app · iTerm2 · tmux</span></div>
+        <div class="node node--out"><code>your tabs</code><span>Terminal.app · iTerm2 · tmux · herdr</span></div>
       </div>
     </div>
 
@@ -238,7 +238,7 @@
 
       <article class="card reveal">
         <h3>A new session in one key</h3>
-        <p><kbd>n</kbd>, a name, <kbd>enter</kbd>. <code>claude --name api</code> opens in the selected session's folder: a new Terminal.app window, iTerm2 tab or tmux window.</p>
+        <p><kbd>n</kbd>, a name, <kbd>enter</kbd>. <code>claude --name api</code> opens in the selected session's folder: a new Terminal.app window, iTerm2 tab, tmux window or herdr workspace.</p>
         <div class="newsess" aria-hidden="true"><span class="ns__k">n</span><span class="ns__line">new session in ~/code/payments-api · name: <span class="ns__type" data-type="refunds-v2"></span><span class="caret"></span></span></div>
       </article>
 
@@ -319,7 +319,7 @@
         <li><div class="cmd cmd--plain" data-copy="smif"><span class="cmd__prompt" aria-hidden="true">$</span><code>smif</code><span class="cmd__note">the live view; starts the daemon</span></div></li>
         <li><div class="cmd cmd--plain" data-copy="smif install"><span class="cmd__prompt" aria-hidden="true">$</span><code>smif install</code><span class="cmd__note">optional: hooks, status line, <code>/smif</code></span></div></li>
       </ol>
-      <p class="install__req">Needs Claude Code. Typing into tabs works in Terminal.app and iTerm2 on macOS, and in tmux anywhere. The view works in any terminal.</p>
+      <p class="install__req">Needs Claude Code. Typing into tabs works in Terminal.app and iTerm2 on macOS, and in tmux and herdr anywhere. The view works in any terminal.</p>
     </div>
   </div>
 </section>
@@ -334,7 +334,7 @@
       <details><summary>Does it need an API key?</summary><p>No. Reading sessions needs nothing. A fork that answers for a busy session runs <code>claude</code> with your own login.</p></details>
       <details><summary>Will it ever approve a permission prompt?</summary><p>Never. It shows you what the session asks and brings its tab to the front with <kbd>o</kbd>. The answer stays yours.</p></details>
       <details><summary>What does <code>smif install</code> change?</summary><p>It adds four hooks and a status line segment to <code>~/.claude/settings.json</code>, a <code>/smif</code> command and an MCP server, and a launchd or systemd service. Every file is backed up first, and <code>smif uninstall</code> restores it.</p></details>
-      <details><summary>Which terminals can it type into?</summary><p>Terminal.app and iTerm2 on macOS, and tmux anywhere. Before typing it checks that <code>claude</code> is in the foreground of that tab. Elsewhere you still get the full view, the chat history and <kbd>o</kbd>.</p></details>
+      <details><summary>Which terminals can it type into?</summary><p>Terminal.app and iTerm2 on macOS, and tmux and herdr anywhere. Before typing it checks that <code>claude</code> is in the foreground of that tab. Elsewhere you still get the full view, the chat history and <kbd>o</kbd>.</p></details>
     </div>
   </div>
 </section>

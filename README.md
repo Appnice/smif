@@ -58,7 +58,7 @@ Write to a session from the same screen. `enter` opens a chat with it:
 
 | The session is | Your text |
 |---|---|
-| **idle** | Is typed into its tab and sent, as if you typed it there (Terminal.app, iTerm2 or tmux). |
+| **idle** | Is typed into its tab and sent, as if you typed it there (Terminal.app, iTerm2, tmux or herdr). |
 | **busy** or **waiting** | Is not typed. A fork of the session answers (`claude -p --resume … --fork-session`): it knows what the session knows, works read-only, and leaves the session untouched. Needs an agent for the folder (`smif init`). |
 
 Smif never answers a permission prompt for you.
@@ -72,7 +72,7 @@ review = "review your last change for bugs, then list them"
 ```
 
 `n` opens a new session: `claude --name <name>` in the selected session's folder, in a new Terminal.app window,
-iTerm2 tab or tmux window.
+iTerm2 tab, tmux window or herdr workspace.
 
 ## How it works
 
@@ -160,7 +160,7 @@ byte for byte.
 | A crash monitor, CI, cron | `smif emit --as monitor --to shop --intent crash.report --subject "NPE" --dedupe-key npe-1 --body - < report.md` |
 | The terminal UI | `smif` |
 | All sessions | `smif` (the UI), or `smif sessions` in a shell |
-| An idle session | `smif prompt api "run the tests"` types the prompt into the session with that name, as if you typed it there (Terminal.app, iTerm2 or tmux) |
+| An idle session | `smif prompt api "run the tests"` types the prompt into the session with that name, as if you typed it there (Terminal.app, iTerm2, tmux or herdr) |
 | Your results | `/smif` in a session, or `smif stats` |
 
 <details>

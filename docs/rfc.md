@@ -332,10 +332,10 @@ Four surfaces: the daemon socket API, an MCP server for sessions, a CLI for huma
 | `run.diff` / `run.apply` | Inspect or merge a worker branch; the daemon runs the merge so it is audited **(ADR-0006)** |
 | `agent.list` / `agent.status` | Agents, capabilities (`intents` from their rules), queue depth, budget left |
 | `presence.update` | From hooks: session start, heartbeat, end, and the turn (`busy` on `UserPromptSubmit`, `idle` on `Stop`) with the claude pid, tty and terminal, and the session's name and last prompt from its transcript (human token only); `session.list` also reads Claude Code's session files **(ADR-0012)**; `agent` (from `SMIF_AGENT`) wins over `cwd` |
-| `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their turn, last answer and what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux) **(ADR-0012)** |
+| `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their turn, last answer and what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux, herdr) **(ADR-0012, ADR-0018)** |
 | `stats.get` | Human only: counts over a window, per agent and day (ADR-0011) |
 | `inbox.counts` | Per-agent counters for the status line; for the human, also the other sessions that wait or answered (**ADR-0014**) |
-| `prompts.list` / `session.new` | Human only (**ADR-0015**): the saved prompts (`[prompts]`; `@name` in `session.send` and `session.prompt` stands for one); open `claude --name <name>` in a folder in a new Terminal.app window, iTerm2 tab or tmux window |
+| `prompts.list` / `session.new` | Human only (**ADR-0015**): the saved prompts (`[prompts]`; `@name` in `session.send` and `session.prompt` stands for one); open `claude --name <name>` in a folder in a new Terminal.app window, iTerm2 tab, tmux window or herdr workspace |
 | `digest.get` | Summaries of handled items since a cursor (human pull only); optional `until` bounds the advance **(ADR-0008)** |
 | `audit.since` | Audit rows after a cursor, for the live feed of `smif ui` and `smif watch` (human only) **(ADR-0008)** |
 | `blob.put` / `blob.get` | Attachment storage |
@@ -393,7 +393,7 @@ session_notify = "waiting,answered"  # or "waiting", "answered", "none" (ADR-001
 remind_waiting = "10m"     # watchdogs (ADR-0015): a duration or "off"
 alert_silent = "10m"
 alert_long_turn = "off"
-terminal = "auto"          # session prompts: "auto" (Terminal.app, iTerm2, tmux), "none", "log:<path>" (ADR-0012)
+terminal = "auto"          # session prompts: "auto" (Terminal.app, iTerm2, tmux, herdr), "none", "log:<path>" (ADR-0012)
 
 [defaults]
 claude_command = "claude"

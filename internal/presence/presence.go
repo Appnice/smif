@@ -92,10 +92,14 @@ func Locate() (pid int, tty string) {
 }
 
 // Term names the terminal from the hook's environment: "tmux" inside
-// tmux, else $TERM_PROGRAM (Apple_Terminal, iTerm.app, …).
+// tmux, "herdr" in a herdr pane, else $TERM_PROGRAM (Apple_Terminal,
+// iTerm.app, …). With both set the daemon's process walk decides.
 func Term() string {
 	if os.Getenv("TMUX") != "" {
 		return "tmux"
+	}
+	if os.Getenv("HERDR_ENV") == "1" {
+		return "herdr"
 	}
 	return os.Getenv("TERM_PROGRAM")
 }

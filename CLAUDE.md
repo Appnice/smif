@@ -11,7 +11,7 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
 - `smif` (= `smif ui [--interval 1s]`) live human view; in a pipe plain `smif` prints one summary (needs a TTY; `NO_COLOR=1` drops colours, keeps bold/reverse)
   · `go test -run TestUIOverviewLive -v ./e2e/` prints it live · `go test ./internal/ui -update` rewrites goldens
 - `smif stats [--days N] [--json]` counts per agent/day (`stats.get`, ADR-0011) · `go test -run TestStatsCountsKnownTraffic ./e2e/`
-- `smif sessions` · `smif prompt <session name | agent> <text>` type into an idle session (Terminal.app, iTerm2, tmux: `terminals.go`, ADR-0012) · `go test -run TestSessionPrompt ./e2e/`
+- `smif sessions` · `smif prompt <session name | agent> <text>` type into an idle session (Terminal.app, iTerm2, tmux: `terminals.go`, ADR-0012; herdr: `herdr.go`, ADR-0018) · `go test -run TestSessionPrompt ./e2e/`
 - `smif watch [--events] [--once] [--last N]` plain text for pipes/tmux/ssh · `go test -run TestWatchEventsLive -v ./e2e/`
 - `make bench` (tiers S/R/T on the fake, $0, `bench/README.md`) · `make bench-real` (+ actual tokens on haiku via the login)
 - `make cover` · `make smoke-real` (real `claude -p` on haiku, `SMIF_E2E_REAL=1`, ~$0.01)

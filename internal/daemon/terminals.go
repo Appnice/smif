@@ -19,8 +19,9 @@ import (
 
 // Terminals (ADR-0012). Smif types the human's prompt into the terminal
 // a session runs in, and brings that terminal to the front: Terminal.app
-// and iTerm2 by AppleScript (macOS), tmux by send-keys (any OS). A tab or
-// pane is found by the session's tty. Text and Enter go separately: text
+// and iTerm2 by AppleScript (macOS), tmux by send-keys, herdr by its CLI
+// (any OS; herdr.go). A tab or pane is found by the session's tty (herdr:
+// by the claude pid). Text and Enter go separately: text
 // with its newline in one piece lands in the Claude Code input as a paste
 // and is not sent (docs/compat.md).
 
@@ -41,7 +42,8 @@ type terminal interface {
 	Focus(ctx context.Context, p store.Presence) error
 	// Open starts argv in dir in a new tab or window of the terminal term
 	// ("" = Terminal.app on macOS, else tmux), for a new session (ADR-0015).
-	Open(ctx context.Context, term, dir string, argv []string) error
+	// label names it where the terminal shows names (herdr workspaces).
+	Open(ctx context.Context, term, dir, label string, argv []string) error
 }
 
 // enterDelay is the pause between the text and Enter. Claude Code reads a
@@ -62,7 +64,7 @@ func newTerminal(spec string) terminal {
 	return autoTerminal{}
 }
 
-// The $TERM_PROGRAM values (and "tmux") Smif can drive.
+// The $TERM_PROGRAM values (and "tmux", termHerdr) Smif can drive.
 const (
 	termApple = "Apple_Terminal"
 	termITerm = "iTerm.app"
@@ -73,12 +75,12 @@ const (
 // whatever the OS ("" = a terminal it knows).
 func termSupport(p store.Presence) string {
 	switch p.Term {
-	case termApple, termITerm, termTmux:
+	case termApple, termITerm, termTmux, termHerdr:
 		return ""
 	case "":
 		return "Smif does not know which terminal this session runs in"
 	}
-	return "prompts work in Terminal.app, iTerm2 and tmux; this session runs in " + p.Term
+	return "prompts work in Terminal.app, iTerm2, tmux and herdr; this session runs in " + p.Term
 }
 
 type offTerminal struct{}
@@ -96,7 +98,7 @@ func (offTerminal) Enter(context.Context, store.Presence) error {
 func (offTerminal) Focus(context.Context, store.Presence) error {
 	return errors.New("prompts are off")
 }
-func (offTerminal) Open(context.Context, string, string, []string) error {
+func (offTerminal) Open(context.Context, string, string, string, []string) error {
 	return errors.New("terminals are off (daemon.terminal = \"none\")")
 }
 func (offTerminal) Supports(store.Presence) string {
@@ -136,15 +138,15 @@ func (l logTerminal) Focus(_ context.Context, p store.Presence) error {
 	return l.write(map[string]any{"session_id": p.SessionID, "tty": p.TTY, "term": p.Term, "focus": true})
 }
 
-func (l logTerminal) Open(_ context.Context, term, dir string, argv []string) error {
-	return l.write(map[string]any{"open": true, "term": term, "dir": dir, "argv": argv})
+func (l logTerminal) Open(_ context.Context, term, dir, label string, argv []string) error {
+	return l.write(map[string]any{"open": true, "term": term, "dir": dir, "label": label, "argv": argv})
 }
 
 // Supports applies the same terminal rule as the real terminals, on any OS.
 func (logTerminal) Supports(p store.Presence) string { return termSupport(p) }
 
 // autoTerminal drives the session's own terminal: Terminal.app or iTerm2
-// (macOS) or tmux.
+// (macOS), tmux or herdr.
 type autoTerminal struct{}
 
 func (autoTerminal) Supports(p store.Presence) string {
@@ -159,6 +161,10 @@ func (autoTerminal) Supports(p store.Presence) string {
 	case termTmux:
 		if tmuxPath() == "" {
 			return "this session runs in tmux, but the daemon cannot find the tmux command"
+		}
+	case termHerdr:
+		if herdrPath() == "" {
+			return "this session runs in herdr, but the daemon cannot find the herdr command"
 		}
 	}
 	return ""
@@ -193,6 +199,8 @@ func (autoTerminal) Type(ctx context.Context, p store.Presence, text string) err
 		return runAppleScript(ctx, "iTerm2", iTermTypeScript, p.TTY, text, delayMS(text))
 	case termTmux:
 		return tmuxType(ctx, p.TTY, text)
+	case termHerdr:
+		return herdrType(ctx, p, text)
 	}
 	return runAppleScript(ctx, "Terminal", appleTypeScript, p.TTY, text, delayMS(text))
 }
@@ -207,6 +215,8 @@ func (autoTerminal) Enter(ctx context.Context, p store.Presence) error {
 		return runAppleScript(ctx, "iTerm2", iTermEnterScript, p.TTY)
 	case termTmux:
 		return tmuxEnter(ctx, p.TTY)
+	case termHerdr:
+		return herdrEnter(ctx, p)
 	}
 	return runAppleScript(ctx, "Terminal", appleEnterScript, p.TTY)
 }
@@ -217,11 +227,13 @@ func (autoTerminal) Focus(ctx context.Context, p store.Presence) error {
 		return runAppleScript(ctx, "iTerm2", iTermFocusScript, p.TTY)
 	case termTmux:
 		return tmuxFocus(ctx, p.TTY)
+	case termHerdr:
+		return herdrFocus(ctx, p)
 	}
 	return runAppleScript(ctx, "Terminal", appleFocusScript, p.TTY)
 }
 
-func (autoTerminal) Open(ctx context.Context, term, dir string, argv []string) error {
+func (autoTerminal) Open(ctx context.Context, term, dir, label string, argv []string) error {
 	if term == "" {
 		term = termTmux
 		if runtime.GOOS == "darwin" {
@@ -249,8 +261,13 @@ func (autoTerminal) Open(ctx context.Context, term, dir string, argv []string) e
 			return fmt.Errorf("tmux new-window: %v: %s", err, strings.TrimSpace(string(out)))
 		}
 		return nil
+	case termHerdr:
+		if herdrPath() == "" {
+			return errors.New("the daemon cannot find the herdr command")
+		}
+		return herdrOpen(ctx, dir, label, line)
 	}
-	return fmt.Errorf("new sessions open in Terminal.app, iTerm2 or tmux, not %s", term)
+	return fmt.Errorf("new sessions open in Terminal.app, iTerm2, tmux or herdr, not %s", term)
 }
 
 // shellQuote quotes s for sh: 'it'\”s'.

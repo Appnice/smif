@@ -753,7 +753,7 @@ func (m *Model) liveBody(sv *api.SessionView, turns []api.SessionTurn, w int, no
 // canFocus reports a terminal whose tab or pane Smif can bring to the
 // front (session.focus).
 func canFocus(term string) bool {
-	return term == "Apple_Terminal" || term == "iTerm.app" || term == "tmux"
+	return term == "Apple_Terminal" || term == "iTerm.app" || term == "tmux" || term == "herdr"
 }
 
 // canWrite reports whether the human can write to the session now: typed

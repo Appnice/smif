@@ -143,7 +143,8 @@ func (c *procCache) get(pid int, started int64) procInfo {
 }
 
 // readProcInfo reads the process's tty, then walks up its parents to name
-// the terminal app: Terminal.app, iTerm2 or a tmux server.
+// the terminal app: Terminal.app, iTerm2, or a tmux or herdr server (the
+// nearest one wins, so tmux inside herdr counts as tmux).
 func readProcInfo(pid int) procInfo {
 	var p procInfo
 	cur := pid
@@ -163,6 +164,9 @@ func readProcInfo(pid int) procInfo {
 		switch {
 		case strings.HasPrefix(comm, "tmux"):
 			p.term = "tmux"
+			return p
+		case comm == "herdr":
+			p.term = termHerdr
 			return p
 		case comm == "Terminal":
 			p.term = "Apple_Terminal"

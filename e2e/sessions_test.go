@@ -74,7 +74,7 @@ func TestSessionPrompt(t *testing.T) {
 	if s := ss["s-idle-0001"]; s.Turn != "idle" || !s.CanPrompt || s.TTY != "/dev/ttys999" {
 		t.Fatalf("idle session: %+v", s)
 	}
-	if s := ss["s-iterm-001"]; s.CanPrompt || !strings.Contains(s.Why, "Terminal.app, iTerm2 and tmux") {
+	if s := ss["s-iterm-001"]; s.CanPrompt || !strings.Contains(s.Why, "Terminal.app, iTerm2, tmux and herdr") {
 		t.Fatalf("iTerm session: %+v", s)
 	}
 	if _, ok := ss["s-dead-0001"]; ok {

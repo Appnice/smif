@@ -72,7 +72,7 @@ text, worker output and agent requests never go into a session.
 
 **Limits.**
 
-- Terminal.app, iTerm2 and tmux. Only Terminal.app is checked live; iTerm2 and tmux are covered by tests of
+- Terminal.app, iTerm2 and tmux (herdr: ADR-0018). Only Terminal.app is checked live; iTerm2 and tmux are covered by tests of
   their commands and the log terminal. Other terminals show the reason in the UI. tmux uses the default server
   socket; a session on another socket (`tmux -L`/`-S`) cannot be reached.
 - Without the session files (another Claude Code version), a session shows up only after its first hook.
