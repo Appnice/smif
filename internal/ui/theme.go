@@ -58,6 +58,7 @@ const (
 )
 
 func applyTheme(color bool) {
+	themeColor = color
 	fg := func(s lipgloss.Style, c string) lipgloss.Style {
 		if color {
 			return s.Foreground(lipgloss.Color(c))
@@ -98,6 +99,9 @@ func applyTheme(color bool) {
 		stFrame = lipgloss.NewStyle().Foreground(lipgloss.Color(gbBg2))
 	}
 }
+
+// themeColor is false under NO_COLOR, where a thumbnail cannot draw.
+var themeColor = true
 
 // NoColor reports whether the NO_COLOR variable asks for no colours: it
 // is set and not empty (https://no-color.org).

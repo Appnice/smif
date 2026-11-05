@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -20,6 +22,29 @@ var clipboardTools = [][]string{
 	{"wl-copy"},
 	{"xclip", "-selection", "clipboard"},
 	{"xsel", "--clipboard", "--input"},
+}
+
+// clipboardReaders print the clipboard's text.
+var clipboardReaders = [][]string{
+	{"pbpaste"},
+	{"wl-paste", "-n"},
+	{"xclip", "-selection", "clipboard", "-o"},
+	{"xsel", "--clipboard", "--output"},
+}
+
+// clipboardImageScript saves the clipboard's image as a PNG at the path it
+// gets as an argument, so that no path is written into the script.
+var clipboardImageScript = []string{
+	"-e", "on run argv",
+	"-e", "set f to open for access (POSIX file (item 1 of argv)) with write permission",
+	"-e", "try",
+	"-e", "write (the clipboard as «class PNGf») to f",
+	"-e", "close access f",
+	"-e", "on error e",
+	"-e", "close access f",
+	"-e", "error e",
+	"-e", "end try",
+	"-e", "end run",
 }
 
 var errNoClipboard = errors.New("no clipboard tool found (pbcopy, wl-copy, xclip or xsel)")
@@ -39,6 +64,59 @@ func writeClipboard(text string) error {
 		return cmd.Run()
 	}
 	return errNoClipboard
+}
+
+// readClipboard gives the clipboard's text.
+func readClipboard() (string, error) {
+	for _, tool := range clipboardReaders {
+		path, err := exec.LookPath(tool[0])
+		if err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		out, err := exec.CommandContext(ctx, path, tool[1:]...).Output()
+		return string(out), err
+	}
+	return "", errNoClipboard
+}
+
+// saveClipboardImage saves the clipboard's image as a PNG, or fails when it
+// holds none.
+func saveClipboardImage(dest string) error {
+	var cmd []string
+	switch {
+	case runtime.GOOS == "darwin":
+		cmd = append(append([]string{"osascript"}, clipboardImageScript...), dest)
+	default:
+		if _, err := exec.LookPath("wl-paste"); err == nil {
+			cmd = []string{"wl-paste", "-t", "image/png"}
+		} else {
+			cmd = []string{"xclip", "-selection", "clipboard", "-t", "image/png", "-o"}
+		}
+	}
+	path, err := exec.LookPath(cmd[0])
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c := exec.CommandContext(ctx, path, cmd[1:]...)
+	if runtime.GOOS != "darwin" {
+		f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		c.Stdout = f
+	}
+	if err := c.Run(); err != nil {
+		return err
+	}
+	if info, err := os.Stat(dest); err != nil || info.Size() == 0 {
+		return errors.New("no image on the clipboard")
+	}
+	return nil
 }
 
 // mdCodeBlocks returns the fenced code blocks of an answer, exactly as

@@ -58,7 +58,11 @@ func (m *Model) sendPrompt(r *homeRow, text string) tea.Cmd {
 		m.setStatus(writeHint(r.sess), true)
 		return nil
 	}
-	text = strings.Join(strings.Fields(text), " ") // one line, as typed in the session
+	return m.sendLine(r, strings.Join(strings.Fields(text), " ")) // one line, as typed in the session
+}
+
+// sendLine sends one finished line.
+func (m *Model) sendLine(r *homeRow, text string) tea.Cmd {
 	name, id := sessionName(r.sess), r.sess.SessionID
 	if snd, ok := m.src.(SessionSender); ok {
 		m.setStatus("Sending to "+name+"…", false)
@@ -89,6 +93,7 @@ func (m *Model) onPrompted(msg promptedMsg) tea.Cmd {
 		return nil
 	}
 	m.home.draft, m.home.typing = lineInput{}, m.home.full
+	m.home.part = partState{cleaned: m.home.part.cleaned}
 	m.home.fullScroll = 0
 	switch {
 	case msg.sent != nil && msg.sent.Mode == "worker":

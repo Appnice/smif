@@ -34,6 +34,25 @@ func (in *lineInput) insert(rs []rune) {
 	in.pos += len(clean)
 }
 
+// remove takes the first s out of the text and keeps the cursor on the same
+// character. It reports whether s was there.
+func (in *lineInput) remove(s string) bool {
+	rs := []rune(s)
+	for i := 0; i+len(rs) <= len(in.r); i++ {
+		if string(in.r[i:i+len(rs)]) != s {
+			continue
+		}
+		in.r = append(in.r[:i], in.r[i+len(rs):]...)
+		if in.pos >= i+len(rs) {
+			in.pos -= len(rs)
+		} else if in.pos > i {
+			in.pos = i
+		}
+		return true
+	}
+	return false
+}
+
 // edit applies one key. It reports false for keys it does not handle
 // (enter, esc), which the caller acts on.
 func (in *lineInput) edit(k tea.KeyPressMsg) bool {

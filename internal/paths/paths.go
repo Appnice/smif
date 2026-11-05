@@ -43,6 +43,19 @@ func ConfigFile() string {
 // TokenDir holds one token file per agent plus the admin token.
 func TokenDir() string { return filepath.Join(ConfigDir(), "tokens") }
 
+// PartsDir keeps the parts of a prompt (ADR-0020). It is a cache folder and
+// not DataDir, because a path with no spaces stays whole in a prompt, and on
+// macOS DataDir has one.
+func PartsDir() string {
+	if v := os.Getenv("SMIF_PARTS_DIR"); v != "" {
+		return v
+	}
+	if dir, err := os.UserCacheDir(); err == nil {
+		return filepath.Join(dir, "smif", "parts")
+	}
+	return filepath.Join(Home(), ".cache", "smif", "parts")
+}
+
 // DataDir is the state directory (RFC 8.1).
 func DataDir() string {
 	if v := os.Getenv("SMIF_DATA_DIR"); v != "" {

@@ -67,6 +67,7 @@ type homeState struct {
 	newTerm    string
 	copyFrom   string // the session and newest block the copy key last saw (clipboard.go)
 	copyNext   int    // the block the copy key takes next, newest first
+	part       partState
 }
 
 // previewEntry caches the thread of a previewed message.
@@ -515,6 +516,9 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 
 // homeAnswerKey edits the answer box under the preview.
 func (m *Model) homeAnswerKey(msg tea.KeyPressMsg) tea.Cmd {
+	if cmd, ok := m.partKey(m.homeSelected(), msg.String()); ok {
+		return cmd
+	}
 	if m.home.full {
 		if r := m.homeSelected(); r != nil && r.sess != nil {
 			if cmd, ok := m.chatKey(r, msg.String()); ok {
@@ -535,6 +539,8 @@ func (m *Model) homeAnswerKey(msg tea.KeyPressMsg) tea.Cmd {
 		r := m.homeSelected()
 		text := strings.TrimSpace(m.home.draft.Value())
 		switch {
+		case r != nil && r.sess != nil && len(m.home.part.parts) > 0:
+			return m.trySendParts(r)
 		case r != nil && r.sess != nil && text == "":
 			m.setStatus("The prompt is empty; type it first.", true)
 		case r != nil && r.sess != nil:
@@ -646,8 +652,15 @@ func (m *Model) homeLines(w, avail int) []string {
 	if len(rows) == 0 {
 		sel = -1
 	}
-	if m.home.full && sel >= 0 && rows[sel].sess != nil {
-		return box("", m.sessionFullLines(rows[sel].sess, w-4, avail-2), w, avail, true)
+	if sel >= 0 && rows[sel].sess != nil {
+		switch {
+		case m.home.part.check:
+			return box("", m.checkScreen(rows[sel].sess, w-4, avail-2), w, avail, true)
+		case m.home.part.open:
+			return box("", m.partScreen(rows[sel].sess, w-4, avail-2), w, avail, true)
+		case m.home.full:
+			return box("", m.sessionFullLines(rows[sel].sess, w-4, avail-2), w, avail, true)
+		}
 	}
 	// Narrow terminals get the list alone; enter opens the item.
 	listW := w
@@ -1067,10 +1080,13 @@ func box(title string, lines []string, w, h int, focused bool) []string {
 func (m *Model) homeKeys() string {
 	if m.home.typing {
 		if r := m.homeSelected(); r != nil && r.sess != nil {
-			if m.home.full {
-				return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back · ctrl+c quit"
+			if k := m.partKeys(); k != "" {
+				return k
 			}
-			return "enter sends it (typed in when idle, else to a fork) · esc cancel · ctrl+c quit"
+			if m.home.full {
+				return "type to write · enter send · ctrl+v paste image · ctrl+p parts · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back · ctrl+c quit"
+			}
+			return "enter sends it (typed in when idle, else to a fork) · ctrl+v paste image · ctrl+p parts · esc cancel · ctrl+c quit"
 		}
 		return "enter send · alt+enter new line · esc cancel · ctrl+c quit"
 	}

@@ -45,6 +45,15 @@ var helpText = []helpEntry{
 	{"v", "dashboard: the six-panel overview (agents, events); v or esc there comes back"},
 	{"i, d, r, ?, q", "inbox, digest, refresh, this help, quit"},
 
+	section("KEYS: PROMPT BOX OF A SESSION (s, or the chat)"),
+	{"paste", "a text with several lines, or a very long one, becomes a part: [1] in your text, its first and last lines under it, its size, " +
+		"and whether it matches the clipboard. A dropped file is a part too"},
+	{"ctrl+v", "attach the image on the clipboard (a terminal cannot paste one); with no image, its text as a paste"},
+	{"ctrl+p", "move to the parts: ↑↓ choose, enter open it whole, x remove, esc back to the text"},
+	{"r, o", "in an open image: r takes the clipboard again, o opens it in the system's viewer (o also for a text)"},
+	{"enter", "send; parts go as files, to an idle session only. A possible secret, a very long line, a very big part or a mismatch " +
+		"with the clipboard open a check first: enter sends, e goes back, g shows the first warning"},
+
 	section("KEYS: DASHBOARD (v)"),
 	{"tab, →, l", "next panel"},
 	{"shift+tab, ←, h", "previous panel"},

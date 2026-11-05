@@ -833,6 +833,7 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 		bottom = m.pickLines(sv, w)
 	case m.home.typing:
 		bottom = append([]string{""}, m.home.draft.boxLines(stAccent.Render("› "), w, 6)...)
+		bottom = append(bottom, m.partBoxLines(w, h)...)
 		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" esc cancels.", w, "…")))
 	case sv.Turn == "waiting" && sv.TTY != "" && canFocus(sv.Term):
 		bottom = []string{"", stWarn.Render("o") + " bring its tab to the front and answer there"}
@@ -914,6 +915,7 @@ func (m *Model) sessionFullLines(sv *api.SessionView, w, h int) []string {
 	head := []string{ansi.Truncate(header, w, "…"), ""}
 	bottom := []string{"", stDim.Render(ansi.Truncate(routeShort(sv), w, "…"))}
 	bottom = append(bottom, m.home.draft.boxLines(stAccent.Render("› "), w, 8)...)
+	bottom = append(bottom, m.partBoxLines(w, h)...)
 	bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv), w, "…")))
 	body := m.chatBody(sv, w)
 	room := max(1, h-len(head)-len(bottom))

@@ -32,12 +32,13 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   (overview), `e2e/ui_actions_test.go` (actions), `e2e/ui_cancel_test.go` (cancel a running run), `e2e/ui_run_test.go` (inbox, thread, run, diff, apply),
   `e2e/ui_events_test.go` (events, digest, `watch`), `e2e/ui_tour_test.go` (every screen and action, five agents;
   `SMIF_TOUR_DIR=<dir>` keeps each screen as text)
+  `parts.go` the prompt box's parts (ADR-0020: paste, image, dropped file, warnings, `@path` prompt), `partsview.go` their keys and screens
 - `internal/daemon/` wiring: ingest + routing (`ingest.go`), scheduler loop and outcomes (`dispatch.go`),
   RPC methods (`methods.go`), retention (`gc.go`)
 - `internal/store/` SQLite (modernc, WAL, synchronous=FULL), migrations, the state machine (`transitions`)
 - `internal/router`, `internal/scheduler`, `internal/supervisor` (process groups), `internal/runner/{claude,command}`
 - `internal/harness/` Provider interface and registry (ADR-0019): required `Info`, `Discover`, `Read`; optional `Stater`, `Hooker`,
-  `Forker`, `Stamper`, `Checker`; `ReadOnly` is the typing gate; `listed.go` the process names of the Listed level; `herdr.go` the agents whose herdr idle counts (others read `unknown`, no typing). `internal/harness/claude/` the Claude Code provider (session files,
+  `Forker`, `Stamper`, `Checker`; `ReadOnly` is the typing gate; `listed.go` the process names of the Listed level; `herdr.go` the agents whose herdr idle counts (others read `unknown`, no typing; an agent with no provider stays read only until `herdrChecked` in `internal/daemon/herdr.go` names it). `internal/harness/claude/` the Claude Code provider (session files,
   transcripts, file status, fork folder, process name). Mail, workers and `smif_ask` stay on `internal/runner/claude`.
   `internal/harness/{qwen,codex,opencode,copilot,droid}/` read-only providers from a source reading (unverified, `docs/compat.md`); their `testdata/report-*` are hand-built from that reading. `read.go` holds the shared transcript helpers (`ScanTail`, `TurnLog`, `FileCache`); `proc.go` the process list and `MatchProcs`, for agents with no file that links a pid to a session
 - `internal/workspace` worktrees and branches · `internal/install` settings.json edits, launchd/systemd

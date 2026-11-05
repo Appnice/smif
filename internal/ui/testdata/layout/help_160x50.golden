@@ -1,7 +1,7 @@
 smif  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
 queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  HELP · lines 1-45 of 107 · ↑/↓ scroll · q quit · any other key closes
+  HELP · lines 1-45 of 116 · ↑/↓ scroll · q quit · any other key closes
 
   KEYS: HOME (the start screen: what asks you, sessions with their state, then workers; empty groups hide)
   ↑/k, ↓/j              move through the list; the preview on the right follows
@@ -30,6 +30,15 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p5
   v                     dashboard: the six-panel overview (agents, events); v or esc there comes back
   i, d, r, ?, q         inbox, digest, refresh, this help, quit
 
+  KEYS: PROMPT BOX OF A SESSION (s, or the chat)
+  paste                 a text with several lines, or a very long one, becomes a part: [1] in your text, its first and last lines under it, its size, and
+                        whether it matches the clipboard. A dropped file is a part too
+  ctrl+v                attach the image on the clipboard (a terminal cannot paste one); with no image, its text as a paste
+  ctrl+p                move to the parts: ↑↓ choose, enter open it whole, x remove, esc back to the text
+  r, o                  in an open image: r takes the clipboard again, o opens it in the system's viewer (o also for a text)
+  enter                 send; parts go as files, to an idle session only. A possible secret, a very long line, a very big part or a mismatch with the
+                        clipboard open a check first: enter sends, e goes back, g shows the first warning
+
   KEYS: DASHBOARD (v)
   tab, →, l             next panel
   shift+tab, ←, h       previous panel
@@ -38,13 +47,4 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p5
   enter                 open the row: the thread of a message (NEEDS YOU, DEAD LETTERS, RECENT ACTIVITY), a run (RUNNING), the inbox of an agent (AGENTS), the
                         thread or run of an event (EVENTS)
   a                     reply to the needs_human item under the cursor (NEEDS YOU)
-  c                     cancel the item under the cursor (NEEDS YOU, RUNNING); asks y/N first
-  t                     retry the dead letter under the cursor (DEAD LETTERS); asks y/N first, a retry starts a new run
-  i                     inbox: the newest 200 messages of every agent
-  d                     digest: the items handled since the read cursor
-  r                     refresh now (the screen also polls the daemon on its own)
-  ?                     this help
-  q, ctrl+c             quit (ctrl+c quits on every screen, also in the reply box)
-
-  KEYS: INBOX AND DIGEST
 ↑/↓ scroll · any other key closes the help · q quit

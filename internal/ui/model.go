@@ -3,6 +3,8 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -42,6 +44,9 @@ type Options struct {
 	// SeenFile keeps which session answers the human has seen, across
 	// restarts ("" = in memory only, as in tests).
 	SeenFile string
+	// PartsDir keeps the parts of a prompt, in a path with no spaces
+	// (ADR-0020; "" = the system's temp folder).
+	PartsDir string
 }
 
 // Model is the Bubble Tea model of `smif ui`.
@@ -50,6 +55,10 @@ type Model struct {
 	interval time.Duration
 	now      func() time.Time
 	clip     func(string) error // writes the system clipboard
+
+	clipRead  func() (string, error) // reads its text
+	clipImage func(string) error     // saves its image at a path
+	partsDir  string                 // where prompt parts are kept
 
 	width, height int
 	snap          *Snapshot // last good snapshot
@@ -92,7 +101,11 @@ func New(src Source, o Options) *Model {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
-	m := &Model{src: src, interval: o.Interval, now: o.Now, dashboard: o.Dashboard, clip: writeClipboard}
+	m := &Model{src: src, interval: o.Interval, now: o.Now, dashboard: o.Dashboard, clip: writeClipboard,
+		clipRead: readClipboard, clipImage: saveClipboardImage, partsDir: o.PartsDir}
+	if m.partsDir == "" {
+		m.partsDir = filepath.Join(os.TempDir(), "smif-parts")
+	}
 	m.home.seenFile = o.SeenFile
 	m.home.seen = loadSeen(o.SeenFile)
 	if a, ok := src.(Actions); ok {
@@ -169,6 +182,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onTail(msg)
 	case copiedMsg:
 		m.onCopied(msg)
+	case partClipMsg:
+		m.onPartClip(msg)
+	case clipPasteMsg:
+		return m, m.onClipPaste(msg)
 	case focusedMsg:
 		m.onFocused(msg)
 	case openedMsg:
@@ -197,7 +214,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case m.item != nil && m.item.typing:
 			m.item.draft.insert([]rune(msg.Content))
 		case m.homeActive() && m.home.typing:
-			m.home.draft.insert([]rune(msg.Content))
+			if !m.home.part.open && !m.home.part.check {
+				return m, m.homePaste(msg.Content)
+			}
 		case m.homeActive() && m.home.newing:
 			m.home.newName.insert([]rune(strings.ReplaceAll(msg.Content, "\n", " ")))
 		case m.homeActive() && m.home.filtering:

@@ -212,6 +212,9 @@ byte for byte.
 - `enter` on a session opens the chat. `s` writes from the preview. Idle: typed in. Busy: a fork of the session
   answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front. `y` (in the chat `ctrl+y`) copies
   the newest code block whole; press it again for the block before.
+- In the prompt box, a long paste stays whole: you see its first and last lines, its size and whether it matches
+  the clipboard. `ctrl+v` attaches an image, and a dropped file works too. `ctrl+p` picks a part to read or remove.
+  A possible secret or a very long line opens a check before sending. Parts go to idle sessions of Claude Code.
 - `:` opens a command prompt with tab completion: `ask`, `tell`, `prompt`, `answer`, `retry`, `agent`, `filter`, `digest`.
 - `[` and `]` change the agent. `/` filters. `v` opens the dashboard (agents, runs, audit log). `?` shows all keys.
 - In a pipe, `smif` prints one summary. `smif watch` gives a live view for tmux or ssh.
