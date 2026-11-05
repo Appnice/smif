@@ -2,6 +2,8 @@ package ui
 
 import (
 	"context"
+	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -495,4 +497,99 @@ func TestHomeUnverifiedSession(t *testing.T) {
 		}
 	}
 	t.Fatal("no row says it cannot write")
+}
+
+// y on a session and ctrl+y in the chat copy a code block whole. The text
+// goes to the clipboard unwrapped, the status says what went, and pressing
+// again walks back through the blocks.
+func TestCopyCodeBlock(t *testing.T) {
+	long := strings.Repeat("--flag value ", 30) + "end"
+	snap := sessionSample()
+	snap.Sessions[1].LastAnswer = "One:\n```\nfirst\n```\nTwo:\n```sh\n" + long + "\n  second line\n```\n"
+	m := New(&fakeSource{snaps: []Snapshot{snap}}, Options{Now: func() time.Time { return t0 }, Interval: time.Millisecond})
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	run(m, m.Init())
+	var got []string
+	m.clip = func(s string) error { got = append(got, s); return nil }
+
+	var row string
+	for _, r := range m.homeRows() {
+		if r.sess != nil && r.sess.SessionID == "idle-session-0001" {
+			row = "session:" + r.sess.SessionID
+		}
+	}
+	for m.HomeSelected() != row {
+		key(m, "j")
+	}
+	key(m, "y")
+	want := long + "\n  second line"
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("copied %q, want %q", got, want)
+	}
+	if s := m.Status(); !strings.Contains(s, "block 1 of 2") || !strings.Contains(s, "2 lines") {
+		t.Fatalf("status %q", s)
+	}
+	key(m, "y")
+	if got[1] != "first" {
+		t.Fatalf("second press copied %q", got[1])
+	}
+	key(m, "y")
+	if got[2] != want {
+		t.Fatalf("third press copied %q, want the newest again", got[2])
+	}
+
+	key(m, "enter")
+	m.home.copyNext = 0
+	key(m, "ctrl+y")
+	if len(got) != 4 || got[3] != want {
+		t.Fatalf("ctrl+y in the chat copied %q", got)
+	}
+	if m.home.draft.Value() != "" {
+		t.Fatalf("ctrl+y wrote into the box: %q", m.home.draft.Value())
+	}
+
+	m.clip = func(string) error { return errors.New("no tool") }
+	key(m, "ctrl+y")
+	if s := m.Status(); !strings.Contains(s, "Not copied: no tool") {
+		t.Fatalf("a failed copy said %q", s)
+	}
+}
+
+func TestMdCodeBlocks(t *testing.T) {
+	for _, c := range []struct {
+		name, text string
+		want       []string
+	}{
+		{"none", "plain `inline` text", nil},
+		{"empty block is skipped", "```\n\n```\n```\nx\n```", []string{"x"}},
+		{"open at the end", "```\na\nb", []string{"a\nb"}},
+		{"the cut went through a block", "…end of a block\n```\ntext\n```\nnew\n```\nafter", []string{"new"}},
+		{"the cut missed the blocks", "…text\n```\nkept\n```\n", []string{"kept"}},
+	} {
+		got := mdCodeBlocks(c.text)
+		if strings.Join(got, "|") != strings.Join(c.want, "|") {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+// The text reaches the tool through stdin, whole. A fake tool stands in, so
+// that the test leaves the real clipboard alone.
+func TestWriteClipboard(t *testing.T) {
+	old := clipboardTools
+	defer func() { clipboardTools = old }()
+	out := filepath.Join(t.TempDir(), "clip")
+	clipboardTools = [][]string{{"smif-no-such-tool"}, {"sh", "-c", `cat > "$0"`, out}}
+	want := "line one\n\tline $(two)\n"
+	if err := writeClipboard(want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(out)
+	if err != nil || string(got) != want {
+		t.Fatalf("clipboard got %q, %v", got, err)
+	}
+	clipboardTools = [][]string{{"smif-no-such-tool"}}
+	if err := writeClipboard("x"); !errors.Is(err, errNoClipboard) {
+		t.Fatalf("no tool gave %v", err)
+	}
 }

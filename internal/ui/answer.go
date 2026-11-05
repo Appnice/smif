@@ -215,7 +215,10 @@ func mdLines(text string, w int) []string {
 			continue
 		}
 		if code {
-			out = append(out, stHunk.Render(ansi.Truncate(l, w, "…")))
+			// A code line is often a command to copy: break it, never cut it.
+			for _, part := range strings.Split(ansi.Hardwrap(l, w, true), "\n") {
+				out = append(out, stHunk.Render(part))
+			}
 			continue
 		}
 		lead := strings.Repeat(" ", min(len(l)-len(t), 8))
@@ -945,6 +948,8 @@ func (m *Model) chatKey(r *homeRow, k string) (tea.Cmd, bool) {
 		m.home.fullScroll -= page
 	case "ctrl+o":
 		return m.focusSession(r.sess), true
+	case "ctrl+y":
+		return m.copyCode(r.sess), true
 	case "tab", "shift+tab":
 		step := 1
 		if k == "shift+tab" {
