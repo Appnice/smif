@@ -1,0 +1,4 @@
+{"type":"session_start","id":"7c1e0000-0000-4000-8000-000000000001","title":"Fix the test","owner":"me","cwd":"CWD"}
+{"type":"message","id":"m1","timestamp":"2026-11-05T10:00:01.000Z","parentId":"m0","message":{"role":"user","content":[{"type":"text","text":"fix the test"}]}}
+{"type":"message","id":"m2","timestamp":"2026-11-05T10:00:02.000Z","parentId":"m1","message":{"role":"assistant","content":[{"type":"text","text":"I run the tests."},{"type":"tool_use","id":"t1","name":"Execute","input":{"command":"go test ./..."}}]}}
+{"type":"message","id":"m3","timestamp":"2026-11-05T10:00:03.000Z","parentId":"m2","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}

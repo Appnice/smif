@@ -1,0 +1,6 @@
+{"type":"session_start","id":"7c1e0000-0000-4000-8000-000000000001","title":"Fix the test","owner":"me","cwd":"CWD"}
+{"type":"message","id":"m1","timestamp":"2026-11-05T10:00:01.000Z","parentId":"m0","message":{"role":"user","content":[{"type":"text","text":"fix the test"}]}}
+{"type":"message","id":"m2","timestamp":"2026-11-05T10:00:02.000Z","parentId":"m1","message":{"role":"assistant","content":[{"type":"text","text":"The test passes now."}]}}
+{"type":"message","id":"m3","timestamp":"2026-11-05T10:00:03.000Z","parentId":"m2","message":{"role":"user","content":[{"type":"text","text":"a reminder from a hook"}],"hookEventName":"SessionStart"}}
+{"type":"message","id":"m4","timestamp":"2026-11-05T10:00:04.000Z","parentId":"m3","message":{"role":"user","content":[{"type":"text","text":"a hidden note"}],"isUserVisible":false}}
+{"type":"message","id":"m5","timestamp":"2026-11-05T10:00:05.000Z","parentId":"m4","message":{"role":"assistant","content":[{"type":"text","text":"a hidden reply"}],"hiddenFromUserViews":true}}
