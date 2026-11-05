@@ -113,14 +113,20 @@ This covers the session view. Messages, workers, forks and `smif_ask` stay on Cl
 | **herdr** | The agent runs in a [herdr](https://herdr.dev) pane | Name, folder, herdr's state, focus. Typing only for an agent that a real session checked. No steps, no answer, no notifications |
 | **Listed** | smif knows its process name, and it sits on a terminal | Name and folder, state `unknown`, no typing |
 
-| Agent | Level | Typing | Checked against a real agent |
+Only Claude Code types and was checked against a real agent, on versions 2.1.316 to 2.1.318. Every other agent is
+read only and shows as `unverified`.
+
+| Agent | In a herdr pane | Elsewhere | When herdr reads idle |
 |---|---|---|---|
-| Claude Code | Full | Yes, when idle | **Yes** (Claude Code 2.1.316 to 2.1.318) |
-| Codex, Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only (`unverified`). In a herdr pane with no session file: herdr, read only. Else Listed | No | No |
-| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr, read only (`unverified`). Outside herdr: Listed | No | No |
-| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr, read only (`unverified`). State `unknown` when herdr reads idle, unless `herdr integration status` reads `current` for the agent. Outside herdr: Listed | No | No |
-| Gemini CLI, Cursor, Qoder, Antigravity | herdr, read only (`unverified`), state `unknown` when herdr reads idle. Outside herdr: Listed | No | No |
-| Crush, Command Code, Prime Agent | herdr, read only (`unverified`), state `unknown` when herdr reads idle | No | No |
+| Claude Code | Full | Full | Not used |
+| Codex, Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only | Full, read only | Not used |
+| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr | Listed | Idle |
+| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr | Listed | Idle if integrated, else `unknown` |
+| Gemini CLI, Cursor, Qoder, Antigravity | herdr | Listed | `unknown` |
+| Crush, Command Code, Prime Agent | herdr | Not shown | `unknown` |
+
+The second row needs the agent's session file. With none, it drops to herdr in a herdr pane and to Listed elsewhere.
+Integrated means that `herdr integration status` reads `current` for the agent.
 
 smif types only when the agent's state source can tell a pending approval from idle. When the state is `unknown`,
 smif does not type. smif also never types into an agent that no real session checked, not even in a herdr pane
