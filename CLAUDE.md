@@ -1,7 +1,7 @@
 # smif — repo guide
 
 Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard isolation, and a session view for coding agents. Spec:
-`docs/rfc.md` (contract), decisions `docs/adr/`, verified CLI flags `docs/compat.md`.
+`docs/rfc.md` (contract), decisions `docs/adr/`, verified CLI flags `docs/compat.md`. The README stays short: detail goes in `docs/{usage,messages,agents,safety,numbers}.md`.
 
 ## Commands
 

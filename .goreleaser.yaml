@@ -20,7 +20,7 @@ archives:
     # No version in the name, so .../releases/latest/download/smif_<os>_<arch>.tar.gz
     # always points at the newest release (README).
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-    files: [LICENSE, README.md, docs/rfc.md, docs/compat.md, packaging/*]
+    files: [LICENSE, README.md, docs/*.md, packaging/*]
 checksum:
   name_template: checksums.txt
 snapshot:
