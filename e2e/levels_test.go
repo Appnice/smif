@@ -72,7 +72,7 @@ func TestHerdrLevel(t *testing.T) {
 		}
 	}
 	v := row("idle")
-	if v.Level != "herdr" || !v.CanPrompt || v.Agent != "app" || v.Term != "herdr" {
+	if v.Level != "herdr" || v.CanPrompt || !v.Unverified || !strings.Contains(v.Why, "no real session checked it") || v.Agent != "app" || v.Term != "herdr" {
 		t.Fatalf("row %+v", v)
 	}
 	out, stderr, err := e.CLIDir(cwd, "", nil, "sessions")
@@ -86,14 +86,15 @@ func TestHerdrLevel(t *testing.T) {
 		t.Fatalf("json %s", b)
 	}
 
-	if _, stderr, err := e.CLIDir(cwd, "", nil, "prompt", "maki", "run", "the", "tests"); err != nil {
-		t.Fatalf("prompt: %v %s", err, stderr)
-	}
 	log := func() string {
 		b, _ := os.ReadFile(filepath.Join(fake, "prompts.log"))
 		return string(b)
 	}
-	if got := log(); got != "w1:p1 run the tests\n" {
+	// No real session checked maki, so an idle row takes no typing either.
+	if _, _, err := e.CLIDir(cwd, "", nil, "prompt", "maki", "run", "the", "tests"); err == nil {
+		t.Fatal("smif prompt took an unchecked agent")
+	}
+	if got := log(); got != "" {
 		t.Fatalf("prompts %q", got)
 	}
 
@@ -106,7 +107,7 @@ func TestHerdrLevel(t *testing.T) {
 		if _, _, err := e.CLIDir(cwd, "", nil, "prompt", "maki", "yes"); err == nil {
 			t.Fatalf("%s: smif prompt took it", c.herdr)
 		}
-		if got := log(); got != "w1:p1 run the tests\n" {
+		if got := log(); got != "" {
 			t.Fatalf("%s: prompts %q", c.herdr, got)
 		}
 	}

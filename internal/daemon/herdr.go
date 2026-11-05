@@ -241,6 +241,13 @@ func herdrTurn(ctx context.Context, agent, status string) string {
 	return "unknown"
 }
 
+// herdrChecked reports whether a real session checked this agent at the
+// herdr level. It covers agents with no provider, and until it says yes smif
+// does not type into them: a wrong idle could answer an approval prompt. Add
+// an agent only with its docs/compat.md row. A test replaces this to reach
+// the gates behind it.
+var herdrChecked = func(agent string) bool { return false }
+
 // herdrUnknownWhy says why a herdr-level row with state unknown takes no
 // typing. It reads the integrations' last answer, so it never runs herdr.
 func herdrUnknownWhy(agent string) string {

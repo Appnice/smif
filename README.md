@@ -110,21 +110,21 @@ This covers the session view. Messages, workers, forks and `smif_ask` stay on Cl
 |---|---|---|
 | **Full** | A provider that a real session checked | State, steps, final answer, notifications, typing, a fork |
 | **Full, read only** | A provider from a source reading, shown as `unverified` | State, steps, final answer, notifications. No typing, no fork |
-| **herdr** | The agent runs in a [herdr](https://herdr.dev) pane | Name, folder, herdr's state, focus, typing where the table allows it. No steps, no answer, no notifications |
+| **herdr** | The agent runs in a [herdr](https://herdr.dev) pane | Name, folder, herdr's state, focus. Typing only for an agent that a real session checked. No steps, no answer, no notifications |
 | **Listed** | smif knows its process name, and it sits on a terminal | Name and folder, state `unknown`, no typing |
 
 | Agent | Level | Typing | Checked against a real agent |
 |---|---|---|---|
 | Claude Code | Full | Yes, when idle | **Yes** (Claude Code 2.1.316 to 2.1.318) |
 | Codex, Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only (`unverified`). In a herdr pane with no session file: herdr, read only. Else Listed | No | No |
-| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle | No |
-| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle, and only when `herdr integration status` reads `current` for the agent | No |
-| Gemini CLI, Cursor, Qoder, Antigravity | herdr, state `unknown` when herdr reads idle. Outside herdr: Listed | No: herdr has no idle rule for them | No |
-| Crush, Command Code, Prime Agent | herdr, state `unknown` when herdr reads idle | No | No |
+| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr, read only (`unverified`). Outside herdr: Listed | No | No |
+| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr, read only (`unverified`). State `unknown` when herdr reads idle, unless `herdr integration status` reads `current` for the agent. Outside herdr: Listed | No | No |
+| Gemini CLI, Cursor, Qoder, Antigravity | herdr, read only (`unverified`), state `unknown` when herdr reads idle. Outside herdr: Listed | No | No |
+| Crush, Command Code, Prime Agent | herdr, read only (`unverified`), state `unknown` when herdr reads idle | No | No |
 
 smif types only when the agent's state source can tell a pending approval from idle. When the state is `unknown`,
-smif does not type. The herdr level is the one place where smif types into an agent that no real session checked.
-That typing depends on herdr's own screen rules. smif checked it only with fake processes in herdr panes.
+smif does not type. smif also never types into an agent that no real session checked, not even in a herdr pane
+that reads as idle.
 
 `smif doctor` prints one line for each provider. An unverified format reads `unchecked`, never a failure. The file
 paths and fields per agent are in [docs/compat.md](docs/compat.md), and the decision is

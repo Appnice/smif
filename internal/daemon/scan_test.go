@@ -126,7 +126,18 @@ func scanNow(d *Daemon) {
 // drives herdr. Only herdr-level rows exist here, so nothing reaches a real
 // terminal: the Level branch runs before any AppleScript. The host's process
 // table stays out of it.
+// scanDaemon counts every agent as checked, to reach the state gates that
+// stand behind herdrChecked.
 func scanDaemon(t *testing.T) *Daemon {
+	t.Helper()
+	old := herdrChecked
+	herdrChecked = func(string) bool { return true }
+	t.Cleanup(func() { herdrChecked = old })
+	return uncheckedScanDaemon(t)
+}
+
+// uncheckedScanDaemon has herdrChecked as it ships.
+func uncheckedScanDaemon(t *testing.T) *Daemon {
 	t.Helper()
 	d, _ := testDaemon(t)
 	d.scan.run = d.runScan
@@ -514,12 +525,42 @@ func TestHerdrIntegrationsCurrent(t *testing.T) {
 	}
 }
 
-// The rule stays narrow: an agent with an idle rule, or with a state source
-// that covers permissions, still types. pi has no provider, so herdr alone
-// decides for it in the tests above; claude has a verified provider.
+// An agent with no provider takes no typing until a real session checked it,
+// also where herdr's idle would count: the row shows the state and says why,
+// and neither route reaches the pane. As shipped, no such agent is checked.
+func TestHerdrUncheckedAgentIsReadOnly(t *testing.T) {
+	for _, name := range []string{"maki", "amp", "devin", "kimi", "madeupagent"} {
+		for _, status := range []string{"idle", "done"} {
+			t.Run(name+" "+status, func(t *testing.T) {
+				d := uncheckedScanDaemon(t)
+				f := startFakeHerdr(t, status)
+				f.agent = name
+				f.setIntegrations(t, herdrStatus(name, "current (v9)"))
+				f.setStatus(t, status)
+				scanNow(d)
+				v := namedRow(t, d, name)
+				if v.CanPrompt || !v.Unverified || v.Level != harness.LevelHerdr || !strings.Contains(v.Why, "no real session checked it") {
+					t.Fatalf("row %+v", v)
+				}
+				if _, err := d.sessionPrompt(context.Background(), api.SessionPromptParams{SessionID: v.SessionID, Text: "yes"}); err == nil {
+					t.Fatal("session.prompt took it")
+				}
+				if _, err := d.sessionSend(context.Background(), auth.Principal{}, api.SessionSendParams{SessionID: v.SessionID, Text: "yes"}); err == nil {
+					t.Fatal("session.send took it")
+				}
+				if got := f.prompts(t); got != "" {
+					t.Fatalf("prompts %q", got)
+				}
+			})
+		}
+	}
+}
+
+// The rule stays narrow: claude has a verified provider, so herdr's idle
+// counts for it with the gate as shipped.
 func TestHerdrIdleRuleStillTypes(t *testing.T) {
 	t.Run("claude", func(t *testing.T) {
-		d := scanDaemon(t)
+		d := uncheckedScanDaemon(t)
 		f := startFakeHerdr(t, "idle")
 		f.agent = "claude"
 		f.setStatus(t, "idle")

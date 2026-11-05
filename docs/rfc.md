@@ -136,19 +136,19 @@ This section covers the session view only: `session.list`, `session.tail`, `sess
 |---|---|---|
 | Full | A provider a real session checked | State, steps, final answer, notifications, typing, a fork |
 | Full, read only | A provider from a source reading, marked `unverified` | State, steps, final answer, notifications. No typing, no fork |
-| herdr | The agent runs in a herdr pane | Name, folder, herdr's state, focus, typing where the table allows it. No steps, no answer, no notifications |
+| herdr | The agent runs in a herdr pane | Name, folder, herdr's state, focus. Typing only for an agent that a real session checked. No steps, no answer, no notifications |
 | Listed | A known process name on a terminal | Name and folder, state `unknown`, no typing |
 
 | Agent | Level | Typing | Checked against a real agent |
 |---|---|---|---|
 | Claude Code | Full | Yes, when idle | **Yes** (Claude Code 2.1.316 to 2.1.318) |
 | Codex, Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only (`unverified`). In a herdr pane with no session file: herdr, read only. Else Listed | No | No |
-| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle | No |
-| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle, and only when `herdr integration status` reads `current` for the agent | No |
-| Gemini CLI, Cursor, Qoder, Antigravity | herdr, state `unknown` when herdr reads idle. Outside herdr: Listed | No: herdr has no idle rule for them | No |
-| Crush, Command Code, Prime Agent | herdr, state `unknown` when herdr reads idle | No | No |
+| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr, read only (`unverified`). Outside herdr: Listed | No | No |
+| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr, read only (`unverified`). State `unknown` when herdr reads idle, unless `herdr integration status` reads `current` for the agent. Outside herdr: Listed | No | No |
+| Gemini CLI, Cursor, Qoder, Antigravity | herdr, read only (`unverified`), state `unknown` when herdr reads idle. Outside herdr: Listed | No | No |
+| Crush, Command Code, Prime Agent | herdr, read only (`unverified`), state `unknown` when herdr reads idle | No | No |
 
-Smif MUST NOT type when the agent's state source cannot tell a pending approval from idle: the state is `unknown`, and unknown means no typing. At the herdr level, smif types into an agent no real session checked: the typing depends on herdr's screen rules. Its gates (`internal/harness/herdr.go`) were checked only with fake processes.
+Smif MUST NOT type when the agent's state source cannot tell a pending approval from idle: the state is `unknown`, and unknown means no typing. At the herdr level, an agent with no provider stays read only until a real session checks it (`herdrChecked`, `internal/daemon/herdr.go`): herdr's screen rules are not proof for an agent nobody ran. The state gates behind it (`internal/harness/herdr.go`) were checked only with fake processes.
 
 ## 4. Architecture
 One per-user daemon owns delivery, state and process supervision; interactive sessions only send and observe counts; every inbound message is handled by a worker process or a command handler the daemon starts.

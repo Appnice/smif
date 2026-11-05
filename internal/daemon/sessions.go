@@ -87,8 +87,14 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 		if v.Turn == "" || !harness.CanTellState(prov) {
 			v.Turn = "unknown"
 		}
-	} else if prov == nil {
-		readOnly = "" // the state comes from herdr, not from a provider
+	} else if prov == nil && p.Level == harness.LevelHerdr {
+		// herdr gives the state, and its screen rules for this agent decide
+		// what idle means. Until a real session checks those, no typing.
+		readOnly = ""
+		if !herdrChecked(p.Harness) {
+			readOnly = p.Harness + " is unverified, no real session checked it: read only"
+			v.Unverified = true
+		}
 	}
 	d.prompts.apply(&v, p.TurnAt)
 	switch {

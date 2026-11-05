@@ -22,7 +22,7 @@ an approval. The same view for those agents needs a layer between the daemon and
   | Level | Needs | The human gets |
   |---|---|---|
   | **Full** | A provider | State, steps, final answer, notifications, typing, a fork where one is safe |
-  | **herdr** | The agent runs in a herdr pane | Name, folder, herdr's state, typing, focus. No steps, no answer |
+  | **herdr** | The agent runs in a herdr pane | Name, folder, herdr's state, focus. Typing only for an agent a real session checked. No steps, no answer |
   | **Listed** | Its process is recognised | Name and folder, state `unknown`, no typing |
 
   The herdr level reads `herdr agent list`, so an agent herdr knows shows up without a provider. Its state comes
@@ -53,6 +53,11 @@ an approval. The same view for those agents needs a layer between the daemon and
   answer all give unknown. `outdated` is left out because a file with no herdr code at that path reads
   `outdated (legacy < vN)`. The status shows only that the file is in place, not that the agent loaded it. `agent
   explain` cannot be the signal: a state set with `pane report-agent` leaves its output the same.
+- **Unchecked herdr agents are read-only (amended 2026-11-05).** An agent with no provider takes no typing until a
+  real session checks it, even when herdr's idle counts by the table above. Those screen rules come from a source
+  reading and fake panes, and a wrong idle could answer an approval prompt. `herdrChecked` in
+  `internal/daemon/herdr.go` lifts this per agent, with a `docs/compat.md` row. The table and the integration check
+  still decide the state a row shows.
 - **Unverified providers are read-only.** A provider that no real session has checked shows sessions and is
   marked `unverified`, and smif neither types into it nor forks it. Only a row in `docs/compat.md` with the
   version checked lifts this, in the provider's code.
@@ -91,7 +96,7 @@ an approval. The same view for those agents needs a layer between the daemon and
 - One `smif hook` handler takes `--harness <name>` with a small field map per agent, because most agents use
   Claude Code's hook names.
 - SQLite stores are read with `mode=ro`. A file that holds a secret stays closed (OpenCode `service.json`), or its
-  secret stays out of every struct, log and UI (Qwen `ipcToken`). Kilo `daemon.json` and Auggie
+  secret stays out of every struct, log and UI (Qwen `ipcToken`: the owner accepted on 2026-11-05 that the token sits in a read buffer during the parse, because no other file links a pid to a session). Kilo `daemon.json` and Auggie
   `~/.augment/session.json` have no provider, so smif does not read them.
 - Mail, workers and `smif_ask` stay on Claude Code. This ADR covers the session view only.
 
