@@ -2,3 +2,4 @@ bin/
 dist/
 cover.out
 *.test
+.DS_Store

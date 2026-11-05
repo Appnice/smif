@@ -5,7 +5,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X github.com/appnice/smif/internal/daemon.Version=$(VERSION)
 GOLANG_IMAGE ?= golang:1.27
 
-.PHONY: bench bench-real build test race e2e check check-linux fmt-check lint cover install-local smoke-real clean
+.PHONY: bench bench-real build test race e2e check check-linux fmt-check lint cover install-local smoke-real clean release
 
 build:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/smif
@@ -85,3 +85,7 @@ release-check:
 
 release-snapshot: check
 	$(GORELEASER) release --snapshot --clean
+
+# Builds dist/ from the tag on HEAD and publishes nothing: needs a clean tree. Then: gh release create.
+release: check
+	GOTOOLCHAIN=local $(GORELEASER) release --clean

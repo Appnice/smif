@@ -162,6 +162,18 @@ is in [docs/rfc-benchmark.md](docs/rfc-benchmark.md).
 
 You need Claude Code 2.1 (checked with 2.1.316) and git, on macOS or Linux.
 
+**Download a binary:**
+
+```sh
+os=$(uname -s | tr A-Z a-z); arch=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -fsSL "https://github.com/appnice/smif/releases/latest/download/smif_${os}_${arch}.tar.gz" | tar xz smif
+mkdir -p ~/.local/bin && mv smif ~/.local/bin/
+```
+
+`checksums.txt` is on the [release page](https://github.com/appnice/smif/releases/latest). The macOS binaries
+are not notarized, so a file saved from a browser needs `xattr -d com.apple.quarantine smif`. `curl` needs
+nothing extra.
+
 **With Go** (1.27.2 or newer):
 
 ```sh
