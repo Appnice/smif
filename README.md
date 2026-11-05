@@ -97,6 +97,39 @@ text enters a session that you type in:
 | Information (a build is done) | **digest** | You get one line in `/smif`. |
 | A decision for a human | **escalate** | You get a count in the status line, an OS notification and an item in the UI. |
 
+## Other coding agents
+
+**A real agent checked only the Claude Code provider.** No other agent ran on the machine that built this, and the
+owner has no access to them. For every other agent, the file formats, process names and state rules come from
+reading its source and docs. The tests use fake processes and fixtures built from that reading, so a green test
+proves only smif's parser, not the real file format. Expect faults.
+
+This covers the session view. Messages, workers, forks and `smif_ask` stay on Claude Code.
+
+| Level | Needs | You get |
+|---|---|---|
+| **Full** | A provider that a real session checked | State, steps, final answer, notifications, typing, a fork |
+| **Full, read only** | A provider from a source reading, shown as `unverified` | State, steps, final answer, notifications. No typing, no fork |
+| **herdr** | The agent runs in a [herdr](https://herdr.dev) pane | Name, folder, herdr's state, focus, typing where the table allows it. No steps, no answer, no notifications |
+| **Listed** | smif knows its process name, and it sits on a terminal | Name and folder, state `unknown`, no typing |
+
+| Agent | Level | Typing | Checked against a real agent |
+|---|---|---|---|
+| Claude Code | Full | Yes, when idle | **Yes** (Claude Code 2.1.316 to 2.1.318) |
+| Codex, Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only (`unverified`). In a herdr pane with no session file: herdr, read only. Else Listed | No | No |
+| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle | No |
+| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle, and only when `herdr integration status` reads `current` for the agent | No |
+| Gemini CLI, Cursor, Qoder, Antigravity | herdr, state `unknown` when herdr reads idle. Outside herdr: Listed | No: herdr has no idle rule for them | No |
+| Crush, Command Code, Prime Agent | herdr, state `unknown` when herdr reads idle | No | No |
+
+smif types only when the agent's state source can tell a pending approval from idle. When the state is `unknown`,
+smif does not type. The herdr level is the one place where smif types into an agent that no real session checked.
+That typing depends on herdr's own screen rules. smif checked it only with fake processes in herdr panes.
+
+`smif doctor` prints one line for each provider. An unverified format reads `unchecked`, never a failure. The file
+paths and fields per agent are in [docs/compat.md](docs/compat.md), and the decision is
+[ADR-0019](docs/adr/0019-harness-providers.md).
+
 ## Numbers
 
 All numbers come from `make bench` on one laptop with a fake model. The benchmark costs $0. Each scenario
@@ -171,9 +204,9 @@ byte for byte.
   today and dead letters (each group only when it has rows). The right pane shows the selected item. For a running worker, it shows the live tool calls.
 - `a` answers, `c` cancels, `t` retries, `e` marks as read. `enter` opens the thread or the run: record,
   transcript and branch diff. On a run, `a` merges the branch after a y/N question.
-- The SESSIONS group shows every open Claude Code session, grouped by root folder, in a fixed order, with its
-  state (`!` waiting, `▶` working, `●` new answer, `○` idle) and what it does now or the first line of its last
-  answer. Sessions need no config: an agent is needed only for messages, workers and forks.
+- The SESSIONS group shows every open Claude Code session, and the other agents smif finds ([levels](#other-coding-agents)).
+  It groups them by root folder, in a fixed order. Each row has its state: `!` waiting, `▶` working, `●` new answer,
+  `○` idle. It also shows what the session does now, or the first line of its last answer. Sessions need no config: an agent is needed only for messages, workers and forks.
 - `tab` goes to the next row that needs you. `z` hides the quiet sessions. Empty groups take no room.
 - `p` sends a saved prompt to the session. `n` opens a new session in its folder.
 - `enter` on a session opens the chat. `s` writes from the preview. Idle: typed in. Busy: a fork of the session
