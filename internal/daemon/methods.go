@@ -826,6 +826,7 @@ func (d *Daemon) health() api.HealthView {
 	h := api.HealthView{OK: true, Version: Version, SchemaVersion: d.store.Version(), ConfigPath: d.Config().Path,
 		StartedAt: d.startedAt, PID: os.Getpid(), ClaudeOK: ok, DB: "ok"}
 	h.Sessions, h.SessionsDetail = d.sessionsCanary()
+	h.Providers = d.providerChecks()
 	var n int
 	if err := d.store.DB().QueryRow(`PRAGMA quick_check`).Scan(new(string)); err != nil {
 		h.DB, h.OK = "error: "+err.Error(), false

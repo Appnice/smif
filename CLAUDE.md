@@ -1,17 +1,17 @@
 # smif — repo guide
 
-Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard isolation. Spec:
+Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard isolation, and a session view for coding agents. Spec:
 `docs/rfc.md` (contract), decisions `docs/adr/`, verified CLI flags `docs/compat.md`.
 
 ## Commands
 
 - `make build` → `bin/smif` (CGO off, static) · `make install-local` → `~/.local/bin/smif`
-- `make check` → gofmt gate (`make fmt-check`), vet, staticcheck, `go test -race ./...` (e2e builds the daemon with `-race`), config gates
+- `make check` → gofmt gate (`make fmt-check`), vet, staticcheck, `go test -race -count=1 ./...` (e2e builds the daemon with `-race`; `-count=1` because go test cannot see that build, so a cached e2e would hide a daemon change), config gates
 - `make e2e` · `go test -run TestA7 ./e2e/` for one acceptance scenario · `make check-linux` (Docker; offline from the host module cache, safe in a worktree)
 - `smif` (= `smif ui [--interval 1s]`) live human view; in a pipe plain `smif` prints one summary (needs a TTY; `NO_COLOR=1` drops colours, keeps bold/reverse)
   · `go test -run TestUIOverviewLive -v ./e2e/` prints it live · `go test ./internal/ui -update` rewrites goldens
 - `smif stats [--days N] [--json]` counts per agent/day (`stats.get`, ADR-0011) · `go test -run TestStatsCountsKnownTraffic ./e2e/`
-- `smif sessions` · `smif prompt <session name | agent> <text>` type into an idle session (Terminal.app, iTerm2, tmux: `terminals.go`, ADR-0012; herdr: `herdr.go`, ADR-0018) · `go test -run TestSessionPrompt ./e2e/`
+- `smif sessions` · `smif prompt <session name | agent> <text>` type into an idle session (Terminal.app, iTerm2, tmux: `terminals.go`, ADR-0012; herdr: `herdr.go`, ADR-0018) · `go test -run TestSessionPrompt ./e2e/` · `go test -run TestHerdrLevel ./e2e/`
 - `smif watch [--events] [--once] [--last N]` plain text for pipes/tmux/ssh · `go test -run TestWatchEventsLive -v ./e2e/`
 - `make bench` (tiers S/R/T on the fake, $0, `bench/README.md`) · `make bench-real` (+ actual tokens on haiku via the login)
 - `make cover` · `make smoke-real` (real `claude -p` on haiku, `SMIF_E2E_REAL=1`, ~$0.01)
@@ -36,8 +36,12 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   RPC methods (`methods.go`), retention (`gc.go`)
 - `internal/store/` SQLite (modernc, WAL, synchronous=FULL), migrations, the state machine (`transitions`)
 - `internal/router`, `internal/scheduler`, `internal/supervisor` (process groups), `internal/runner/{claude,command}`
+- `internal/harness/` Provider interface and registry (ADR-0019): required `Info`, `Discover`, `Read`; optional `Stater`, `Hooker`,
+  `Forker`, `Stamper`, `Checker`; `ReadOnly` is the typing gate; `listed.go` the process names of the Listed level; `herdr.go` the agents whose herdr idle counts (others read `unknown`, no typing). `internal/harness/claude/` the Claude Code provider (session files,
+  transcripts, file status, fork folder, process name). Mail, workers and `smif_ask` stay on `internal/runner/claude`.
+  `internal/harness/{qwen,codex,opencode,copilot,droid}/` read-only providers from a source reading (unverified, `docs/compat.md`); their `testdata/report-*` are hand-built from that reading. `read.go` holds the shared transcript helpers (`ScanTail`, `TurnLog`, `FileCache`); `proc.go` the process list and `MatchProcs`, for agents with no file that links a pid to a session
 - `internal/workspace` worktrees and branches · `internal/install` settings.json edits, launchd/systemd
-- `testdata/fakeclaude/` scripted `claude -p` stand-in (`#fake:` directives in the message body)
+- `testdata/fakeclaude/` scripted `claude -p` stand-in (`#fake:` directives in the message body) · `testdata/fakeherdr/` herdr stand-in (`SMIF_HERDR=<path>`, `""` = no herdr)
 - `e2e/` acceptance scenarios A1–A15, M1 kill -9, chaos; each test gets its own `/tmp/mr-*` root
 
 ## Rules
@@ -54,9 +58,13 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
 
 - Session prompts (`internal/daemon/sessions.go`) type into a real terminal: the `+` foreground check on the
   claude pid must pass first; e2e uses `daemon.terminal = "log:<file>"`. Only the human token sets a session's tty/pid/turn.
-  `session.list` also reads Claude Code's `~/.claude/sessions/<pid>.json` (`discover.go`; e2e uses `$CLAUDE_CONFIG_DIR`).
-  Answers: `presence.Conversation` keeps only the text after the last tool call; the UI draws it in `internal/ui/answer.go`.
-  What a session does now: `presence.Read` → `SessionView.Activity` (steps, pending call); state cells, counts, `tab` in `internal/ui/live.go`;
+  `session.list` asks the providers; Claude Code's are `~/.claude/sessions/<pid>.json` (`internal/harness/claude`; e2e uses `$CLAUDE_CONFIG_DIR`).
+  An unverified provider, or one with no state source, is read only (`harness.ReadOnly`): no typing, no fork, `go test -run 'Provider|Unknown' ./internal/daemon/`.
+  `SessionView.Unverified` is the mark. `go test -run Unverified ./internal/daemon/` · `go test -run TestUnverifiedProviderLevel ./e2e/` · doctor: `HealthView.Providers`, an unverified format is `unchecked`, never a failure.
+  Codex, Qwen Code and Droid have no state field: a tool call with no result is `unknown`, because a file cannot tell it from an approval prompt. OpenCode and Copilot do the same for an open tool; Copilot's `permission.requested` gives `waiting`. Codex, OpenCode and Droid match by `ps` and folder (`harness.MatchProcs`), a machine with no such files runs no `ps`. OpenCode reads SQLite with `mode=ro`, never `immutable=1`, and never opens `service.json` (it holds a password): `ps` shows the server.
+  Levels herdr and listed: `internal/daemon/scan.go` (`liveSessions` = `fullSessions` + the scan; the watchers read only `fullSessions`). `Presence.Level` "" is full; a scanned row has no presence row, steps or fork. `SMIF_NO_AGENT_SCAN=1` turns the scan off (e2e does, so the host's agents stay out of a test).
+  Answers: `readTranscript` keeps only the text after the last tool call; the UI draws it in `internal/ui/answer.go`.
+  What a session does now: `Provider.Read` → `SessionView.Activity` (steps, pending call); state cells, counts, `tab` in `internal/ui/live.go`;
   notifications, the status line's session names and the watchdogs in `internal/daemon/session_watch.go` (ADR-0014, 0015);
   saved prompts (`p`, `@name`) and new sessions (`n`, `session.new`, `terminal.Open`) in `internal/ui/quick.go` (ADR-0015).
 - No config = defaults, no agents; `smif`/`sessions` start the daemon (`autostart.go`, off with `SMIF_NO_AUTOSTART=1`,

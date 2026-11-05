@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/appnice/smif/internal/harness"
 	"github.com/appnice/smif/internal/store"
 )
 
@@ -54,14 +55,14 @@ func enterDelay(text string) time.Duration {
 	return min(d, 2*time.Second)
 }
 
-func newTerminal(spec string) terminal {
+func newTerminal(spec string, reg *harness.Registry) terminal {
 	switch {
 	case spec == "none":
 		return offTerminal{}
 	case strings.HasPrefix(spec, "log:"):
 		return logTerminal{path: strings.TrimPrefix(spec, "log:")}
 	}
-	return autoTerminal{}
+	return autoTerminal{harnesses: reg}
 }
 
 // The $TERM_PROGRAM values (and "tmux", termHerdr) Smif can drive.
@@ -147,7 +148,7 @@ func (logTerminal) Supports(p store.Presence) string { return termSupport(p) }
 
 // autoTerminal drives the session's own terminal: Terminal.app or iTerm2
 // (macOS), tmux or herdr.
-type autoTerminal struct{}
+type autoTerminal struct{ harnesses *harness.Registry }
 
 func (autoTerminal) Supports(p store.Presence) string {
 	if why := termSupport(p); why != "" {
@@ -170,12 +171,25 @@ func (autoTerminal) Supports(p store.Presence) string {
 	return ""
 }
 
-// Ready runs ps on the claude process: it must be alive, be claude, sit on
-// the recorded tty and be in that tty's foreground process group (+).
-func (autoTerminal) Ready(p store.Presence) error {
+// Ready runs ps on the session's process: it must be alive, have the
+// process name its provider gives (ADR-0019), sit on the recorded tty and
+// be in that tty's foreground process group (+).
+func (t autoTerminal) Ready(p store.Presence) error {
+	switch p.Level {
+	case harness.LevelListed:
+		return errors.New("a listed session takes no typing")
+	case harness.LevelHerdr:
+		_, err := herdrAgentReady(context.Background(), p)
+		return err
+	}
+	prov := t.harnesses.Get(p.Harness)
+	if prov == nil || prov.Info().Process == "" {
+		return fmt.Errorf("smif has no process name for harness %q", p.Harness)
+	}
+	name := prov.Info().Process
 	out, err := exec.Command("ps", "-o", "stat=,tty=,comm=", "-p", strconv.Itoa(p.PID)).Output()
 	if err != nil {
-		return fmt.Errorf("the claude process %d is gone", p.PID)
+		return fmt.Errorf("the %s process %d is gone", name, p.PID)
 	}
 	f := strings.Fields(string(out))
 	if len(f) < 3 {
@@ -183,17 +197,23 @@ func (autoTerminal) Ready(p store.Presence) error {
 	}
 	stat, tty, comm := f[0], f[1], strings.Join(f[2:], " ")
 	switch {
-	case !strings.Contains(filepath.Base(comm), "claude"):
-		return fmt.Errorf("process %d is %s, not claude", p.PID, filepath.Base(comm))
+	case !strings.Contains(filepath.Base(comm), name):
+		return fmt.Errorf("process %d is %s, not %s", p.PID, filepath.Base(comm), name)
 	case "/dev/"+tty != p.TTY:
 		return fmt.Errorf("process %d is on %s, not %s", p.PID, tty, p.TTY)
 	case !strings.Contains(stat, "+"):
-		return errors.New("claude is not in the foreground of its terminal")
+		return fmt.Errorf("%s is not in the foreground of its terminal", name)
 	}
 	return nil
 }
 
 func (autoTerminal) Type(ctx context.Context, p store.Presence, text string) error {
+	switch p.Level {
+	case harness.LevelListed:
+		return errors.New("a listed session takes no typing")
+	case harness.LevelHerdr:
+		return herdrAgentPrompt(ctx, p, text)
+	}
 	switch p.Term {
 	case termITerm:
 		return runAppleScript(ctx, "iTerm2", iTermTypeScript, p.TTY, text, delayMS(text))
@@ -210,6 +230,9 @@ func (autoTerminal) Type(ctx context.Context, p store.Presence, text string) err
 func delayMS(text string) string { return strconv.FormatInt(enterDelay(text).Milliseconds(), 10) }
 
 func (autoTerminal) Enter(ctx context.Context, p store.Presence) error {
+	if p.Level != "" {
+		return errors.New("a session at this level takes no extra Enter")
+	}
 	switch p.Term {
 	case termITerm:
 		return runAppleScript(ctx, "iTerm2", iTermEnterScript, p.TTY)

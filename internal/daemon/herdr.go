@@ -11,8 +11,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/appnice/smif/internal/harness"
 	"github.com/appnice/smif/internal/store"
 )
 
@@ -28,7 +30,11 @@ const termHerdr = "herdr"
 
 // herdrPath finds the herdr command: on PATH, else the usual install places
 // (the daemon runs with launchd's short PATH; install.sh uses ~/.local/bin).
+// $SMIF_HERDR overrides both: tests set a fake, or "" for no herdr.
 func herdrPath() string {
+	if p, ok := os.LookupEnv("SMIF_HERDR"); ok {
+		return p
+	}
 	if p, err := exec.LookPath("herdr"); err == nil {
 		return p
 	}
@@ -191,7 +197,160 @@ func findHerdrPane(ctx context.Context, pid int) (herdrPane, error) {
 			}
 		}
 	}
-	return herdrPane{}, fmt.Errorf("no herdr pane has claude (pid %d) in its foreground", pid)
+	return herdrPane{}, fmt.Errorf("no herdr pane has process %d in its foreground", pid)
+}
+
+// herdrAgent is one agent of `agent list` or `agent get`.
+type herdrAgent struct {
+	Agent         string `json:"agent"` // the agent herdr recognised: codex
+	Name          string `json:"name"`  // set by `agent rename`
+	Status        string `json:"agent_status"`
+	Cwd           string `json:"cwd"`
+	ForegroundCwd string `json:"foreground_cwd"`
+	Pane          string `json:"pane_id"`
+	Terminal      string `json:"terminal_id"` // stays when the pane moves
+}
+
+// parseHerdrAgents reads `agent list`.
+func parseHerdrAgents(b []byte) ([]herdrAgent, error) {
+	var l struct {
+		Agents []herdrAgent `json:"agents"`
+	}
+	if err := json.Unmarshal(b, &l); err != nil {
+		return nil, fmt.Errorf("herdr agent list: %v", err)
+	}
+	return l.Agents, nil
+}
+
+// herdrTurn maps herdr's agent_status to smif's turn. Any word it does not
+// know is unknown, and unknown never types. herdr's idle and done count only
+// for an agent herdr can tell idle for (ADR-0019): for the others they mean
+// that no screen rule matched, which an approval dialog also does. An agent
+// whose only idle rule is herdr's integration needs that integration current.
+func herdrTurn(ctx context.Context, agent, status string) string {
+	switch status {
+	case "working":
+		return "busy"
+	case "blocked":
+		return "waiting"
+	case "idle", "done":
+		if harness.HerdrTellsIdle(agent) && (!harness.HerdrNeedsIntegration(agent) || herdrIntegrations.current(ctx, agent)) {
+			return "idle"
+		}
+	}
+	return "unknown"
+}
+
+// herdrUnknownWhy says why a herdr-level row with state unknown takes no
+// typing. It reads the integrations' last answer, so it never runs herdr.
+func herdrUnknownWhy(agent string) string {
+	name := nonEmpty(agent, "this agent")
+	switch {
+	case !harness.HerdrTellsIdle(agent):
+		return "herdr cannot tell idle from a dialog for " + name + ", so Smif does not type"
+	case harness.HerdrNeedsIntegration(agent) && !herdrIntegrations.last(agent):
+		return "no current herdr integration for " + name + ", so herdr cannot tell idle and Smif does not type (herdr integration install " + name + ")"
+	}
+	return "herdr cannot tell this agent's state, so Smif does not type"
+}
+
+// herdrIntegrations caches `herdr integration status`. The status belongs to
+// the user, not to a herdr session, so one answer serves every session.
+var herdrIntegrations integrationCache
+
+const (
+	integrationEvery   = 5 * time.Second // an answer is fresh this long
+	integrationTimeout = 2 * time.Second // a hung herdr ends here
+)
+
+type integrationCache struct {
+	mu     sync.Mutex
+	at     time.Time
+	agents map[string]bool
+}
+
+// current reports whether the agent's integration is current. A failed read
+// gives no agents, so an answer smif cannot read counts as not installed. Two
+// callers can run the command at once: it only reads, and the last one wins.
+func (c *integrationCache) current(ctx context.Context, agent string) bool {
+	c.mu.Lock()
+	agents, fresh := c.agents, time.Since(c.at) < integrationEvery
+	c.mu.Unlock()
+	if !fresh {
+		agents = readHerdrIntegrations(ctx)
+		c.mu.Lock()
+		c.agents, c.at = agents, time.Now()
+		c.mu.Unlock()
+	}
+	return agents[agent]
+}
+
+// forget drops the answer, so the next read runs the command.
+func (c *integrationCache) forget() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.agents, c.at = nil, time.Time{}
+}
+
+// last is the last answer, however old. It runs no command.
+func (c *integrationCache) last(agent string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.agents[agent]
+}
+
+func readHerdrIntegrations(ctx context.Context) map[string]bool {
+	bin := herdrPath()
+	if bin == "" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, integrationTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, bin, "integration", "status").Output()
+	if err != nil {
+		return nil
+	}
+	return harness.HerdrIntegrationsCurrent(string(out))
+}
+
+// herdrAgentReady finds the pane of a herdr-level session and asks herdr
+// for the state now: the list may be a few seconds old, and a state that
+// is not idle must stop the prompt (ADR-0019). The agent's name comes from
+// the same answer, so a pane that now runs another agent cannot pass.
+func herdrAgentReady(ctx context.Context, p store.Presence) (herdrPane, error) {
+	h, err := findHerdrPane(ctx, p.PID)
+	if err != nil {
+		return h, err
+	}
+	out, err := herdrRun(ctx, h.args("agent", "get", h.pane)...)
+	if err != nil {
+		return h, err
+	}
+	var r struct {
+		Agent herdrAgent `json:"agent"`
+	}
+	if err := json.Unmarshal(out, &r); err != nil {
+		return h, fmt.Errorf("herdr agent get: %v", err)
+	}
+	switch t := herdrTurn(ctx, r.Agent.Agent, r.Agent.Status); {
+	case t == "idle":
+		return h, nil
+	case r.Agent.Status == "idle" || r.Agent.Status == "done":
+		return h, errors.New(herdrUnknownWhy(r.Agent.Agent))
+	}
+	return h, fmt.Errorf("herdr says %s is %s", p.Harness, nonEmpty(r.Agent.Status, "unknown"))
+}
+
+// herdrAgentPrompt sends one prompt through `agent prompt`, which sends
+// text and Enter as one submission and refuses a blocked agent. It takes
+// the text as it is: a leading - stays text, and -- would be typed.
+func herdrAgentPrompt(ctx context.Context, p store.Presence, text string) error {
+	h, err := herdrAgentReady(ctx, p)
+	if err != nil {
+		return err
+	}
+	_, err = herdrRun(ctx, h.args("agent", "prompt", h.pane, text)...)
+	return err
 }
 
 func herdrType(ctx context.Context, p store.Presence, text string) error {

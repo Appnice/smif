@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,14 +9,13 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/appnice/smif/internal/api"
 	"github.com/appnice/smif/internal/config"
-	"github.com/appnice/smif/internal/presence"
+	"github.com/appnice/smif/internal/harness"
 	"github.com/appnice/smif/internal/store"
 )
 
@@ -29,13 +27,7 @@ import (
 // MaxPromptRunes caps one prompt.
 const MaxPromptRunes = 4000
 
-func processAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	err := syscall.Kill(pid, 0)
-	return err == nil || errors.Is(err, syscall.EPERM)
-}
+func processAlive(pid int) bool { return harness.ProcessAlive(pid) }
 
 // agentForRepo maps a presence row back to its agent.
 func agentForRepo(cfg *config.Config, repo string) string {
@@ -47,12 +39,22 @@ func agentForRepo(cfg *config.Config, repo string) string {
 	return ""
 }
 
-// liveSessions is every interactive session still running: the sessions
-// Claude Code lists in its session files (discover.go), joined with the
-// hook rows. A hook row with a claude pid counts while that process lives
-// (an idle session sends no heartbeats); one without counts within
-// presence_ttl.
+// liveSessions is every interactive session still running at any level:
+// the full sessions, then what the scan found that no full session owns.
 func (d *Daemon) liveSessions() ([]store.Presence, error) {
+	rows, err := d.fullSessions()
+	if err != nil {
+		return nil, err
+	}
+	return d.addScanned(rows, d.scan.get()), nil
+}
+
+// fullSessions is the sessions the providers discover (internal/harness),
+// joined with the hook rows. A hook row with an agent pid counts while that
+// process lives (an idle session sends no heartbeats); one without counts
+// within presence_ttl. The status line and the watchers read only these,
+// so they start no scan.
+func (d *Daemon) fullSessions() ([]store.Presence, error) {
 	all, err := d.store.AllPresence()
 	if err != nil {
 		return nil, err
@@ -64,35 +66,50 @@ func (d *Daemon) liveSessions() ([]store.Presence, error) {
 			rows = append(rows, p)
 		}
 	}
-	return d.mergeSessions(d.Config(), rows, readClaudeSessions(d.sessDir)), nil
+	return d.mergeSessions(d.Config(), rows, d.harnesses.Discover()), nil
 }
 
 func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionView {
-	v := api.SessionView{Agent: agentForRepo(cfg, p.Repo), SessionID: p.SessionID, Repo: p.Repo, Turn: p.Turn,
-		TurnAt: p.TurnAt, LastSeen: p.LastSeen, TTY: p.TTY, Term: p.Term,
+	v := api.SessionView{Agent: agentForRepo(cfg, p.Repo), Harness: p.Harness, Level: nonEmpty(p.Level, harness.LevelFull),
+		SessionID: p.SessionID, Repo: p.Repo, Turn: p.Turn, TurnAt: p.TurnAt, LastSeen: p.LastSeen, TTY: p.TTY, Term: p.Term,
 		Title: p.Title, LastPrompt: p.LastPrompt}
-	ti := d.answers.get(p.SessionID)
-	v.LastAnswer, v.LastAnswerAt = ti.answer, ti.answerAt
-	if ti.ok {
-		v.Activity = activityView(ti, p.Cwd)
-	}
-	if v.Turn == "" {
-		v.Turn = "unknown"
+	prov := d.harnesses.Get(p.Harness)
+	readOnly := harness.ReadOnly(p.Harness, prov)
+	v.Unverified = prov != nil && !prov.Info().Verified
+	if p.Level == "" {
+		ti := d.answers.get(prov, p.SessionID)
+		v.LastAnswer, v.LastAnswerAt = ti.answer, ti.answerAt
+		if ti.ok {
+			v.Activity = activityView(ti, p.Cwd)
+		}
+		// ADR-0019: where the state cannot tell a pending approval from
+		// idle, the state is unknown, never idle.
+		if v.Turn == "" || !harness.CanTellState(prov) {
+			v.Turn = "unknown"
+		}
+	} else if prov == nil {
+		readOnly = "" // the state comes from herdr, not from a provider
 	}
 	d.prompts.apply(&v, p.TurnAt)
 	switch {
-	case p.PID == 0 || p.TTY == "":
+	case p.Level == harness.LevelListed:
+		v.Turn, v.Why = "unknown", "listed only: Smif sees the process but not its state, so it does not type"
+	case readOnly != "":
+		v.Why = readOnly
+	case p.PID == 0 || p.TTY == "" && p.Level == "":
 		v.Why = "Smif has not seen this session's terminal yet; it learns it at the next prompt or turn end"
 	case d.terminal.Supports(p) != "":
 		v.Why = d.terminal.Supports(p)
 	case v.Turn == "busy":
 		v.Why = "a prompt is running"
+	case v.Turn == "unknown" && p.Level == harness.LevelHerdr:
+		v.Why = herdrUnknownWhy(p.Harness)
 	case v.Turn == "unknown":
 		v.Why = "no turn seen yet"
 	case v.Turn == "waiting":
 		v.Why = "it waits for you in its tab (a permission or a question); o shows the tab"
 	case v.Turn != "idle":
-		v.Why = "claude reports " + v.Turn
+		v.Why = p.Harness + " reports " + v.Turn
 	default:
 		v.CanPrompt = true
 	}
@@ -115,7 +132,7 @@ func activityView(ti transcriptInfo, cwd string) *api.SessionActivity {
 	}
 	a := ti.act
 	out := &api.SessionActivity{Prompt: a.Prompt, PromptAt: a.PromptAt, Tools: a.Tools, WroteAt: ti.wroteAt}
-	step := func(s presence.Step) api.SessionStep {
+	step := func(s harness.Step) api.SessionStep {
 		return api.SessionStep{Tool: s.Tool, Target: short(s.Target), At: s.At, Done: s.Done}
 	}
 	for _, s := range a.Steps {
@@ -217,10 +234,10 @@ func (d *Daemon) sessionFocus(ctx context.Context, p api.SessionFocusParams) (an
 	return nil, api.Errf(api.CodeNotFound, "no live session %s", p.SessionID)
 }
 
-// sessionTail reads the last turns of one session from its transcript
+// sessionTail reads the last turns of one session from its provider
 // (session.tail, human only). Nothing from it goes into any session.
 func (d *Daemon) sessionTail(p api.SessionTailParams) (*api.SessionTail, error) {
-	if !sessionIDRe.MatchString(p.SessionID) {
+	if !harness.ValidID(p.SessionID) {
 		return nil, api.Errf(api.CodeParams, "bad session_id")
 	}
 	limit := p.Limit
@@ -230,7 +247,7 @@ func (d *Daemon) sessionTail(p api.SessionTailParams) (*api.SessionTail, error) 
 	limit = min(limit, 100)
 	out := &api.SessionTail{SessionID: p.SessionID, Turns: []api.SessionTurn{}}
 	var turns []api.SessionTurn
-	for _, t := range presence.Conversation(transcriptPath(p.SessionID), limit) {
+	for _, t := range d.harnesses.Read(p.SessionID, limit).Turns {
 		turns = append(turns, api.SessionTurn{Role: t.Role, Text: t.Text, At: t.At, Tools: t.Tools})
 	}
 	out.Turns = mergeTurns(turns, d.askTurns(p.SessionID))
@@ -315,7 +332,7 @@ const promptStartWait = 8 * time.Second
 func (d *Daemon) turnStarted(sessionID string, since time.Time, wait time.Duration) bool {
 	end := time.Now().Add(wait)
 	for {
-		if ps, err := d.liveSessions(); err == nil {
+		if ps, err := d.fullSessions(); err == nil {
 			for _, p := range ps {
 				if p.SessionID == sessionID && p.Turn != "idle" && p.Turn != "" && p.TurnAt.After(since) {
 					return true
@@ -426,6 +443,7 @@ func (d *Daemon) deliverPrompt(ctx context.Context, target store.Presence, agent
 	typeMS := time.Since(typedAt).Milliseconds()
 	retried := false
 	_, real := d.terminal.(autoTerminal)
+	real = real && target.Level == "" // `herdr agent prompt` sends the Enter itself
 	if real && !d.turnStarted(target.SessionID, typedAt, 3*time.Second) {
 		retried = true
 		if err := d.terminal.Enter(ctx, target); err != nil {
@@ -444,11 +462,17 @@ func (d *Daemon) deliverPrompt(ctx context.Context, target store.Presence, agent
 	if utf8.RuneCountInString(preview) > 80 {
 		preview = string([]rune(preview)[:80]) + "…"
 	}
+	if target.Level != "" {
+		d.scan.expire() // the row shows the new state at the next look
+	}
 	return d.store.Update(func(tx *store.Tx) error {
 		// A discovered session may have no hook row yet: write the full row.
-		if err := tx.UpsertPresence(target.Repo, target.SessionID, "active", store.PresenceUpdate{Turn: "busy",
-			TTY: target.TTY, PID: target.PID, Term: target.Term, Title: target.Title}); err != nil {
-			return err
+		// A scanned session has no row: each scan finds it again.
+		if target.Level == "" {
+			if err := tx.UpsertPresence(target.Repo, target.SessionID, "active", store.PresenceUpdate{Turn: "busy",
+				TTY: target.TTY, PID: target.PID, Term: target.Term, Title: target.Title, Harness: target.Harness}); err != nil {
+				return err
+			}
 		}
 		return tx.Audit("session.prompt", agent, "", "", "", map[string]any{"session_id": target.SessionID,
 			"chars": utf8.RuneCountInString(text), "text": preview,

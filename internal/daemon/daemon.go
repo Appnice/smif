@@ -21,6 +21,13 @@ import (
 	"github.com/appnice/smif/internal/auth"
 	"github.com/appnice/smif/internal/blob"
 	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/harness"
+	claudeharness "github.com/appnice/smif/internal/harness/claude"
+	codexharness "github.com/appnice/smif/internal/harness/codex"
+	copilotharness "github.com/appnice/smif/internal/harness/copilot"
+	droidharness "github.com/appnice/smif/internal/harness/droid"
+	opencodeharness "github.com/appnice/smif/internal/harness/opencode"
+	qwenharness "github.com/appnice/smif/internal/harness/qwen"
 	"github.com/appnice/smif/internal/notify"
 	"github.com/appnice/smif/internal/paths"
 	"github.com/appnice/smif/internal/router"
@@ -58,14 +65,15 @@ type Daemon struct {
 	blobs     *blob.Store
 	audit     *audit.Log
 	notifier  notify.Notifier
-	lock      *os.File    // daemon.lock, held while the daemon lives
-	terminal  terminal    // types the human's prompts into sessions (ADR-0012)
-	promptMu  sync.Mutex  // one prompt checked at a time
-	typeMu    sync.Mutex  // one prompt typed at a time
-	prompts   promptState // prompts typed in the background (sessions.go)
-	procs     procCache   // tty and terminal of discovered claude processes
-	answers   answerCache // each session's last answer (discover.go)
-	sessDir   string      // Claude Code's session files (discover.go)
+	lock      *os.File          // daemon.lock, held while the daemon lives
+	terminal  terminal          // types the human's prompts into sessions (ADR-0012)
+	promptMu  sync.Mutex        // one prompt checked at a time
+	typeMu    sync.Mutex        // one prompt typed at a time
+	prompts   promptState       // prompts typed in the background (sessions.go)
+	procs     procCache         // tty and terminal of discovered processes
+	answers   answerCache       // each session's last answer (discover.go)
+	harnesses *harness.Registry // the agents whose sessions Smif reads (ADR-0019)
+	scan      agentScan         // sessions at the herdr and listed levels (ADR-0019)
 	ws        *workspace.Manager
 	claude    *claude.Runner
 	commands  *command.Runner
@@ -167,8 +175,14 @@ func New(o Options) (*Daemon, error) {
 	if d.notifier == nil {
 		d.notifier = notify.New(cfg.Daemon.Notify, o.DataDir)
 	}
-	d.terminal = newTerminal(cfg.Daemon.Terminal)
-	d.sessDir = claudeSessionsDir()
+	d.harnesses = harness.NewRegistry(claudeharness.New(paths.ClaudeDir()),
+		qwenharness.New(paths.QwenDir(), paths.QwenRuntimeDir()), codexharness.New(paths.CodexDir()),
+		opencodeharness.New(paths.OpenCodeDB()), copilotharness.New(paths.CopilotDir()),
+		droidharness.New(paths.FactoryDir()))
+	d.terminal = newTerminal(cfg.Daemon.Terminal, d.harnesses)
+	if os.Getenv("SMIF_NO_AGENT_SCAN") == "" { // e2e: the host's agents stay out of a test's list
+		d.scan.run = d.runScan
+	}
 	d.slots = scheduler.NewSlots(cfg.Daemon.MaxWorkers, cfg.Daemon.CommandPool)
 	d.limiter = router.NewLimiter(cfg.Daemon.RateLimitPerMinute)
 	exe, _ := os.Executable()

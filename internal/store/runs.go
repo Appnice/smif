@@ -214,7 +214,12 @@ type Presence struct {
 	Term                   string
 	Title                  string // claude --name or /rename
 	LastPrompt             string // the human's last prompt, shortened
+	Harness                string // the agent's provider: "claude" (ADR-0019)
 	Cwd                    string // the session's folder (from discovery; not stored)
+	// Level is "" for a session a provider or a hook reports, else the
+	// support level of a scanned session: herdr or listed (ADR-0019; not
+	// stored, so a scanned session never gets a presence row).
+	Level string
 }
 
 // PresenceUpdate is one hook or status-line report. Empty fields keep the
@@ -223,6 +228,7 @@ type PresenceUpdate struct {
 	Turn, TTY, Term   string
 	PID               int
 	Title, LastPrompt string
+	Harness           string // "" = claude on a new row, keep on an old one
 }
 
 // UpsertPresence records a hook or status-line heartbeat.
@@ -236,7 +242,11 @@ func (t *Tx) UpsertPresence(repo, session, state string, u PresenceUpdate) error
 	if u.Turn != "" {
 		turnAt = now
 	}
-	_, err := t.tx.Exec(`INSERT INTO presence (repo,session_id,last_seen,state,turn,turn_at,tty,pid,term,title,last_prompt) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+	harness := u.Harness
+	if harness == "" {
+		harness = "claude"
+	}
+	_, err := t.tx.Exec(`INSERT INTO presence (repo,session_id,last_seen,state,turn,turn_at,tty,pid,term,title,last_prompt,harness) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
 ON CONFLICT(repo,session_id) DO UPDATE SET last_seen=excluded.last_seen, state=excluded.state,
   turn=CASE WHEN excluded.turn<>'' THEN excluded.turn ELSE turn END,
   turn_at=CASE WHEN excluded.turn<>'' THEN excluded.turn_at ELSE turn_at END,
@@ -244,8 +254,9 @@ ON CONFLICT(repo,session_id) DO UPDATE SET last_seen=excluded.last_seen, state=e
   pid=CASE WHEN excluded.pid<>0 THEN excluded.pid ELSE pid END,
   term=CASE WHEN excluded.term<>'' THEN excluded.term ELSE term END,
   title=CASE WHEN excluded.title<>'' THEN excluded.title ELSE title END,
-  last_prompt=CASE WHEN excluded.last_prompt<>'' THEN excluded.last_prompt ELSE last_prompt END`,
-		repo, session, now, state, u.Turn, turnAt, u.TTY, u.PID, u.Term, u.Title, u.LastPrompt)
+  last_prompt=CASE WHEN excluded.last_prompt<>'' THEN excluded.last_prompt ELSE last_prompt END,
+  harness=CASE WHEN ?<>'' THEN excluded.harness ELSE harness END`,
+		repo, session, now, state, u.Turn, turnAt, u.TTY, u.PID, u.Term, u.Title, u.LastPrompt, harness, u.Harness)
 	return err
 }
 
@@ -255,7 +266,7 @@ func (t *Tx) SetPresenceTurn(session, turn string) error {
 	return err
 }
 
-const presenceCols = `repo,session_id,state,last_seen,turn,turn_at,tty,pid,term,title,last_prompt`
+const presenceCols = `repo,session_id,state,last_seen,turn,turn_at,tty,pid,term,title,last_prompt,harness`
 
 func scanPresence(rows *sql.Rows) ([]Presence, error) {
 	defer rows.Close()
@@ -263,7 +274,7 @@ func scanPresence(rows *sql.Rows) ([]Presence, error) {
 	for rows.Next() {
 		var p Presence
 		var ls, ta int64
-		if err := rows.Scan(&p.Repo, &p.SessionID, &p.State, &ls, &p.Turn, &ta, &p.TTY, &p.PID, &p.Term, &p.Title, &p.LastPrompt); err != nil {
+		if err := rows.Scan(&p.Repo, &p.SessionID, &p.State, &ls, &p.Turn, &ta, &p.TTY, &p.PID, &p.Term, &p.Title, &p.LastPrompt, &p.Harness); err != nil {
 			return nil, err
 		}
 		p.LastSeen = time.UnixMilli(ls)

@@ -19,7 +19,7 @@ import (
 func cmdSessions() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sessions",
-		Short: "List the live Claude Code sessions: agent, idle or busy, terminal",
+		Short: "List the live sessions: agent, harness, level, idle or busy, terminal",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ensureDaemon()
@@ -37,7 +37,7 @@ func cmdSessions() *cobra.Command {
 				return nil
 			}
 			tw := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
-			fmt.Fprintln(tw, "agent\tsession\tname\tstate\tsince\tterminal\tprompt")
+			fmt.Fprintln(tw, "agent\tharness\tlevel\tsession\tname\tstate\tsince\tterminal\tprompt")
 			for _, s := range ss {
 				since := "-"
 				if !s.TurnAt.IsZero() {
@@ -55,7 +55,11 @@ func cmdSessions() *cobra.Command {
 				if name == "" {
 					name = "-"
 				}
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", agent, api.ShortSession(s.SessionID), name, s.Turn, since,
+				level := s.Level
+				if s.Unverified {
+					level += " unverified"
+				}
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", agent, s.Harness, level, api.ShortSession(s.SessionID), name, s.Turn, since,
 					strings.TrimSpace(s.Term+" "+s.TTY), pr)
 			}
 			return tw.Flush()
@@ -66,21 +70,25 @@ func cmdSessions() *cobra.Command {
 func cmdPrompt() *cobra.Command {
 	var session string
 	c := &cobra.Command{
-		Use:   "prompt <session name> <text…>",
+		Use:   "prompt (<session name> | --session <prefix>) <text…>",
 		Short: "Write to a session: typed in when idle (Terminal.app, iTerm2, tmux), else a worker with its context answers",
 		Long: "The first word names the session (its name from `smif sessions`, case does not matter; quote a\n" +
-			"name with spaces); --session picks one by id prefix instead. An idle session gets one line typed in and\n" +
+			"name with spaces). With --session an id prefix picks the session and every word is prompt text:\n" +
+			"no session name goes before the text. An idle session gets one line typed in and\n" +
 			"Enter (Terminal.app, iTerm2 or tmux; claude in the foreground of its tab). A busy session is not touched: a worker resumes\n" +
 			"a fork of it (read only) and answers (ADR-0013).",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p := api.SessionSendParams{Name: args[0], Text: strings.Join(args[1:], " ")}
-			if session != "" {
+			var p api.SessionSendParams
+			target := args[0]
+			if session == "" {
+				p = api.SessionSendParams{Name: args[0], Text: strings.Join(args[1:], " ")}
+			} else {
+				p.Text = strings.Join(args, " ")
 				var ss []api.SessionView
 				if err := call("session.list", nil, &ss, 10*time.Second); err != nil {
 					return err
 				}
-				p.Name = ""
 				for _, s := range ss {
 					if strings.HasPrefix(s.SessionID, session) {
 						if p.SessionID != "" {
@@ -92,6 +100,7 @@ func cmdPrompt() *cobra.Command {
 				if p.SessionID == "" {
 					return fmt.Errorf("no live session %q", session)
 				}
+				target = api.ShortSession(p.SessionID)
 			}
 			var r api.SessionSendResult
 			if err := call("session.send", p, &r, 30*time.Second); err != nil {
@@ -99,14 +108,14 @@ func cmdPrompt() *cobra.Command {
 			}
 			if r.Mode == "worker" {
 				fmt.Printf("%s is busy: a worker with its context answers here; wait for it with `smif await %s`\n",
-					args[0], r.MessageID)
+					target, r.MessageID)
 				return nil
 			}
-			fmt.Printf("sent to %s (session %s)\n", nonEmptyStr(r.Agent, args[0]), api.ShortSession(r.SessionID))
+			fmt.Printf("sent to %s (session %s)\n", nonEmptyStr(r.Agent, target), api.ShortSession(r.SessionID))
 			return nil
 		},
 	}
-	c.Flags().StringVar(&session, "session", "", "session id prefix, when the agent has several idle sessions")
+	c.Flags().StringVar(&session, "session", "", "session id prefix, instead of a session name; every word is then prompt text")
 	return c
 }
 

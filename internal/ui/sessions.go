@@ -44,7 +44,7 @@ func (m *Model) sessionPromptOpen(r *homeRow) tea.Cmd {
 		}
 	}
 	if !canWrite(r.sess) {
-		m.setStatus("Cannot write to this session now: "+writeHint(r.sess)+".", true)
+		m.setStatus(writeHint(r.sess), true)
 		return nil
 	}
 	m.home.typing = true
@@ -55,7 +55,7 @@ func (m *Model) sessionPromptOpen(r *homeRow) tea.Cmd {
 // is idle, else to a worker with its context (session.send, ADR-0013).
 func (m *Model) sendPrompt(r *homeRow, text string) tea.Cmd {
 	if !canWrite(r.sess) {
-		m.setStatus("Cannot write to this session now: "+writeHint(r.sess)+".", true)
+		m.setStatus(writeHint(r.sess), true)
 		return nil
 	}
 	text = strings.Join(strings.Fields(text), " ") // one line, as typed in the session

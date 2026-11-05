@@ -102,10 +102,19 @@ func NewEnv(t *testing.T, daemonExtra, profiles string, agents ...AgentSpec) *En
 		"SMIF_SOCKET="+filepath.Join(root, "s.sock"),
 		"SMIF_FAKE_LOG="+filepath.Join(root, "fake"),
 		"CLAUDE_CONFIG_DIR="+filepath.Join(e.Home, ".claude"),
+		"CODEX_HOME="+filepath.Join(e.Home, ".codex"),
+		"QWEN_HOME="+filepath.Join(e.Home, ".qwen"),
+		"QWEN_RUNTIME_DIR="+filepath.Join(e.Home, ".qwen"),
+		"OPENCODE_DB="+filepath.Join(e.Home, ".local", "share", "opencode", "opencode.db"),
+		"XDG_STATE_HOME="+filepath.Join(e.Home, ".local", "state"),
+		"COPILOT_HOME="+filepath.Join(e.Home, ".copilot"),
+		"FACTORY_HOME_OVERRIDE="+e.Home,
 		"GIT_CONFIG_GLOBAL="+filepath.Join(root, "gitconfig"),
 		// The harness starts its own daemon; a CLI call must not start
 		// another one that outlives the test (TestAutostart turns it on).
 		"SMIF_NO_AUTOSTART=1",
+		// The host's own agents stay out of a test's session list.
+		"SMIF_NO_AGENT_SCAN=1",
 	)
 	os.WriteFile(filepath.Join(root, "gitconfig"), []byte("[user]\n\temail = test@example.com\n\tname = Test\n[init]\n\tdefaultBranch = main\n"), 0o644)
 	var cfg strings.Builder

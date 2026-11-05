@@ -97,7 +97,7 @@ Channels (`notifications/claude/channel`) need a development flag, are best-effo
 ### 3.2 Non-goals (v1)
 - Cross-machine or multi-user delivery. The transport is a local Unix socket; the protocol must not preclude a relay later.
 - Windows. macOS and Linux only.
-- Harnesses other than Claude Code. The runner is an interface so Codex or OpenCode can be added later.
+- Mail, workers and `smif_ask` on harnesses other than Claude Code. The runner is an interface so Codex or OpenCode can be added later. The session view reads other agents through harness providers, section 3.4 **(ADR-0019)**.
 - A GUI. CLI, status line and OS notifications only.
 - Replacing the user's own orchestration harnesses. Smif is a mail system, not a planner.
 ### 3.3 Requirements
@@ -126,6 +126,29 @@ MUST unless stated otherwise. Each requirement has an acceptance test (section 9
 | R-HUM-3 | The human can read any thread, run, transcript and diff from the CLI, and pull a digest into their interactive session only by explicit action (`/smif` command). |
 | R-OPS-1 | Single static binary, user-level service (launchd or systemd), one-command install and uninstall. |
 | R-OPS-2 | Structured logs, an append-only audit log and a health check. |
+
+### 3.4 Agents in the session view (ADR-0019)
+This section covers the session view only: `session.list`, `session.tail`, `session.prompt`, `session.send` and `session.focus`. Mail, workers and `smif_ask` stay on Claude Code.
+
+**A real agent checked only the Claude Code provider.** Every file path, field, process name and state rule for another agent comes from reading its source and docs. The fixtures come from the same reading, and the live checks ran fake processes in herdr panes. These prove smif's parser and gates, not the real formats. An unverified provider MUST stay read only: no typing, no fork, no hooks. Only a row in `docs/compat.md` with the version a real session checked lifts this, in the provider's code.
+
+| Level | Needs | The human gets |
+|---|---|---|
+| Full | A provider a real session checked | State, steps, final answer, notifications, typing, a fork |
+| Full, read only | A provider from a source reading, marked `unverified` | State, steps, final answer, notifications. No typing, no fork |
+| herdr | The agent runs in a herdr pane | Name, folder, herdr's state, focus, typing where the table allows it. No steps, no answer, no notifications |
+| Listed | A known process name on a terminal | Name and folder, state `unknown`, no typing |
+
+| Agent | Level | Typing | Checked against a real agent |
+|---|---|---|---|
+| Claude Code | Full | Yes, when idle | **Yes** (Claude Code 2.1.316 to 2.1.318) |
+| Codex, Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only (`unverified`). In a herdr pane with no session file: herdr, read only. Else Listed | No | No |
+| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle | No |
+| Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr. Outside herdr: Listed | Only in a herdr pane that herdr reads as idle, and only when `herdr integration status` reads `current` for the agent | No |
+| Gemini CLI, Cursor, Qoder, Antigravity | herdr, state `unknown` when herdr reads idle. Outside herdr: Listed | No: herdr has no idle rule for them | No |
+| Crush, Command Code, Prime Agent | herdr, state `unknown` when herdr reads idle | No | No |
+
+Smif MUST NOT type when the agent's state source cannot tell a pending approval from idle: the state is `unknown`, and unknown means no typing. At the herdr level, smif types into an agent no real session checked: the typing depends on herdr's screen rules. Its gates (`internal/harness/herdr.go`) were checked only with fake processes.
 
 ## 4. Architecture
 One per-user daemon owns delivery, state and process supervision; interactive sessions only send and observe counts; every inbound message is handled by a worker process or a command handler the daemon starts.
@@ -331,8 +354,8 @@ Four surfaces: the daemon socket API, an MCP server for sessions, a CLI for huma
 | `run.get` / `run.list` / `run.transcript` | Run records and transcript paths |
 | `run.diff` / `run.apply` | Inspect or merge a worker branch; the daemon runs the merge so it is audited **(ADR-0006)** |
 | `agent.list` / `agent.status` | Agents, capabilities (`intents` from their rules), queue depth, budget left |
-| `presence.update` | From hooks: session start, heartbeat, end, and the turn (`busy` on `UserPromptSubmit`, `idle` on `Stop`) with the claude pid, tty and terminal, and the session's name and last prompt from its transcript (human token only); `session.list` also reads Claude Code's session files **(ADR-0012)**; `agent` (from `SMIF_AGENT`) wins over `cwd` |
-| `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their turn, last answer and what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux, herdr) **(ADR-0012, ADR-0018)** |
+| `presence.update` | From hooks: session start, heartbeat, end, and the turn (`busy` on `UserPromptSubmit`, `idle` on `Stop`) with the claude pid, tty and terminal, and the session's name and last prompt from its transcript (human token only); `session.list` also asks the harness providers, for Claude Code its session files **(ADR-0012, ADR-0019)**; `agent` (from `SMIF_AGENT`) wins over `cwd` |
+| `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their harness and support level (`full`, `herdr` or `listed`), the `unverified` mark of a provider no real session checked, which leaves the session read only **(ADR-0019)**, turn, last answer and what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux, herdr) **(ADR-0012, ADR-0018)** |
 | `stats.get` | Human only: counts over a window, per agent and day (ADR-0011) |
 | `inbox.counts` | Per-agent counters for the status line; for the human, also the other sessions that wait or answered (**ADR-0014**) |
 | `prompts.list` / `session.new` | Human only (**ADR-0015**): the saved prompts (`[prompts]`; `@name` in `session.send` and `session.prompt` stands for one); open `claude --name <name>` in a folder in a new Terminal.app window, iTerm2 tab, tmux window or herdr workspace |
@@ -369,7 +392,7 @@ There is deliberately no MCP tool that reads another agent's inbound mail or the
 | `smif tail` | Follow the audit log |
 | `smif ui` | Full-screen live view for the human (agents, running runs, needs you, dead letters, activity, live audit events) with reply, cancel and retry; inbox with filters, thread, run (record, transcript tail, diff) and apply with a y/N question; digest with mark read; human token only **(ADR-0007, ADR-0008)** |
 | `smif watch [--events]` | Plain-text live view for a pipe, tmux or ssh: a summary every few seconds, or one line per audit event; retries while the daemon is down **(ADR-0008)** |
-| `smif doctor` | Checks CLI version and flags (10.2), socket, permissions, hooks, git, notifier |
+| `smif doctor` | Checks CLI version and flags (10.2), socket, permissions, hooks, git, notifier, and each harness provider's file format (an unverified provider's format is `unchecked`, never a failure, **ADR-0019**) |
 | `smif config validate` | Schema and rule validation, including catch-all rule presence |
 
 All read commands support `--json`.
@@ -509,7 +532,7 @@ Core tables (migrations versioned in `internal/store/migrations`):
 |---|---|
 | `messages` | `id`, `thread_id`, `parent_id`, `from_agent`, `from_origin`, `from_run`, `to_agent`, `kind`, `intent`, `priority`, `state`, `hop`, `dedupe_key`, `coalesced_count`, `deadline`, `rule_id`, `envelope_json`, timestamps |
 | `runs` | `id`, `message_id`, `agent`, `handler`, `profile`, `attempt`, `state`, `pid`, `pgid`, `session_id`, `workspace`, `branch`, `head_sha`, `result_json`, `usage_json`, `cost_usd`, `error`, timestamps |
-| `presence` | `repo`, `session_id`, `last_seen`, `state`, `turn`, `turn_at`, `tty`, `pid`, `term`, `title`, `last_prompt` (ADR-0012) |
+| `presence` | `repo`, `session_id`, `last_seen`, `state`, `turn`, `turn_at`, `tty`, `pid`, `term`, `title`, `last_prompt` (ADR-0012), `harness` (ADR-0019) |
 | `session_asks` | `message_id`, `session_id`, `cwd`, `created_at`: an ask a fork of that session answers, written by the daemon only (ADR-0013) |
 | `cursors` | `agent`, `digest_cursor` |
 | `budgets` | `agent`, `day`, `cost_usd`, `tokens` |
@@ -581,6 +604,13 @@ internal/runner/claude/  argv builder, flag probe, stream parser, result validat
 internal/runner/command/ command handler execution
 internal/workspace/      worktrees, branches, commit-on-exit, diff, apply
 internal/presence/       hook events, heartbeats, repo locks
+internal/harness/        Provider interface and registry: what the session view reads per coding agent (ADR-0019)
+internal/harness/claude/ Claude Code provider: session files, transcripts, file status, fork folder, process name
+internal/harness/qwen/   Qwen Code provider, read only: per-pid registry, transcript tree (unverified, from its source)
+internal/harness/codex/  Codex provider, read only: ps and folder matched to rollouts (unverified, from its source)
+internal/harness/opencode/ OpenCode V2 provider, read only: SQLite with mode=ro, ps and folder (unverified, from its source)
+internal/harness/copilot/ Copilot CLI provider, read only: lock files, events.jsonl (unverified, from its schema)
+internal/harness/droid/  Droid provider, read only: ps and folder matched to transcripts (unverified, from its bundle)
 internal/mcpserver/      MCP tools
 internal/statusline/     segment rendering, wrapping
 internal/notify/         macOS and Linux notifiers

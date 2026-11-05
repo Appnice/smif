@@ -10,6 +10,7 @@ import (
 	"github.com/appnice/smif/internal/api"
 	"github.com/appnice/smif/internal/auth"
 	"github.com/appnice/smif/internal/envelope"
+	"github.com/appnice/smif/internal/harness"
 	"github.com/appnice/smif/internal/store"
 )
 
@@ -48,20 +49,41 @@ func (d *Daemon) sessionByName(name string) *store.Presence {
 	return hit
 }
 
+// countNamed counts the sessions with that name (any case).
+func countNamed(ps []store.Presence, name string) int {
+	n := 0
+	for _, p := range ps {
+		if name != "" && strings.EqualFold(strings.TrimSpace(p.Title), strings.TrimSpace(name)) {
+			n++
+		}
+	}
+	return n
+}
+
 // forkTarget is the agent whose worker answers for a session, and the
-// folder the fork resumes in (claude finds a session only from its own
-// folder). The folder must be inside that agent's repo.
+// folder the provider says the fork resumes in. The folder must be inside
+// that agent's repo. Only a verified provider with a Forker gets here
+// (ADR-0019); workers run claude, so that is Claude Code alone for now, and a
+// second Forker also needs a harness in session_asks.
 func (d *Daemon) forkTarget(s store.Presence) (agent, cwd string, err error) {
+	if s.Level != "" {
+		return "", "", api.Errf(api.CodeRejected, "no fork of a session at the %s level: write when it is idle", s.Level)
+	}
+	prov := d.harnesses.Get(s.Harness)
+	if why := harness.ReadOnly(s.Harness, prov); why != "" {
+		return "", "", api.Errf(api.CodeRejected, "no fork of this session: %s", why)
+	}
+	forker, ok := prov.(harness.Forker)
+	if !ok {
+		return "", "", api.Errf(api.CodeRejected, "%s has no safe fork, so this session takes no side questions", s.Harness)
+	}
 	cfg := d.Config()
 	agent = agentForRepo(cfg, s.Repo)
 	if agent == "" {
 		return "", "", api.Errf(api.CodeRejected, "no agent owns %s, so no worker can answer for this session; "+
 			"write to it when it is idle, or add an agent for that folder", s.Repo)
 	}
-	cwd = s.Cwd
-	if cwd == "" {
-		cwd = s.Repo
-	}
+	cwd = forker.ForkDir(s.Cwd, s.Repo)
 	if a := cfg.AgentForPath(cwd); a == nil || a.RepoPath() != cfg.Agent(agent).RepoPath() {
 		return "", "", api.Errf(api.CodeRejected, "the session's folder %s is not inside %s's repo", cwd, agent)
 	}
@@ -117,6 +139,9 @@ func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.Sessio
 		return nil, api.Errf(api.CodeParams, "name a session_id or a name")
 	}
 	if target == nil {
+		if n := countNamed(ps, p.Name); n > 1 {
+			return nil, api.Errf(api.CodeRejected, "%d sessions are named %q; pick one with --session", n, p.Name)
+		}
 		return nil, api.Errf(api.CodeNotFound, "no live session %s%s", p.SessionID, p.Name)
 	}
 	v := d.sessionView(d.Config(), *target)
@@ -127,7 +152,7 @@ func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.Sessio
 		}
 		return &api.SessionSendResult{Mode: "typed", Agent: r.Agent, SessionID: r.SessionID}, nil
 	}
-	if v.Turn != "busy" && v.Turn != "waiting" {
+	if target.Level != "" || v.Turn != "busy" && v.Turn != "waiting" {
 		return nil, api.Errf(api.CodeRejected, "cannot write to %s: %s", api.ShortSession(target.SessionID), v.Why)
 	}
 	agent, cwd, err := d.forkTarget(*target)

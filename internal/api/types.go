@@ -216,10 +216,15 @@ type PresenceParams struct {
 
 // SessionView is one live interactive session (session.list, ADR-0012).
 type SessionView struct {
-	Agent      string    `json:"agent"`
+	Agent   string `json:"agent"`
+	Harness string `json:"harness"` // the coding agent: claude, codex (ADR-0019)
+	Level   string `json:"level"`   // the support level: full | herdr | listed (ADR-0019)
+	// Unverified marks a session whose provider no real session checked
+	// (ADR-0019): read only, no typing and no fork.
+	Unverified bool      `json:"unverified,omitempty"`
 	SessionID  string    `json:"session_id"`
 	Repo       string    `json:"repo"`
-	Turn       string    `json:"turn"` // idle | busy | unknown
+	Turn       string    `json:"turn"` // idle | busy | waiting | unknown
 	TurnAt     time.Time `json:"turn_at,omitzero"`
 	LastSeen   time.Time `json:"last_seen"`
 	TTY        string    `json:"tty,omitempty"`
@@ -485,11 +490,23 @@ type HealthView struct {
 	// Sessions checks the Claude Code files the session view reads (session
 	// files, transcripts; not a documented interface, ADR-0012): "ok",
 	// "none" (no files: hooks only) or "changed" with the detail.
-	Sessions       string    `json:"sessions"`
-	SessionsDetail string    `json:"sessions_detail,omitempty"`
-	ConfigPath     string    `json:"config_path"`
-	StartedAt      time.Time `json:"started_at"`
-	PID            int       `json:"pid"`
+	Sessions       string `json:"sessions"`
+	SessionsDetail string `json:"sessions_detail,omitempty"`
+	// Providers has one line per harness provider for smif doctor.
+	Providers  []ProviderCheck `json:"providers,omitempty"`
+	ConfigPath string          `json:"config_path"`
+	StartedAt  time.Time       `json:"started_at"`
+	PID        int             `json:"pid"`
+}
+
+// ProviderCheck is one provider's format check (ADR-0019). State is ok,
+// none or changed for a verified provider, and unchecked for one that no
+// real session checked.
+type ProviderCheck struct {
+	Name     string `json:"name"`
+	Verified bool   `json:"verified"`
+	State    string `json:"state"`
+	Detail   string `json:"detail,omitempty"`
 }
 
 // GCResult reports admin.gc.

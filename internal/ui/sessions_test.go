@@ -353,3 +353,146 @@ func TestSavedPromptsAndNewSession(t *testing.T) {
 		t.Fatal("esc did not cancel the new session")
 	}
 }
+
+// levelSample has one row of each kind that no provider reports.
+func levelSample() Snapshot {
+	s := sessionSample()
+	s.Sessions = append(s.Sessions,
+		api.SessionView{Harness: "codex", Level: "herdr", SessionID: "h1000000000000000", Repo: "/r/api", Turn: "idle", TurnAt: t0.Add(-5 * time.Minute),
+			TTY: "/dev/ttys010", Term: "herdr", Title: "codex", CanPrompt: true},
+		api.SessionView{Harness: "codex", Level: "herdr", SessionID: "h2000000000000000", Repo: "/r/api", Turn: "waiting", TurnAt: t0.Add(-2 * time.Minute),
+			TTY: "/dev/ttys011", Term: "herdr", Title: "reviewer", Why: "it waits for you in its tab (a permission or a question); o shows the tab"},
+		api.SessionView{Harness: "gemini", Level: "herdr", SessionID: "h3000000000000000", Repo: "/r/api", Turn: "unknown", TurnAt: t0.Add(-time.Minute),
+			TTY: "/dev/ttys012", Term: "herdr", Title: "gemini", Why: "herdr cannot tell this agent's state, so Smif does not type"},
+		api.SessionView{Harness: "aider", Level: "listed", SessionID: "p4000000000000000", Repo: "/r/api", Turn: "unknown", LastSeen: t0,
+			TTY: "/dev/ttys013", Term: "Apple_Terminal", Title: "aider", Why: "listed only: Smif sees the process but not its state, so it does not type"},
+	)
+	return s
+}
+
+// The herdr and listed levels show the agent and a text mark in the row,
+// and the preview says why typing is off, with no style needed.
+func TestHomeSessionLevels(t *testing.T) {
+	f := &fakePrompter{fakeHome: &fakeHome{fakeDigest: &fakeDigest{fakeInspector: &fakeInspector{
+		fakeActions: fakeActions{fakeSource: fakeSource{snaps: []Snapshot{levelSample()}}, threads: sampleThreads()},
+	}}}}
+	m := New(f, Options{Now: func() time.Time { return t0 }, Interval: time.Millisecond})
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	run(m, m.Init())
+	out := view(m)
+	for _, want := range []string{"? unknown aider    [listed] no typing", "○ idle   codex     [herdr] idle", "! 2m     reviewer  codex [herdr] waits",
+		"? unknown gemini   [herdr] no typing"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("home lacks %q:\n%s", want, out)
+		}
+	}
+	golden(t, "home_session_levels_120x40.golden", out)
+
+	sel := func(id string) *api.SessionView {
+		t.Helper()
+		for range len(m.homeRows()) {
+			key(m, "k")
+		}
+		for range len(m.homeRows()) {
+			if r := m.homeSelected(); r != nil && r.sess != nil && r.sess.SessionID == id {
+				return r.sess
+			}
+			key(m, "j")
+		}
+		t.Fatalf("no row %s", id)
+		return nil
+	}
+
+	// Listed: the preview gives the reason; s does not open a box.
+	sel("p4000000000000000")
+	out = view(m)
+	for _, want := range []string{"? UNKNOWN", "Level listed: Smif sees only the aider process", "state, no steps, no answers.", "Cannot write now: listed only"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("listed preview lacks %q:\n%s", want, out)
+		}
+	}
+	key(m, "s")
+	if m.home.typing {
+		t.Fatal("s opened the box on a listed session")
+	}
+
+	// herdr, unknown state: the same.
+	sel("h3000000000000000")
+	out = view(m)
+	for _, want := range []string{"Level herdr: the state of gemini comes from", "Cannot write now: herdr cannot tell", "does not type"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("herdr preview lacks %q:\n%s", want, out)
+		}
+	}
+	key(m, "s")
+	if m.home.typing {
+		t.Fatal("s opened the box at unknown state")
+	}
+
+	// herdr, blocked, in a folder of an agent: no fork is offered.
+	waiting := sel("h2000000000000000")
+	waiting.Agent = "cafe"
+	if canWrite(waiting) {
+		t.Fatal("a fork is offered at the herdr level")
+	}
+	out = view(m)
+	if !strings.Contains(out, "o bring its tab to the front") {
+		t.Fatalf("no way to the tab:\n%s", out)
+	}
+
+	// herdr, idle: s writes.
+	sel("h1000000000000000")
+	key(m, "s", "run the tests", "enter")
+	if len(f.prompts) != 1 || f.prompts[0] != "h1000000000000000 run the tests" {
+		t.Fatalf("prompts %q", f.prompts)
+	}
+}
+
+// An unverified provider's row says so, keeps its step and answer, and the
+// UI offers no writing, whatever its state.
+func TestHomeUnverifiedSession(t *testing.T) {
+	s := sessionSample()
+	s.Sessions = []api.SessionView{
+		{Harness: "codex", Level: "full", Unverified: true, SessionID: "c1000000000000000", Repo: "/r/api", Agent: "api", Turn: "idle", TurnAt: t0.Add(-time.Minute),
+			TTY: "/dev/ttys010", Term: "tmux", Title: "payments", LastAnswer: "The test passes now.", LastAnswerAt: t0.Add(-time.Hour),
+			Why: "codex is unverified, no real session checked it: read only"},
+		{Harness: "qwen", Level: "full", Unverified: true, SessionID: "q2000000000000000", Repo: "/r/api", Agent: "api", Turn: "busy", TurnAt: t0.Add(-time.Minute),
+			TTY: "/dev/ttys011", Term: "tmux", Title: "review",
+			Why: "qwen is unverified, no real session checked it: read only"},
+		{Harness: "codex", Level: "full", Unverified: true, SessionID: "c3000000000000000", Repo: "/r/api", Agent: "api", Turn: "unknown",
+			TTY: "/dev/ttys012", Term: "tmux", Title: "codex", Why: "codex is unverified, no real session checked it: read only",
+			Activity: &api.SessionActivity{Prompt: "fix the test", PromptAt: t0.Add(-time.Minute), Tools: 1,
+				Now: &api.SessionStep{Tool: "shell", Target: "go test ./...", At: t0.Add(-time.Minute)}}},
+	}
+	for i := range s.Sessions {
+		if canWrite(&s.Sessions[i]) {
+			t.Fatalf("canWrite: %+v", s.Sessions[i])
+		}
+	}
+	f := &fakePrompter{fakeHome: &fakeHome{fakeDigest: &fakeDigest{fakeInspector: &fakeInspector{
+		fakeActions: fakeActions{fakeSource: fakeSource{snaps: []Snapshot{s}}, threads: sampleThreads()},
+	}}}}
+	m := New(f, Options{Now: func() time.Time { return t0 }, Interval: time.Millisecond})
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	run(m, m.Init())
+	out := view(m)
+	for _, want := range []string{"codex [unverified] The test pas", "qwen [unverified]", "? unknown codex", "[unverified] shell"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("home lacks %q:\n%s", want, out)
+		}
+	}
+	golden(t, "home_session_unverified_120x40.golden", out)
+	for range len(m.homeRows()) {
+		key(m, "k")
+	}
+	for range len(m.homeRows()) {
+		key(m, "j")
+		if out := view(m); strings.Contains(out, "Cannot write now") {
+			if !strings.Contains(out, "is unverified") || !strings.Contains(out, "read only") {
+				t.Fatalf("no reason:\n%s", out)
+			}
+			return
+		}
+	}
+	t.Fatal("no row says it cannot write")
+}

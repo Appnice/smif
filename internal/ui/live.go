@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/harness"
 )
 
 // What a session does now, for the list, the preview and the chat: the
@@ -138,6 +139,9 @@ func (m *Model) sessionStateCell(sv *api.SessionView, now time.Time) string {
 	if sv.Turn == "idle" {
 		return stDim.Render("○ idle")
 	}
+	if !fullLevel(sv) || sv.Unverified {
+		return stDim.Render("? unknown")
+	}
 	return stDim.Render("· open")
 }
 
@@ -155,7 +159,56 @@ func (m *Model) sessionLabel(sv *api.SessionView, now time.Time) string {
 	if sv.Turn == "idle" {
 		return stOK.Render("○ IDLE")
 	}
+	if !fullLevel(sv) || sv.Unverified {
+		return stDim.Render("? UNKNOWN")
+	}
 	return stDim.Render("· OPEN")
+}
+
+// fullLevel reports a session with a provider or hooks behind it. At the
+// herdr and listed levels there are no steps, no answers and no fork
+// (ADR-0019).
+func fullLevel(sv *api.SessionView) bool {
+	return sv.Level == "" || sv.Level == harness.LevelFull
+}
+
+// harnessMark is a row's agent and level in plain text, so that it holds
+// without colour: "codex [herdr]", "gemini [listed]", "[herdr]" when the
+// name already says the agent, "" for Claude Code at the full level.
+func harnessMark(sv *api.SessionView) string {
+	var parts []string
+	if sv.Harness != "" && sv.Title != sv.Harness && (sv.Harness != "claude" || !fullLevel(sv)) {
+		parts = append(parts, sv.Harness)
+	}
+	if !fullLevel(sv) {
+		parts = append(parts, "["+sv.Level+"]")
+	}
+	if sv.Unverified {
+		parts = append(parts, "[unverified]")
+	}
+	return strings.Join(parts, " ")
+}
+
+// levelState is the row's text at the herdr and listed levels, in place of
+// a step or an answer.
+func levelState(sv *api.SessionView) string {
+	switch sv.Turn {
+	case "waiting":
+		return "waits for you in its tab"
+	case "busy":
+		return "working"
+	case "idle":
+		return "idle"
+	}
+	return "no typing"
+}
+
+// levelNote says in the preview where a session's data comes from.
+func levelNote(sv *api.SessionView) string {
+	if sv.Level == harness.LevelListed {
+		return "Level listed: Smif sees only the " + sv.Harness + " process. No state, no steps, no answers."
+	}
+	return "Level herdr: the state of " + sv.Harness + " comes from herdr's screen rules. No steps, no answers."
 }
 
 // liveLine is the one-line state of a working or waiting session, for the

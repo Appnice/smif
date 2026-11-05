@@ -535,13 +535,21 @@ func cmdDoctor() *cobra.Command {
 				if derr == nil {
 					check(h.OK, fmt.Sprintf("daemon %s pid %d, schema %d, db %s", h.Version, h.PID, h.SchemaVersion, h.DB), "")
 					check(h.ClaudeOK, "daemon sees claude", strings.Join(h.ClaudeProblems, "; "))
-					switch h.Sessions {
-					case "changed":
-						check(false, "Claude Code session files", h.SessionsDetail+" (a new Claude Code version? the session view needs an update)")
-					case "none":
-						warn(h.SessionsDetail)
-					case "ok":
-						check(true, "Claude Code session files", h.SessionsDetail)
+					for _, p := range h.Providers {
+						name := p.Name
+						if name == "claude" {
+							name = "Claude Code"
+						}
+						switch p.State {
+						case "changed":
+							check(false, name+" session files", p.Detail+" (a new "+name+" version? the session view needs an update)")
+						case "none":
+							warn(p.Detail)
+						case "ok":
+							check(true, name+" session files", p.Detail)
+						case "unchecked":
+							fmt.Printf("[info] %s format unchecked, read from its source and no real session checked it: %s\n", name, nonEmptyStr(p.Detail, "nothing to read"))
+						}
 					}
 				}
 			}

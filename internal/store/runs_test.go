@@ -270,3 +270,47 @@ func TestPresenceTurnAndTerminal(t *testing.T) {
 		t.Fatalf("SetPresenceTurn: %+v", p)
 	}
 }
+
+// A row from before the harness column is a Claude Code session, and a
+// report without a harness keeps the stored one (ADR-0019).
+func TestPresenceHarness(t *testing.T) {
+	s := openTest(t)
+	harnessOf := func(id string) string {
+		t.Helper()
+		ps, err := s.AllPresence()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range ps {
+			if p.SessionID == id {
+				return p.Harness
+			}
+		}
+		t.Fatalf("no row %s", id)
+		return ""
+	}
+	up := func(id string, u PresenceUpdate) {
+		t.Helper()
+		if err := s.Update(func(tx *Tx) error { return tx.UpsertPresence("/r", id, "active", u) }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Update(func(tx *Tx) error {
+		_, err := tx.Exec(`INSERT INTO presence (repo,session_id,last_seen,state) VALUES ('/r','old',1,'active')`)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if h := harnessOf("old"); h != "claude" {
+		t.Fatalf("old row: %q", h)
+	}
+	up("hook", PresenceUpdate{})
+	if h := harnessOf("hook"); h != "claude" {
+		t.Fatalf("new row with no harness: %q", h)
+	}
+	up("codex", PresenceUpdate{Harness: "codex"})
+	up("codex", PresenceUpdate{Turn: "busy"})
+	if h := harnessOf("codex"); h != "codex" {
+		t.Fatalf("a report without a harness changed it: %q", h)
+	}
+}

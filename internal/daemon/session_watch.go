@@ -11,8 +11,8 @@ import (
 
 	"github.com/appnice/smif/internal/api"
 	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/harness"
 	"github.com/appnice/smif/internal/notify"
-	"github.com/appnice/smif/internal/presence"
 	"github.com/appnice/smif/internal/store"
 )
 
@@ -56,7 +56,7 @@ func unseenAnswer(v api.SessionView, seen map[string]time.Time, now time.Time) b
 // sessionAttention names the live sessions other than self that wait in
 // their tab, and those with an unseen answer, each sorted by name.
 func (d *Daemon) sessionAttention(self string) (waiting, answered []string) {
-	ps, err := d.liveSessions()
+	ps, err := d.fullSessions()
 	if err != nil {
 		return nil, nil
 	}
@@ -130,7 +130,7 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 	remind, _ := config.WatchdogEvery(cfg.Daemon.RemindWaiting)
 	silentAfter, _ := config.WatchdogEvery(cfg.Daemon.AlertSilent)
 	longAfter, _ := config.WatchdogEvery(cfg.Daemon.AlertLongTurn)
-	ps, err := d.liveSessions()
+	ps, err := d.fullSessions()
 	if err != nil {
 		return prev
 	}
@@ -146,7 +146,7 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 				w.since, w.silent, w.long = a.PromptAt, false, false // a new prompt: a new turn
 			}
 			if a.Now != nil {
-				step = presence.StepText(a.Now.Tool, a.Now.Target)
+				step = harness.StepText(a.Now.Tool, a.Now.Target)
 			}
 		}
 		if v.Turn == "waiting" && old.turn != "waiting" {

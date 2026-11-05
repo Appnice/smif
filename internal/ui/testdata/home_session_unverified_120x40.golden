@@ -1,0 +1,40 @@
+ smif   1 working  2 quiet  ⚑ 1 asks you  ✗ 1 dead                                  ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                            │ │ ⚑ NEEDS YOU  web → cafe · ask store.release · 4m ago    │
+│ ▌ ⚑ cafe ← web Ship?                                  4m │ │                                                         │
+│                                                          │ │ Ship?                                                   │
+│ SESSIONS · 3                                             │ │                                                         │
+│   ? unknown codex    [unverified] shell  go test ./...   │ │ THE WORKER ASKS                                         │
+│   ○ idle   payments  codex [unverified] The test pas… 1h │ │ Ship 1.0.2 now or wait for review?                      │
+│   ▶ 1m00s  review    qwen [unverified] starting          │ │                                                         │
+│                                                          │ │ MESSAGE                                                 │
+│ RUNNING · 1                                              │ │ Store review passed for 1.0.2. Decide if we ship now.   │
+│   ◉ cafe ← observability NPE in CheckoutView          1m │ │ #fake:result=needs_human                                │
+│                                                          │ │                                                         │
+│ QUEUED · 2                                               │ │ THREAD · 1 messages · 1 runs                            │
+│   ◌ web ← observability ANR on cart screen            3m │ │ ▸ 13:05  web → cafe  ask  Ship?                         │
+│   ◌ web ← cafe retry · Icons for the dark mode        1m │ │                                                         │
+│                                                          │ │ [a] answer   [enter] open   [c] cancel                  │
+│ DONE TODAY · 2 · 1 unread (e marks read)                 │ │                                                         │
+│  •✓ observability ← human harness run smif-ui: green  2h │ │                                                         │
+│   ✓ cafe ← web Is Cafe live?                          5h │ │                                                         │
+│                                                          │ │                                                         │
+│ DEAD · 1                                                 │ │                                                         │
+│   ✗ observability ← cafe crash.report                10m │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+│                                                          │ │                                                         │
+╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
+↑↓ move · enter open · a answer · c cancel · e mark read · : command · [ ] agent · / filter · ? help · q quit

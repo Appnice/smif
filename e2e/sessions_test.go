@@ -132,8 +132,13 @@ func TestSessionPrompt(t *testing.T) {
 	// The Stop hook makes it idle again; the CLI lists it.
 	report("s-idle-0001", "idle", "", 0)
 	out, err = e.CLI("", "sessions")
-	if err != nil || !strings.Contains(out, "s-idle-0") || !strings.Contains(out, "idle") {
+	if err != nil || !strings.Contains(out, "s-idle-0") || !strings.Contains(out, "idle") ||
+		!strings.Contains(out, "harness") || !strings.Contains(out, "claude") {
 		t.Fatalf("smif sessions: %v\n%s", err, out)
+	}
+	out, err = e.CLI("", "sessions", "--json")
+	if err != nil || !strings.Contains(out, `"harness": "claude"`) {
+		t.Fatalf("smif sessions --json: %v\n%s", err, out)
 	}
 	if err := c.Call("session.prompt", api.SessionPromptParams{Agent: "app", Text: "now the lint"}, &x, 5e9); err != nil {
 		t.Fatalf("second prompt: %v", err)

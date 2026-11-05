@@ -524,6 +524,8 @@ func (m *Model) sessionRowLine(r homeRow, selected bool, w int, now time.Time) s
 		tail = strings.Join(t, stDim.Render(" · "))
 	default:
 		switch {
+		case sv.Turn == "unknown" && nowStep(sv) != nil:
+			what = stepLabel(nowStep(sv), stDim)
 		case sv.LastAnswer != "" && kind == kNew:
 			what = stTitle.Render(plainFirstLine(sv.LastAnswer))
 		case sv.LastAnswer != "":
@@ -537,7 +539,15 @@ func (m *Model) sessionRowLine(r homeRow, selected bool, w int, now time.Time) s
 		if at.IsZero() {
 			at = r.msg.UpdatedAt
 		}
-		tail = stDim.Render(ago(now.Sub(at)))
+		if !at.IsZero() {
+			tail = stDim.Render(ago(now.Sub(at)))
+		}
+	}
+	if !fullLevel(sv) {
+		what = stDim.Render(levelState(sv))
+	}
+	if mark := harnessMark(sv); mark != "" {
+		what = stDim.Render(mark+" ") + what
 	}
 	w--
 	room := w - ansi.StringWidth(head) - ansi.StringWidth(tail) - 1
@@ -608,6 +618,15 @@ func wrapLines(s string, w, n int) []string {
 	return ls
 }
 
+// dimLines renders each line faint.
+func dimLines(ls []string) []string {
+	out := make([]string, len(ls))
+	for i, l := range ls {
+		out[i] = stDim.Render(l)
+	}
+	return out
+}
+
 // stepRows are done steps as "15:00  Edit  path", faint.
 func stepRows(steps []api.SessionStep, w int, now time.Time) []string {
 	var out []string
@@ -623,10 +642,13 @@ func stepRows(steps []api.SessionStep, w int, now time.Time) []string {
 // your last prompt and the final answer to it (full: the whole answer,
 // else what fits in h, cut with a pointer to enter).
 func (m *Model) sessionBody(sv *api.SessionView, w, h int, full bool) []string {
+	if !fullLevel(sv) {
+		return dimLines(wrapLines(levelNote(sv), w, 0))
+	}
 	now := m.now()
 	turns, err := m.sessionTurns(sv)
 	kind := m.sessionKind(sv)
-	if kind == kWorking || kind == kWaiting {
+	if kind == kWorking || kind == kWaiting || sv.Turn == "unknown" && nowStep(sv) != nil {
 		return m.liveBody(sv, turns, w, now)
 	}
 	if len(turns) == 0 {
@@ -699,6 +721,10 @@ func (m *Model) liveBody(sv *api.SessionView, turns []api.SessionTurn, w int, no
 			done = append(done, s)
 		}
 	}
+	if sv.Turn == "unknown" && cur != nil {
+		out = append(out, stDim.Render("now · a tool runs, or an approval waits"))
+		out = append(out, "  "+stDim.Render("│")+" "+ansi.Truncate(stepLabel(cur, stDim), w-4, "…"), "")
+	}
 	if sv.Turn == "busy" {
 		switch {
 		case cur != nil:
@@ -758,9 +784,10 @@ func canFocus(term string) bool {
 
 // canWrite reports whether the human can write to the session now: typed
 // in when idle, or to a fork with its context when busy or waiting (the
-// fork needs an agent that owns the session's folder).
+// fork needs an agent that owns the session's folder, and a session at the
+// full level).
 func canWrite(sv *api.SessionView) bool {
-	return sv.CanPrompt || (sv.Turn == "busy" || sv.Turn == "waiting") && sv.Agent != ""
+	return sv.CanPrompt || fullLevel(sv) && !sv.Unverified && (sv.Turn == "busy" || sv.Turn == "waiting") && sv.Agent != ""
 }
 
 // writeHint says where the text goes.
@@ -768,6 +795,8 @@ func writeHint(sv *api.SessionView) string {
 	switch {
 	case sv.CanPrompt:
 		return "It is idle: what you write is typed into its tab."
+	case !fullLevel(sv) || sv.Unverified:
+		return "Cannot write now: " + sv.Why
 	case canWrite(sv) && sv.Turn == "waiting":
 		return "Smif never answers a permission prompt for you. s asks a fork instead, without touching the prompt."
 	case canWrite(sv):
@@ -807,6 +836,8 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 		if canWrite(sv) {
 			bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv), w, "…")))
 		}
+	case (!fullLevel(sv) || sv.Unverified) && !sv.CanPrompt:
+		bottom = append([]string{""}, dimLines(wrapLines(writeHint(sv), w, 0))...)
 	case canWrite(sv):
 		what := "reply…"
 		if !sv.CanPrompt {

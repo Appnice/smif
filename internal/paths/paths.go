@@ -79,6 +79,61 @@ func ClaudeDir() string {
 	return filepath.Join(Home(), ".claude")
 }
 
+// CodexDir is ~/.codex unless CODEX_HOME is set.
+func CodexDir() string {
+	if v := os.Getenv("CODEX_HOME"); v != "" {
+		return v
+	}
+	return filepath.Join(Home(), ".codex")
+}
+
+// QwenDir is ~/.qwen unless QWEN_HOME is set. It holds sessions/.
+func QwenDir() string {
+	if v := os.Getenv("QWEN_HOME"); v != "" {
+		return v
+	}
+	return filepath.Join(Home(), ".qwen")
+}
+
+// QwenRuntimeDir holds Qwen Code's projects/: QWEN_RUNTIME_DIR moves it
+// apart from QwenDir. Smif does not read the runtimeOutputDir setting.
+func QwenRuntimeDir() string {
+	if v := os.Getenv("QWEN_RUNTIME_DIR"); v != "" {
+		return v
+	}
+	return QwenDir()
+}
+
+// OpenCodeDB is OpenCode's database: OPENCODE_DB, else under XDG_DATA_HOME,
+// on macOS too. Smif reads only the default channel.
+func OpenCodeDB() string {
+	if v := os.Getenv("OPENCODE_DB"); v != "" {
+		return v
+	}
+	dir := os.Getenv("XDG_DATA_HOME")
+	if dir == "" {
+		dir = filepath.Join(Home(), ".local", "share")
+	}
+	return filepath.Join(dir, "opencode", "opencode.db")
+}
+
+// CopilotDir is ~/.copilot unless COPILOT_HOME is set.
+func CopilotDir() string {
+	if v := os.Getenv("COPILOT_HOME"); v != "" {
+		return v
+	}
+	return filepath.Join(Home(), ".copilot")
+}
+
+// FactoryDir is Droid's ~/.factory. FACTORY_HOME_OVERRIDE stands in for the
+// home folder.
+func FactoryDir() string {
+	if v := os.Getenv("FACTORY_HOME_OVERRIDE"); v != "" {
+		return filepath.Join(v, ".factory")
+	}
+	return filepath.Join(Home(), ".factory")
+}
+
 // Expand replaces a leading ~ with the home directory and cleans the path.
 func Expand(p string) string {
 	if p == "~" {

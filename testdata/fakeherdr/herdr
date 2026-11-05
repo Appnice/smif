@@ -1,0 +1,38 @@
+#!/bin/sh
+# A stand-in for herdr: it answers from the files in $FAKE_HERDR_DIR and logs
+# each `agent prompt` to prompts.log. The JSON in those files is copied from
+# real herdr 0.9.5 output (internal/daemon/scan_test.go writes them). A file
+# `sleep` in that folder makes each call hang for that many seconds. A file
+# `integrations.fail` makes `integration status` print its text and exit 1.
+d="$FAKE_HERDR_DIR"
+[ -f "$d/sleep" ] && sleep "$(cat "$d/sleep")"
+[ "$1" = "--session" ] && shift 2
+case "$1 $2" in
+"session list") cat "$d/sessions.json" ;;
+"agent list") cat "$d/agents.json" ;;
+"agent get") cat "$d/get.json" ;;
+"pane list") cat "$d/panes.json" ;;
+"integration status")
+	cat "$d/integrations.txt" || exit 1
+	[ ! -f "$d/integrations.fail" ]
+	;;
+"pane process-info") cat "$d/info.json" ;;
+"pane run")
+	shift 2
+	printf 'pane run: %s\n' "$*" >>"$d/prompts.log"
+	echo '{"id":"cli:pane:run","result":{"type":"ok"}}'
+	;;
+"agent prompt")
+	if grep -q '"agent_status":"blocked"' "$d/get.json"; then
+		echo '{"id":"cli:agent:prompt","error":{"code":"agent_blocked","message":"agent is blocked"}}' >&2
+		exit 1
+	fi
+	shift 2
+	printf '%s\n' "$*" >>"$d/prompts.log"
+	echo '{"id":"cli:agent:prompt","result":{"type":"agent_prompted"}}'
+	;;
+*)
+	echo '{"error":{"code":"fake","message":"the fake does not know this command"}}' >&2
+	exit 1
+	;;
+esac
