@@ -30,7 +30,7 @@
 </p>
 
 ```sh
-go install github.com/appnice/smif/cmd/smif@latest && smif
+curl -fsSL https://smif.dev/install.sh | sh
 ```
 
 | You see | It means |
@@ -160,19 +160,18 @@ is in [docs/rfc-benchmark.md](docs/rfc-benchmark.md).
 
 ## Install
 
-You need Claude Code 2.1 (checked with 2.1.316) and git, on macOS or Linux.
+You need Claude Code 2.1 (checked with 2.1.316 to 2.1.318) and git, on macOS or Linux.
 
-**Download a binary:**
+**Binary:**
 
 ```sh
-os=$(uname -s | tr A-Z a-z); arch=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-curl -fsSL "https://github.com/appnice/smif/releases/latest/download/smif_${os}_${arch}.tar.gz" | tar xz smif
-mkdir -p ~/.local/bin && mv smif ~/.local/bin/
+curl -fsSL https://smif.dev/install.sh | sh
 ```
 
-`checksums.txt` is on the [release page](https://github.com/appnice/smif/releases/latest). The macOS binaries
-are not notarized, so a file saved from a browser needs `xattr -d com.apple.quarantine smif`. `curl` needs
-nothing extra.
+This puts `smif` in `~/.local/bin` after it checks the checksum ([the script](site/install.sh)). Set
+`SMIF_INSTALL_DIR` for another folder. The files are also on the
+[release page](https://github.com/appnice/smif/releases/latest). The macOS binaries are not notarized, so a file
+saved from a browser needs `xattr -d com.apple.quarantine smif`.
 
 **With Go** (1.27.2 or newer):
 

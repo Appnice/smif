@@ -49,9 +49,9 @@
     <h1 class="hero__title reveal">All your Claude Code sessions.<br><span class="hl">One calm terminal.</span></h1>
     <p class="hero__lede reveal">smif finds every Claude Code session on your machine and shows, live, which one works, which one waits for you and what each one just said. Answer any of them without hunting for the tab.</p>
     <div class="hero__cta reveal">
-      <div class="cmd" data-copy="go install github.com/appnice/smif/cmd/smif@latest">
+      <div class="cmd" data-copy="curl -fsSL https://smif.dev/install.sh | sh">
         <span class="cmd__prompt" aria-hidden="true">$</span>
-        <code>go install github.com/appnice/smif/cmd/smif@latest</code>
+        <code>curl -fsSL https://smif.dev/install.sh | sh</code>
         <button class="cmd__copy" type="button" aria-label="Copy the install command">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
         </button>
@@ -306,10 +306,14 @@
     <h2 class="h2 reveal">One binary. Two commands.</h2>
     <div class="install reveal">
       <div class="install__tabs" role="tablist" aria-label="Install method">
-        <button type="button" role="tab" aria-selected="true" aria-controls="inst-go" id="tab-go">Go</button>
+        <button type="button" role="tab" aria-selected="true" aria-controls="inst-bin" id="tab-bin">Binary</button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="inst-go" id="tab-go">Go</button>
         <button type="button" role="tab" aria-selected="false" aria-controls="inst-src" id="tab-src">From source</button>
       </div>
-      <div class="install__panel" role="tabpanel" id="inst-go" aria-labelledby="tab-go">
+      <div class="install__panel" role="tabpanel" id="inst-bin" aria-labelledby="tab-bin">
+        <div class="cmd" data-copy="curl -fsSL https://smif.dev/install.sh | sh"><span class="cmd__prompt" aria-hidden="true">$</span><code>curl -fsSL https://smif.dev/install.sh | sh</code><button class="cmd__copy" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
+      </div>
+      <div class="install__panel" role="tabpanel" id="inst-go" aria-labelledby="tab-go" hidden>
         <div class="cmd" data-copy="go install github.com/appnice/smif/cmd/smif@latest"><span class="cmd__prompt" aria-hidden="true">$</span><code>go install github.com/appnice/smif/cmd/smif@latest</code><button class="cmd__copy" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
       </div>
       <div class="install__panel" role="tabpanel" id="inst-src" aria-labelledby="tab-src" hidden>
@@ -319,7 +323,7 @@
         <li><div class="cmd cmd--plain" data-copy="smif"><span class="cmd__prompt" aria-hidden="true">$</span><code>smif</code><span class="cmd__note">the live view; starts the daemon</span></div></li>
         <li><div class="cmd cmd--plain" data-copy="smif install"><span class="cmd__prompt" aria-hidden="true">$</span><code>smif install</code><span class="cmd__note">optional: hooks, status line, <code>/smif</code></span></div></li>
       </ol>
-      <p class="install__req">Needs Claude Code. Typing into tabs works in Terminal.app and iTerm2 on macOS, and in tmux and herdr anywhere. The view works in any terminal.</p>
+      <p class="install__req">The binary goes in <code>~/.local/bin</code> and its checksum is checked. <a href="https://github.com/appnice/smif/blob/main/site/install.sh">Read the script</a> or get the files from the <a href="https://github.com/appnice/smif/releases/latest">release page</a>. Needs Claude Code. Typing into tabs works in Terminal.app and iTerm2 on macOS, and in tmux and herdr anywhere. The view works in any terminal.</p>
     </div>
   </div>
 </section>
@@ -344,7 +348,7 @@
   <div class="wrap final__in reveal">
     <img class="final__mark" src="favicon.svg" alt="" width="96" height="96">
     <h2 class="h2">Stop checking tabs.</h2>
-    <div class="cmd" data-copy="go install github.com/appnice/smif/cmd/smif@latest"><span class="cmd__prompt" aria-hidden="true">$</span><code>go install github.com/appnice/smif/cmd/smif@latest</code><button class="cmd__copy" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
+    <div class="cmd" data-copy="curl -fsSL https://smif.dev/install.sh | sh"><span class="cmd__prompt" aria-hidden="true">$</span><code>curl -fsSL https://smif.dev/install.sh | sh</code><button class="cmd__copy" type="button" aria-label="Copy"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div>
   </div>
 </section>
 

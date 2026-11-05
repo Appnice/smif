@@ -15,7 +15,7 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
 - `smif watch [--events] [--once] [--last N]` plain text for pipes/tmux/ssh · `go test -run TestWatchEventsLive -v ./e2e/`
 - `make bench` (tiers S/R/T on the fake, $0, `bench/README.md`) · `make bench-real` (+ actual tokens on haiku via the login)
 - `make cover` · `make smoke-real` (real `claude -p` on haiku, `SMIF_E2E_REAL=1`, ~$0.01)
-- `make release` builds `dist/` from the tag on HEAD and publishes nothing; upload with `gh release create` · `make release-check` / `make release-snapshot` (GoReleaser `GORELEASER_VERSION` v2.18.3 via `go run`, local only, ADR-0001; must pass with `GOTOOLCHAIN=local`: v2.19.0 needs go 1.27.3)
+- `make release` builds `dist/` from the tag on HEAD and publishes nothing, steps in `docs/releasing.md` · `make release-check` / `make release-snapshot` (GoReleaser `GORELEASER_VERSION` v2.18.3 via `go run`, local only, ADR-0001; must pass with `GOTOOLCHAIN=local`: v2.19.0 needs go 1.27.3)
 
 ## Layout
 
