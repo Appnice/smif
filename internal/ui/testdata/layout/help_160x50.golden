@@ -1,7 +1,7 @@
 smif  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
 queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  HELP · lines 1-45 of 105 · ↑/↓ scroll · q quit · any other key closes
+  HELP · lines 1-45 of 107 · ↑/↓ scroll · q quit · any other key closes
 
   KEYS: HOME (the start screen: what asks you, sessions with their state, then workers; empty groups hide)
   ↑/k, ↓/j              move through the list; the preview on the right follows
@@ -15,7 +15,8 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p5
   esc                   clear the agent and the filter
   z                     hide or show the quiet sessions (idle, answer read)
   enter                 open the thread of the message, the run of a running item, or the chat with a session: type and enter sends (typed into it when idle,
-                        else a fork of the session answers); ↑↓ pgup pgdn scroll, tab the next session that needs you, ctrl+o its tab, esc back
+                        else a fork of the session answers); ↑↓ pgup pgdn scroll, tab the next session that needs you, ctrl+o its tab, ctrl+y copy a code
+                        block, esc back
   a                     answer a needs-you item in the box under the preview (enter sends, alt+enter new line)
   c                     cancel the selected item; asks y/N first
   t                     retry a dead letter; asks y/N first
@@ -23,6 +24,7 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p5
   s                     on a session: write to it under the preview (idle: typed into its tab; busy or waiting: a fork of the session answers, nothing is
                         typed)
   o                     on a session: bring its terminal tab to the front (a waiting session: answer its permission prompt or question there)
+  y                     on a session: copy the newest code block of its answers, whole and unbroken (in the chat ctrl+y); press again for the block before it
   p                     on a session: the saved prompts ([prompts] in the config); enter or 1-9 sends one the way s would. In a prompt, @name stands for it
   n                     open a new terminal tab that runs claude in the selected session's folder (asks for its name)
   v                     dashboard: the six-panel overview (agents, events); v or esc there comes back
@@ -45,6 +47,4 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p5
   q, ctrl+c             quit (ctrl+c quits on every screen, also in the reply box)
 
   KEYS: INBOX AND DIGEST
-  ↑/k, ↓/j              move the cursor
-  pgup, pgdown/space    move 10 rows
 ↑/↓ scroll · any other key closes the help · q quit

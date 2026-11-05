@@ -917,6 +917,8 @@ func (m *Model) chatKey(r *homeRow, k string) (tea.Cmd, bool) {
 		m.home.fullScroll -= page
 	case "ctrl+o":
 		return m.focusSession(r.sess), true
+	case "ctrl+y":
+		return m.copyCode(r.sess), true
 	case "tab", "shift+tab":
 		step := 1
 		if k == "shift+tab" {

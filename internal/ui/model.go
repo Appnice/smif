@@ -49,6 +49,7 @@ type Model struct {
 	src      Source
 	interval time.Duration
 	now      func() time.Time
+	clip     func(string) error // writes the system clipboard
 
 	width, height int
 	snap          *Snapshot // last good snapshot
@@ -91,7 +92,7 @@ func New(src Source, o Options) *Model {
 	if o.Now == nil {
 		o.Now = time.Now
 	}
-	m := &Model{src: src, interval: o.Interval, now: o.Now, dashboard: o.Dashboard}
+	m := &Model{src: src, interval: o.Interval, now: o.Now, dashboard: o.Dashboard, clip: writeClipboard}
 	m.home.seenFile = o.SeenFile
 	m.home.seen = loadSeen(o.SeenFile)
 	if a, ok := src.(Actions); ok {
@@ -166,6 +167,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.onPrompted(msg)
 	case tailMsg:
 		m.onTail(msg)
+	case copiedMsg:
+		m.onCopied(msg)
 	case focusedMsg:
 		m.onFocused(msg)
 	case openedMsg:

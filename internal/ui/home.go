@@ -65,6 +65,8 @@ type homeState struct {
 	newName    lineInput
 	newDir     string
 	newTerm    string
+	copyFrom   string // the session and newest block the copy key last saw (clipboard.go)
+	copyNext   int    // the block the copy key takes next, newest first
 }
 
 // previewEntry caches the thread of a previewed message.
@@ -463,6 +465,10 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 	case "o":
 		if r != nil && r.sess != nil {
 			return m.focusSession(r.sess)
+		}
+	case "y":
+		if r != nil && r.sess != nil {
+			return m.copyCode(r.sess)
 		}
 	case "p":
 		if r != nil && r.sess != nil {
@@ -1062,7 +1068,7 @@ func (m *Model) homeKeys() string {
 	if m.home.typing {
 		if r := m.homeSelected(); r != nil && r.sess != nil {
 			if m.home.full {
-				return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · esc back · ctrl+c quit"
+				return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back · ctrl+c quit"
 			}
 			return "enter sends it (typed in when idle, else to a fork) · esc cancel · ctrl+c quit"
 		}
@@ -1082,7 +1088,7 @@ func (m *Model) homeKeys() string {
 	}
 	if r := m.homeSelected(); r != nil && r.sess != nil {
 		if m.home.full {
-			return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · esc back"
+			return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back"
 		}
 		var ks []string
 		focus := r.sess.TTY != "" && canFocus(r.sess.Term)
@@ -1100,6 +1106,9 @@ func (m *Model) homeKeys() string {
 			ks = append(ks, "p prompts")
 		}
 		ks = append(ks, "n new session")
+		if len(m.sessionCode(r.sess)) > 0 {
+			ks = append(ks, "y copy code")
+		}
 		if focus && r.sess.Turn != "waiting" {
 			ks = append(ks, "o its tab")
 		}

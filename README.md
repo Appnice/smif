@@ -177,7 +177,8 @@ byte for byte.
 - `tab` goes to the next row that needs you. `z` hides the quiet sessions. Empty groups take no room.
 - `p` sends a saved prompt to the session. `n` opens a new session in its folder.
 - `enter` on a session opens the chat. `s` writes from the preview. Idle: typed in. Busy: a fork of the session
-  answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front.
+  answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front. `y` (in the chat `ctrl+y`) copies
+  the newest code block whole; press it again for the block before.
 - `:` opens a command prompt with tab completion: `ask`, `tell`, `prompt`, `answer`, `retry`, `agent`, `filter`, `digest`.
 - `[` and `]` change the agent. `/` filters. `v` opens the dashboard (agents, runs, audit log). `?` shows all keys.
 - In a pipe, `smif` prints one summary. `smif watch` gives a live view for tmux or ssh.
