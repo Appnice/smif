@@ -75,3 +75,19 @@ func TestMarkdownTable(t *testing.T) {
 	}
 	t.Log("\n" + all)
 }
+
+// A long line in a code block is usually a command to copy: nothing may be cut.
+func TestMdCodeLineIsNotCut(t *testing.T) {
+	line := `! gh repo create appnice/appnice --public --description "profile" --disable-wiki && git -C ~/repos/appnice remote add origin https://github.com/appnice/appnice.git && git push -u origin main`
+	ls := mdLines("Run this:\n\n```\n"+line+"\n```\n", 60)
+	var got strings.Builder
+	for _, l := range ls[2:] {
+		if w := ansi.StringWidth(l); w > 60 {
+			t.Fatalf("line is %d wide, the pane is 60: %q", w, l)
+		}
+		got.WriteString(ansi.Strip(l))
+	}
+	if got.String() != line {
+		t.Fatalf("the command changed:\n got %q\nwant %q", got.String(), line)
+	}
+}

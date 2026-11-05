@@ -215,7 +215,10 @@ func mdLines(text string, w int) []string {
 			continue
 		}
 		if code {
-			out = append(out, stHunk.Render(ansi.Truncate(l, w, "…")))
+			// A code line is often a command to copy: break it, never cut it.
+			for _, part := range strings.Split(ansi.Hardwrap(l, w, true), "\n") {
+				out = append(out, stHunk.Render(part))
+			}
 			continue
 		}
 		lead := strings.Repeat(" ", min(len(l)-len(t), 8))
