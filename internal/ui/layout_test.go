@@ -160,6 +160,55 @@ func TestLayoutCutsWithEllipsis(t *testing.T) {
 	}
 }
 
+// A phone over ssh is about 45 columns, 30 rows, and 15 with its keyboard open.
+func TestPhoneSizes(t *testing.T) {
+	for _, h := range []int{30, 15} {
+		m := factsModel(t, 45, h)
+		out := view(m)
+		checkSize(t, out, 45, h)
+		for _, want := range []string{"1 working", "SESSIONS", "? help"} {
+			if !strings.Contains(out, want) {
+				t.Fatalf("45x%d lacks %q:\n%s", h, want, out)
+			}
+		}
+		if strings.Contains(out, "API prices") {
+			t.Fatalf("45x%d keeps the price over the counts:\n%s", h, out)
+		}
+		key(m, "enter")
+		chat := view(m)
+		checkSize(t, chat, 45, h)
+		if !strings.Contains(chat, "›") || !strings.Contains(chat, "release") {
+			t.Fatalf("45x%d chat has no box:\n%s", h, chat)
+		}
+	}
+}
+
+// With no preview pane, the box takes the screen, so nobody types blind.
+func TestNarrowAnswerBoxShows(t *testing.T) {
+	for _, w := range []int{45, 80, 89} {
+		m, _ := newSessionModel(t)
+		m.Update(tea.WindowSizeMsg{Width: w, Height: 24})
+		key(m, "j", "s", "h", "i")
+		out := view(m)
+		checkSize(t, out, w, 24)
+		if !strings.Contains(out, "hi") || strings.Contains(out, "SESSIONS") {
+			t.Fatalf("session box at %d columns:\n%s", w, out)
+		}
+		key(m, "esc")
+		if out := view(m); !strings.Contains(out, "SESSIONS") {
+			t.Fatalf("esc did not bring the list back at %d columns:\n%s", w, out)
+		}
+
+		m, _ = newSessionModel(t)
+		m.Update(tea.WindowSizeMsg{Width: w, Height: 24})
+		key(m, "a", "o", "k")
+		out = view(m)
+		if !strings.Contains(out, "ok") || strings.Contains(out, "SESSIONS") {
+			t.Fatalf("reply box at %d columns:\n%s", w, out)
+		}
+	}
+}
+
 // TestHelpListsEveryKey checks that the help screen names every key the
 // key handlers act on.
 func TestHelpListsEveryKey(t *testing.T) {

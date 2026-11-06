@@ -641,7 +641,7 @@ func (m *Model) homeTop(w int) string {
 	if m.home.agent != "" {
 		parts = append(parts, stTabOn.Render("agent "+m.home.agent)+stDim.Render(" ([ ] 0)"))
 	}
-	right := ""
+	right, price := "", ""
 	switch {
 	case m.lastErr != nil:
 		right = stBad.Render("● DAEMON DOWN") + stDim.Render(" retrying")
@@ -657,11 +657,16 @@ func (m *Model) homeTop(w int) string {
 		if !m.snap.Status.Daemon.ClaudeOK {
 			right = stWarn.Render("● claude unavailable")
 		}
-		if spent > 0 {
-			right += stDim.Render(" · ≈ " + money(spent) + " at API prices today")
+		price = stDim.Render(" · ≈ " + money(spent) + " at API prices today")
+		if spent <= 0 {
+			price = ""
 		}
 	}
 	line := strings.Join(parts, "  ")
+	// The counts say who needs you, so the price goes first.
+	if ansi.StringWidth(line)+ansi.StringWidth(right)+ansi.StringWidth(price) < w {
+		right += price
+	}
 	gap := w - ansi.StringWidth(line) - ansi.StringWidth(right)
 	if gap < 1 {
 		return ansi.Truncate(line, max(0, w-ansi.StringWidth(right)-1), "…") + " " + right
@@ -707,6 +712,10 @@ func (m *Model) homeBody(w, avail int) []string {
 	listW := w
 	if w >= 90 {
 		listW = max(44, w/2)
+	}
+	// A narrow screen has no preview pane, and the answer box lives there.
+	if listW == w && m.home.typing && sel >= 0 {
+		return box("", m.previewLines(rows[sel], w-4, avail-2), w, avail, true)
 	}
 	list := m.homeList(rows, sel, listW-4, avail-2)
 	out := box(m.homeListTitle(), list, listW, avail, !m.home.typing)
