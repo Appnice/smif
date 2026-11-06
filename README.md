@@ -123,12 +123,13 @@ Set it up with `smif install` and `smif init`. See [docs/messages.md](docs/messa
 
 ## Other agents
 
-Only Claude Code is checked against a real agent. The rest come from reading their source, so expect faults.
+Claude Code and Codex are checked against a real agent. The rest come from reading their source, so expect faults.
 
 | Agent | Support |
 |---|---|
 | Claude Code | Everything |
-| Codex, Qwen Code, OpenCode, GitHub Copilot CLI, Factory Droid | Read only, not verified |
+| Codex | See, type when idle, queue. Cannot see an approval prompt, so no `needs you` |
+| Qwen Code, OpenCode, GitHub Copilot CLI, Factory Droid | Read only, not verified |
 | 21 more, in a [herdr](https://herdr.dev) pane | Name, folder and state, not verified |
 | Any other agent, with `[harnesses.<name>]` in the config | Name and folder, see [docs/agents.md](docs/agents.md#add-an-agent) |
 

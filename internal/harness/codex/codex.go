@@ -1,7 +1,7 @@
 // Package codex is the Codex CLI provider (ADR-0019). It is built from a
-// reading of Codex's source at commit c9035417 (tag rust-v0.168.0-alpha.3). No
-// real session checked it, so it is unverified: smif shows these sessions and
-// never types into them, forks them or installs hooks for them.
+// reading of Codex's source at commit c9035417 (tag rust-v0.168.0-alpha.3), and
+// a real session checked it on Codex CLI 0.166.0 (docs/compat.md). smif types
+// into an idle session. It never forks one or installs hooks.
 //
 // Codex keeps no live file for a session, so no file links a pid to a
 // session. Smif matches by ps and folder: a codex process on a terminal
@@ -71,9 +71,11 @@ func NewWithProcs(dir string, procs func() []Proc) *Provider {
 	return p
 }
 
-// Info names the provider. Verified stays false until a real session
-// checks it and docs/compat.md has a row with that version.
-func (p *Provider) Info() harness.Info { return harness.Info{Name: Name, Process: "codex"} }
+// Info names the provider. Verified: a real session checked it on Codex CLI
+// 0.166.0 in tmux (docs/compat.md).
+func (p *Provider) Info() harness.Info {
+	return harness.Info{Name: Name, Process: "codex", Verified: true}
+}
 
 func (p *Provider) sessionsDir() string { return filepath.Join(p.dir, "sessions") }
 

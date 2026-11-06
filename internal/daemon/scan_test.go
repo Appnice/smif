@@ -576,9 +576,9 @@ func TestHerdrIdleRuleStillTypes(t *testing.T) {
 			t.Fatalf("prompts %q", got)
 		}
 	})
-	// Codex's provider is unverified, so session.prompt stays closed for it
-	// (TestUnverifiedProviderAtHerdrLevel). This rule must not be what stops
-	// it: the state stays idle, and the route under that gate still types.
+	// No real session checked Codex at the herdr level, so session.prompt
+	// stays closed for it (TestUnverifiedProviderAtHerdrLevel). This test
+	// opens that gate: the state stays idle, and the route under it types.
 	t.Run("codex", func(t *testing.T) {
 		d := scanDaemon(t)
 		f := startFakeHerdr(t, "idle")
@@ -586,7 +586,7 @@ func TestHerdrIdleRuleStillTypes(t *testing.T) {
 		f.setStatus(t, "idle")
 		scanNow(d)
 		v := namedRow(t, d, "codex")
-		if v.Turn != "idle" || v.CanPrompt || !strings.Contains(v.Why, "unverified") {
+		if v.Turn != "idle" || !v.CanPrompt {
 			t.Fatalf("row %+v", v)
 		}
 		p := store.Presence{Level: harness.LevelHerdr, Harness: "codex", PID: f.pid, Term: termHerdr}

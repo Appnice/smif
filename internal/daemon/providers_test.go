@@ -139,7 +139,6 @@ var unverifiedCases = []struct {
 	harness, idle, working string
 	start                  func(*testing.T, *Daemon, string, string) string
 }{
-	{"codex", "report-idle-paginated.jsonl", "report-working.jsonl", codexSession},
 	{"qwen", "report-idle.jsonl", "report-working.jsonl", qwenSession},
 	{"opencode", "report-idle.sql", "report-working.sql", opencodeSession},
 	{"copilot", "report-idle.jsonl", "report-working.jsonl", copilotSession},
@@ -270,6 +269,16 @@ func (n *watchNotes) Notify(ev notify.Event) error {
 	return nil
 }
 
+// Codex passed a check on a real session: its row is full and only a state
+// or a missing terminal stops typing.
+func TestCodexIsVerified(t *testing.T) {
+	d, _ := testDaemon(t)
+	id := codexSession(t, d, "report-idle-paginated.jsonl", t.TempDir())
+	if v := viewOf(t, d, id); v.Unverified || v.Level != harness.LevelFull || v.Turn != "idle" || strings.Contains(v.Why, "unverified") {
+		t.Fatalf("view: %+v", v)
+	}
+}
+
 // README promises notifications at the level Full, read only. The rows come
 // from the fixtures, so this proves the watcher's path, not a real agent.
 func TestUnverifiedProviderNotifies(t *testing.T) {
@@ -289,7 +298,7 @@ func TestUnverifiedProviderNotifies(t *testing.T) {
 			notes := &watchNotes{}
 			d.notifier = notes
 			id := c.start(t, d, c.fixture, t.TempDir())
-			if v := viewOf(t, d, id); !v.Unverified {
+			if v := viewOf(t, d, id); v.Unverified != (c.harness != "codex") {
 				t.Fatalf("view: %+v", v)
 			}
 			d.watchSessions(map[string]watchedSession{id: {turn: "busy", since: time.Unix(1, 0)}}, time.Now())
@@ -307,7 +316,7 @@ func TestUnverifiedProviderNotifies(t *testing.T) {
 func TestUnverifiedProviderAtHerdrLevel(t *testing.T) {
 	for _, name := range []string{"codex", "opencode", "copilot", "droid"} {
 		t.Run(name, func(t *testing.T) {
-			d := scanDaemon(t)
+			d := uncheckedScanDaemon(t)
 			f := startFakeHerdr(t, "idle")
 			f.write(t, "agents.json", `{"id":"cli:agent:list","result":{"agents":[`+strings.ReplaceAll(herdrAgentJSON("idle", f.cwd), `"agent":"pi"`, `"agent":"`+name+`"`)+`],"type":"agent_list"}}`)
 			scanNow(d)
@@ -326,8 +335,9 @@ func TestUnverifiedProviderAtHerdrLevel(t *testing.T) {
 	}
 }
 
-// smif doctor: a format that differs from the source reading is unchecked,
-// never a failure, and Claude Code's own check stays apart.
+// smif doctor: a format that differs is unchecked on an unverified provider
+// and changed on a verified one, never a failure, and Claude Code's own check
+// stays apart.
 func TestDoctorUncheckedProviders(t *testing.T) {
 	d, _ := testDaemon(t)
 	h := d.health()
@@ -335,7 +345,7 @@ func TestDoctorUncheckedProviders(t *testing.T) {
 		t.Fatalf("providers: %+v", h.Providers)
 	}
 	for _, p := range h.Providers[1:] {
-		if p.Verified || p.State != "unchecked" {
+		if verified := p.Name == "codex"; p.Verified != verified || !verified && p.State != "unchecked" {
 			t.Fatalf("no files: %+v", p)
 		}
 	}
@@ -350,7 +360,7 @@ func TestDoctorUncheckedProviders(t *testing.T) {
 			got = p
 		}
 	}
-	if got.State != "unchecked" || !strings.Contains(got.Detail, "differ from the source reading") {
+	if got.State != "changed" || !strings.Contains(got.Detail, "no session_meta") {
 		t.Fatalf("codex: %+v", got)
 	}
 	if h.Sessions != "none" || !h.OK {

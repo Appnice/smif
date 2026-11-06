@@ -570,9 +570,17 @@ func cmdDoctor() *cobra.Command {
 						}
 						switch p.State {
 						case "changed":
-							check(false, name+" session files", p.Detail+" (a new "+name+" version? the session view needs an update)")
+							// Only Claude Code's files can fail the doctor: mail runs on them.
+							text := name + " session files: " + p.Detail + " (a new " + name + " version? the session view needs an update)"
+							if p.Name == "claude" {
+								check(false, name+" session files", p.Detail+" (a new "+name+" version? the session view needs an update)")
+							} else {
+								warn(text)
+							}
 						case "none":
-							warn(p.Detail)
+							if p.Name == "claude" {
+								warn(p.Detail)
+							}
 						case "ok":
 							check(true, name+" session files", p.Detail)
 						case "unchecked":

@@ -14,13 +14,18 @@ This covers the session view. Messages, workers, forks and `smif_ask` stay on Cl
 | **herdr** | The agent runs in a [herdr](https://herdr.dev) pane | Name, folder, herdr's state, focus. Typing only for an agent that a real session checked. No steps, no answer, no notifications |
 | **Listed** | smif knows its process name, and it sits on a terminal | Name and folder, state `unknown`, no typing |
 
-Only Claude Code types and was checked against a real agent, on versions 2.1.316 to 2.1.318. Every other agent is
-read only and shows as `unverified`.
+Claude Code (versions 2.1.316 to 2.1.318) and Codex (0.166.0) were checked against a real agent, and smif types into
+both. Every other agent is read only and shows as `unverified`.
+
+Codex has one limit: its files do not tell a running command from an approval prompt. A Codex that waits for your
+approval reads `busy` or `unknown`, so it does not get `needs you` or a notification. smif refuses to type into it
+then, so a prompt can never answer that approval.
 
 | Agent | In a herdr pane | Elsewhere | When herdr reads idle |
 |---|---|---|---|
 | Claude Code | Full | Full | Not used |
-| Codex, Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only | Full, read only | Not used |
+| Codex | Full, read only until checked in herdr | Full, types when idle | Not used |
+| Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only | Full, read only | Not used |
 | Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr | Listed | Idle |
 | Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr | Listed | Idle if integrated, else `unknown` |
 | Gemini CLI, Cursor, Qoder, Antigravity | herdr | Listed | `unknown` |

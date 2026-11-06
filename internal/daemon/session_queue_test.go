@@ -476,7 +476,7 @@ func TestQueueCancel(t *testing.T) {
 // session.prompt.
 func TestQueueRefusals(t *testing.T) {
 	d, _ := testDaemon(t)
-	row(t, d, "ro1", "codex", "/r/a")
+	row(t, d, "ro1", "qwen", "/r/a")
 	if _, err := d.sessionQueue(api.SessionQueueParams{SessionID: "ro1", Text: "x"}); !api.IsCode(err, api.CodeRejected) {
 		t.Fatalf("read-only provider: %v", err)
 	}

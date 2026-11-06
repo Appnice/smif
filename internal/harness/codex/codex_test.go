@@ -46,18 +46,18 @@ func provider(home string, procs ...Proc) *Provider {
 	return NewWithProcs(home, func() []Proc { return procs })
 }
 
-func TestUnverifiedAndNoWriteRoute(t *testing.T) {
+func TestVerifiedWithNoForkOrHooks(t *testing.T) {
 	var p harness.Provider = New(t.TempDir())
-	if p.Info().Verified || p.Info().Name != "codex" {
+	if !p.Info().Verified || p.Info().Name != "codex" {
 		t.Fatalf("info: %+v", p.Info())
 	}
 	if _, ok := p.(harness.Forker); ok {
-		t.Fatal("an unverified provider must have no fork")
+		t.Fatal("codex must have no fork")
 	}
 	if _, ok := p.(harness.Hooker); ok {
-		t.Fatal("an unverified provider must have no hooks")
+		t.Fatal("codex must have no hooks")
 	}
-	if why := harness.ReadOnly("codex", p); !strings.Contains(why, "unverified") {
+	if why := harness.ReadOnly("codex", p); why != "" {
 		t.Fatalf("read only: %q", why)
 	}
 }

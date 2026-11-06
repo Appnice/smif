@@ -257,17 +257,12 @@ func gitRoot(dir string) string {
 	return dir
 }
 
-// sessionsCanary asks the verified providers whether the agents' files
-// still have the shape they read. The first state that is not ok wins.
+// sessionsCanary asks Claude Code's provider whether its files still have
+// the shape it reads. Another agent's check is its own doctor line.
 func (d *Daemon) sessionsCanary() (state, detail string) {
 	for _, p := range d.harnesses.All() {
-		c, ok := p.(harness.Checker)
-		if !ok || !p.Info().Verified {
-			continue
-		}
-		state, detail = c.Check()
-		if state != "ok" {
-			return state, detail
+		if c, ok := p.(harness.Checker); ok && p.Info().Name == harness.ClaudeName {
+			return c.Check()
 		}
 	}
 	return state, detail

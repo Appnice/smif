@@ -259,8 +259,8 @@ func TestUnverifiedProviderLevel(t *testing.T) {
 		t.Fatalf("prompt: %v %s", err, stderr)
 	}
 	doctor, _ := e.CLI("", "doctor")
-	for _, want := range []string{"[info] qwen format unchecked", "[info] codex format unchecked", "[info] opencode format unchecked",
-		"[info] copilot format unchecked", "[info] droid format unchecked", "differ from the source reading"} {
+	for _, want := range []string{"[info] qwen format unchecked", "codex session files", "[info] opencode format unchecked",
+		"[info] copilot format unchecked", "[info] droid format unchecked", "a new codex version?"} {
 		if !strings.Contains(doctor, want) {
 			t.Errorf("doctor lacks %q:\n%s", want, doctor)
 		}

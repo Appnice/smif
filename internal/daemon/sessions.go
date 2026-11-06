@@ -91,10 +91,13 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 			v.Turn = "unknown"
 		}
 		v.Facts = d.factsView(cfg, p, ti, v.Turn)
-	} else if prov == nil && p.Level == harness.LevelHerdr {
+	} else if p.Level == harness.LevelHerdr && p.Harness != harness.ClaudeName {
 		// herdr gives the state, and its screen rules for this agent decide
-		// what idle means. Until a real session checks those, no typing.
-		readOnly = ""
+		// what idle means. Until a real session checks those, no typing,
+		// also for an agent whose own files passed a check (Codex).
+		if prov == nil {
+			readOnly = ""
+		}
 		if !herdrChecked(p.Harness) {
 			readOnly = p.Harness + " is unverified, no real session checked it: read only"
 			v.Unverified = true
