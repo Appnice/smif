@@ -43,6 +43,8 @@ type Options struct {
 	Dashboard bool
 	// Machines starts on the Machines screen (`smif remote add`).
 	Machines bool
+	// HiddenFile keeps the found machines you removed ("" = in memory only).
+	HiddenFile string
 	// MachineDaemon is what that screen uses; nil turns it off.
 	MachineDaemon MachineDaemon
 	// SeenFile keeps which session answers the human has seen, across
@@ -116,6 +118,7 @@ func New(src Source, o Options) *Model {
 		m.partsDir = filepath.Join(os.TempDir(), "smif-parts")
 	}
 	m.machDaemon, m.startMachines = o.MachineDaemon, o.Machines
+	m.mach.hiddenFile, m.mach.hidden = o.HiddenFile, loadHidden(o.HiddenFile)
 	m.home.seenFile = o.SeenFile
 	m.home.seen = loadSeen(o.SeenFile)
 	if a, ok := src.(Actions); ok {

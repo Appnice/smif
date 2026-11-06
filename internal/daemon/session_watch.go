@@ -206,7 +206,7 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 		old, known := prev[v.SessionID]
 		next[v.SessionID] = watchedSession{turn: v.Turn}
 		if known && v.Turn == "waiting" && old.turn != "waiting" && strings.Contains(want, "waiting") {
-			d.notifySession("session_waiting", viewName(v), v, "it waits for you on "+v.Host)
+			d.notifySession("session_waiting", viewName(v), v, "it waits for you on "+v.HostLabel())
 		}
 	}
 	return next

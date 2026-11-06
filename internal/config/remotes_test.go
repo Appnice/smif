@@ -91,3 +91,50 @@ func TestAddRemoteKeepsModeAndLink(t *testing.T) {
 		t.Fatalf("real file:\n%s", b)
 	}
 }
+
+func TestRemoteNames(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "config.toml")
+	start := "# mine\n[daemon]\nremotes = [\"me@1.2.3.4\", \"b\"]\n\n[defaults]\nmax_hops = 4\n"
+	if err := os.WriteFile(file, []byte(start), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	names := func() map[string]string {
+		t.Helper()
+		b, _ := os.ReadFile(file)
+		c, err := Parse(b)
+		if err != nil {
+			t.Fatalf("%v\n%s", err, b)
+		}
+		return c.Daemon.RemoteNames
+	}
+	for _, step := range []struct{ host, name string }{{"me@1.2.3.4", "linux-pc"}, {"b", "nas"}, {"me@1.2.3.4", "tower"}} {
+		if err := SetRemoteName(file, step.host, step.name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := names(); n["me@1.2.3.4"] != "tower" || n["b"] != "nas" || len(n) != 2 {
+		t.Fatalf("names %v", n)
+	}
+	if err := SetRemoteName(file, "b", ""); err != nil {
+		t.Fatal(err)
+	}
+	if n := names(); n["b"] != "" || n["me@1.2.3.4"] != "tower" {
+		t.Fatalf("names %v", n)
+	}
+	if err := SetRemoteName(file, "b", "has space"); err == nil {
+		t.Fatal("took a name with a space")
+	}
+	if _, err := AddRemote(file, "c"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RemoveRemote(file, "me@1.2.3.4"); err != nil {
+		t.Fatal(err)
+	}
+	if n := names(); len(n) != 0 {
+		t.Fatalf("the name stayed: %v", n)
+	}
+	b, _ := os.ReadFile(file)
+	if !strings.Contains(string(b), "# mine") || !strings.Contains(string(b), "max_hops = 4") {
+		t.Fatalf("lost the rest:\n%s", b)
+	}
+}

@@ -51,8 +51,10 @@ func TestHostAliases(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".ssh", "conf.d"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(filepath.Join(dir, ".ssh", "config"), []byte("# a comment\nHost mini devbox\n  User me\nHost *.corp !x\nHost=eq\nInclude conf.d/*\n"), 0o600)
+	os.WriteFile(filepath.Join(dir, ".ssh", "config"), []byte("# a comment\nHost mini devbox\n  User me\nHost *.corp !x\nHost=eq\nInclude conf.d/*\nInclude ~/.colima/ssh_config\n"), 0o600)
 	os.WriteFile(filepath.Join(dir, ".ssh", "conf.d", "more"), []byte("host nas\n"), 0o600)
+	os.MkdirAll(filepath.Join(dir, ".colima"), 0o700)
+	os.WriteFile(filepath.Join(dir, ".colima", "ssh_config"), []byte("Host colima\n"), 0o600)
 	got := strings.Join(hostAliases(filepath.Join(dir, ".ssh", "config"), 0), " ")
 	if got != "mini devbox eq nas" {
 		t.Fatalf("got %q", got)
@@ -110,6 +112,26 @@ func TestClassify(t *testing.T) {
 	if err := classify("Host key verification failed.", errors.New("x")); isAway(err) || !strings.Contains(err.Error(), "ssh-keygen -R") {
 		t.Fatalf("host key: %v", err)
 	}
+}
+
+func TestIsThisMachine(t *testing.T) {
+	old := runner
+	defer func() { runner = old }()
+	runner = func(context.Context, string, ...string) string { return "" }
+	ctx := context.Background()
+	if isThisMachine(ctx, "me@127.0.0.1") || isThisMachine(ctx, "me@192.0.2.1") {
+		t.Fatal("loopback or another address read as this machine")
+	}
+	addrs, _ := net.InterfaceAddrs()
+	for _, a := range addrs {
+		if n, ok := a.(*net.IPNet); ok && !n.IP.IsLoopback() && n.IP.To4() != nil {
+			if !isThisMachine(ctx, "me@"+n.IP.String()) {
+				t.Fatalf("%s is this machine", n.IP)
+			}
+			return
+		}
+	}
+	t.Skip("no address but loopback")
 }
 
 func TestKeyLine(t *testing.T) {

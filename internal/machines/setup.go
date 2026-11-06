@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -184,6 +185,9 @@ func (s *Setup) fail(step Step, err error) error {
 // login leaves one shared connection open, so the password is typed once.
 func (s *Setup) login(ctx context.Context) error {
 	s.emit(StepReach, Running, s.Host)
+	if isThisMachine(ctx, s.Host) {
+		return s.fail(StepReach, errors.New("that is this machine, and its sessions are already in your list"))
+	}
 	closed := false
 	for {
 		err := s.connect(ctx, nil)
@@ -497,6 +501,37 @@ func (s *Setup) finish() error {
 		}
 	}
 	return s.fail(StepDaemon, fmt.Errorf("your daemon cannot reach it: %s", last))
+}
+
+// isThisMachine says that a target is an address of this machine. Loopback
+// does not count: a tunnel or a container can sit behind it.
+func isThisMachine(ctx context.Context, host string) bool {
+	name := resolve(ctx, nameOf(host))["hostname"]
+	if name == "" {
+		name = nameOf(host)
+	}
+	cctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(cctx, name)
+	if err != nil {
+		return false
+	}
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false
+	}
+	for _, a := range addrs {
+		n, ok := a.(*net.IPNet)
+		if !ok || n.IP.IsLoopback() {
+			continue
+		}
+		for _, ip := range ips {
+			if ip.IP.Equal(n.IP) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func userOf(host string) string {

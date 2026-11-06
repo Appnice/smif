@@ -21,6 +21,8 @@ Adding a machine is one setup in `internal/machines`, with two faces: the Machin
   stdin. One shared connection means you type it once.
 - **Commands are constants.** Only the host name comes from you, and it passes config validation. A key line and a password
   go on stdin.
+- **Rows do not travel twice.** A host's list also holds the machines it watches, so the poll keeps only its own rows. Two
+  machines can watch each other. A target that is an address of this machine is refused, and Colima and Lima VMs stay out.
 - **ssh off.** smif cannot turn it on from outside, so the screen shows the command and tries again every 3 s.
 - **Linger.** On Linux the daemon's socket is in `/run/user/<uid>`, which goes away with the last login, and the old daemon
   keeps its lock. So the setup turns linger on, without sudo if it can, and you can skip that.

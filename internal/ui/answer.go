@@ -68,7 +68,7 @@ func (m *Model) attachSession(sv *api.SessionView) tea.Cmd {
 // focusSession is o on a session: its tab comes to the front.
 func (m *Model) focusSession(sv *api.SessionView) tea.Cmd {
 	if sv.Host != "" {
-		m.setStatus("This session runs on "+sv.Host+": ssh there to answer it.", false)
+		m.setStatus("This session runs on "+sv.HostLabel()+": ssh there to answer it.", false)
 		return nil
 	}
 	if sv.Background {
@@ -896,7 +896,7 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 		bottom = append(bottom, m.partBoxLines(w, h)...)
 		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" esc cancels.", w, "…")))
 	case sv.Host != "":
-		bottom = []string{"", stDim.Render(ansi.Truncate("Runs on "+sv.Host+": ssh there to answer it. Smif only shows it here.", w, "…"))}
+		bottom = []string{"", stDim.Render(ansi.Truncate("Runs on "+sv.HostLabel()+": ssh there to answer it. Smif only shows it here.", w, "…"))}
 	case sv.Background:
 		bottom = []string{"", stAccent.Render("o") + " " + stDim.Render("open claude attach in a new tab"),
 			stDim.Render(ansi.Truncate("Background session: it has no tab, so Smif does not write to it.", w, "…"))}

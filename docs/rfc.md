@@ -423,6 +423,7 @@ session_notify = "waiting,answered"  # or "waiting", "answered", "none" (ADR-001
 notify_url = ""            # phone ping: https, or http to localhost; empty is off (ADR-0021)
 keep_awake = false         # macOS: caffeinate -i while a session works and wrote in the last 30 min
 remotes = []               # ssh hosts that run smif: their sessions show here, read only (ADR-0023)
+                           # names for them go in [daemon.remote_names], "me@host" = "tower"
 remind_waiting = "10m"     # watchdogs (ADR-0015): a duration or "off"
 alert_silent = "10m"
 alert_long_turn = "off"

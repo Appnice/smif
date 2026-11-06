@@ -42,3 +42,12 @@ func TestStaleRemoteRowsLeave(t *testing.T) {
 		t.Fatal("stale rows stayed")
 	}
 }
+
+// Two machines that watch each other, or one that watches itself, must not
+// feed their rows back: the list would grow on every poll.
+func TestRemoteRowsDoNotLoop(t *testing.T) {
+	rows := ownRows([]api.SessionView{{SessionID: "a"}, {SessionID: "b/a", Host: "b"}, {SessionID: "c"}})
+	if len(rows) != 2 || rows[0].SessionID != "a" || rows[1].SessionID != "c" {
+		t.Fatalf("rows %+v", rows)
+	}
+}

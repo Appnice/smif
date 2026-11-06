@@ -19,7 +19,8 @@ func TestRemoteSessions(t *testing.T) {
 	list := filepath.Join(bin, "list.json")
 	write := func(turn string) {
 		t.Helper()
-		b, _ := json.Marshal([]api.SessionView{{SessionID: "abc-1", Repo: "/srv/shop", Title: "deploy", Turn: turn, CanPrompt: true, TTY: "/dev/ttys001"}})
+		b, _ := json.Marshal([]api.SessionView{{SessionID: "abc-1", Repo: "/srv/shop", Title: "deploy", Turn: turn, CanPrompt: true, TTY: "/dev/ttys001"},
+			{SessionID: "mini/old", Repo: "mini:/x", Host: "mini"}})
 		if err := os.WriteFile(list, b, 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -44,6 +45,13 @@ func TestRemoteSessions(t *testing.T) {
 		return nil
 	}
 	e.WaitFor("the remote row", 10*time.Second, func() bool { return row() != nil })
+	var all []api.SessionView
+	e.Call("session.list", nil, &all)
+	for _, x := range all {
+		if strings.Contains(x.SessionID, "mini/mini/") {
+			t.Fatalf("a remote's remote row came back: %+v", x)
+		}
+	}
 	v := row()
 	if v.SessionID != "mini/abc-1" || v.Repo != "mini:/srv/shop" || v.CanPrompt || v.Why != "on mini: read only" || v.TTY != "" {
 		t.Fatalf("row %+v", v)
@@ -64,6 +72,23 @@ func TestRemoteSessions(t *testing.T) {
 	if !strings.Contains(doctor, "remote mini") {
 		t.Fatalf("doctor:\n%s", doctor)
 	}
+	if _, err := e.CLI("", "remote", "name", "nobody", "x"); err == nil {
+		t.Fatal("named a host that is not in the list")
+	}
+	if out, err := e.CLI("", "remote", "name", "mini", "tower"); err != nil {
+		t.Fatalf("name: %v\n%s", err, out)
+	}
+	e.WaitFor("the name in the row", 20*time.Second, func() bool {
+		r := row()
+		return r != nil && r.HostName == "tower" && r.Repo == "tower:/srv/shop" && r.Why == "on tower: read only" && r.Host == "mini"
+	})
+	if _, err := e.CLI("", "remote", "name", "mini"); err != nil {
+		t.Fatal(err)
+	}
+	e.WaitFor("the address back", 20*time.Second, func() bool {
+		r := row()
+		return r != nil && r.HostName == "" && r.Repo == "mini:/srv/shop"
+	})
 
 	cfg, _ := os.ReadFile(e.Config())
 	bad := filepath.Join(bin, "bad.toml")

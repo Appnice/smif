@@ -588,10 +588,11 @@ func cmdDoctor() *cobra.Command {
 						}
 					}
 					for _, p := range h.Remotes {
+						name := nonEmptyStr(p.Title, p.Name)
 						if p.State == "ok" {
-							check(true, "remote "+p.Name, p.Detail)
+							check(true, "remote "+name, p.Detail)
 						} else {
-							warn("remote " + p.Name + ": " + p.Detail)
+							warn("remote " + name + ": " + p.Detail)
 						}
 					}
 					// A research preview: its absence or a change is no failure.

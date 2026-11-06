@@ -2,8 +2,11 @@ package ui
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -75,6 +78,7 @@ const (
 	fieldAddr
 	fieldUser
 	fieldSecret
+	fieldName
 )
 
 // machineHit is a place the mouse can click.
@@ -84,19 +88,23 @@ type machineHit struct {
 }
 
 type machinesScreen struct {
-	open      bool
-	rows      []*machineRow
-	cursor    int
-	scanning  bool
-	field     machineField
-	addr      lineInput
-	user      lineInput
-	secret    lineInput
-	events    chan tea.Msg
-	listening bool
-	hits      []machineHit
-	start     func(context.Context, *machines.Setup) error
-	discover  func(context.Context, map[string]bool) []machines.Found
+	open       bool
+	rows       []*machineRow
+	cursor     int
+	scanning   bool
+	field      machineField
+	addr       lineInput
+	user       lineInput
+	secret     lineInput
+	events     chan tea.Msg
+	listening  bool
+	hits       []machineHit
+	hidden     map[string]bool // found machines you removed, kept in hiddenFile
+	hiddenFile string
+	userFresh  bool      // the user box holds a guess, and the first key replaces it
+	rename     lineInput // the name box of an added machine
+	start      func(context.Context, *machines.Setup) error
+	discover   func(context.Context, map[string]bool) []machines.Found
 }
 
 type (
@@ -289,6 +297,9 @@ func (m *Model) onMachinesFound(msg machinesFoundMsg) {
 	s := &m.mach
 	s.scanning = false
 	for _, f := range msg.rows {
+		if s.hidden[f.Target] {
+			continue
+		}
 		r := s.byTarget(f.Target)
 		if r == nil {
 			r = s.byTarget(f.Name)
@@ -333,6 +344,10 @@ func (m *Model) onMachineHealth(msg machineHealthMsg) {
 			continue
 		}
 		r.target, r.kind, r.detail, r.bad = p.Name, mAdded, p.Detail, ""
+		r.name = machineName(p.Name)
+		if p.Title != "" {
+			r.name = p.Title
+		}
 		if p.State != "ok" {
 			r.bad = p.Detail
 		}
@@ -394,6 +409,18 @@ func (m *Model) focusAsk(r *machineRow) {
 	s.field = fieldSecret
 	s.user = lineInput{}
 	s.user.insert([]rune(r.askUser))
+	s.userFresh = false
+	// A user you did not name is a guess from this machine, so it comes first.
+	if r.ask != nil && !r.ask.sudo && !strings.Contains(r.target, "@") {
+		s.focusUser()
+	}
+}
+
+// focusUser puts the keys on the user box. Its text counts as selected, so the
+// first key replaces it.
+func (s *machinesScreen) focusUser() {
+	s.field = fieldUser
+	s.userFresh = true
 }
 
 func (m *Model) onMachineDone(msg machineDoneMsg) tea.Cmd {
@@ -458,6 +485,7 @@ func (m *Model) addAddress() tea.Cmd {
 	}
 	s.addr = lineInput{}
 	s.field = fieldNone
+	s.unhide(host)
 	r := s.byTarget(host)
 	if r == nil {
 		r = &machineRow{name: host[strings.Index(host, "@")+1:], target: host, source: "typed in", kind: mFound}
@@ -470,6 +498,114 @@ func (m *Model) addAddress() tea.Cmd {
 		}
 	}
 	return m.beginMachine(r)
+}
+
+// dropMachine takes a row that is not added off the list. A machine smif found
+// stays hidden, so the next look does not bring it back; typing its address does.
+func (m *Model) dropMachine(r *machineRow) {
+	s := &m.mach
+	if removed, err := config.RemoveRemote("", r.target); err != nil {
+		m.setStatus(err.Error(), true)
+		return
+	} else if removed {
+		if err := m.machDaemon.Reload(); err != nil {
+			m.setStatus(err.Error(), true)
+			return
+		}
+	}
+	if r.source != "" && r.source != "typed in" {
+		s.hide(r.target)
+	}
+	for i, x := range s.rows {
+		if x == r {
+			s.rows = append(s.rows[:i], s.rows[i+1:]...)
+			break
+		}
+	}
+	s.cursor = min(s.cursor, len(s.rows)-1)
+	if x := s.selected(); x != nil && x.ask != nil {
+		m.focusAsk(x)
+	}
+	m.setStatus(r.name+" is off the list.", false)
+}
+
+func (s *machinesScreen) hide(target string) {
+	if s.hidden == nil {
+		s.hidden = map[string]bool{}
+	}
+	s.hidden[target] = true
+	s.saveHidden()
+}
+
+func (s *machinesScreen) unhide(target string) {
+	if s.hidden[target] {
+		delete(s.hidden, target)
+		s.saveHidden()
+	}
+}
+
+func (s *machinesScreen) saveHidden() {
+	if s.hiddenFile == "" {
+		return
+	}
+	names := make([]string, 0, len(s.hidden))
+	for n := range s.hidden {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	if b, err := json.Marshal(names); err == nil {
+		_ = os.WriteFile(s.hiddenFile, b, 0o600)
+	}
+}
+
+func loadHidden(file string) map[string]bool {
+	out := map[string]bool{}
+	if file == "" {
+		return out
+	}
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return out
+	}
+	var names []string
+	if json.Unmarshal(b, &names) == nil {
+		for _, n := range names {
+			out[n] = true
+		}
+	}
+	return out
+}
+
+// saveName names the selected machine.
+func (m *Model) saveName() tea.Cmd {
+	s := &m.mach
+	r := s.selected()
+	s.field = fieldNone
+	if r == nil || r.kind != mAdded {
+		return nil
+	}
+	name := strings.TrimSpace(s.rename.Value())
+	if err := config.SetRemoteName("", r.target, name); err != nil {
+		m.setStatus(err.Error(), true)
+		return nil
+	}
+	if err := m.machDaemon.Reload(); err != nil {
+		m.setStatus(err.Error(), true)
+		return nil
+	}
+	if name == "" {
+		name = machineName(r.target)
+	}
+	r.name = name
+	m.setStatus("It is "+name+" now.", false)
+	return m.loadRemotes()
+}
+
+func (m *Model) startRename(r *machineRow) {
+	s := &m.mach
+	s.rename = lineInput{}
+	s.rename.insert([]rune(r.name))
+	s.field = fieldName
 }
 
 func (m *Model) stopMachine(r *machineRow) {
@@ -544,7 +680,7 @@ func (m *Model) escMachine() tea.Cmd {
 	s := &m.mach
 	r := s.selected()
 	switch {
-	case s.field == fieldAddr:
+	case s.field == fieldAddr || s.field == fieldName:
 		s.field = fieldNone
 	case r != nil && r.ask != nil && r.ask.sudo:
 		m.answerAsk(r, machineAnswer{}) // skip
@@ -567,21 +703,42 @@ func (m *Model) machinesKey(msg tea.KeyPressMsg) tea.Cmd {
 		in = &s.user
 	case fieldSecret:
 		in = &s.secret
+	case fieldName:
+		in = &s.rename
 	}
 	if in != nil {
 		if k == "tab" {
 			if r := s.selected(); r != nil && r.ask != nil && !r.ask.sudo {
-				s.field = map[machineField]machineField{fieldUser: fieldSecret, fieldSecret: fieldUser}[s.field]
+				if s.field == fieldSecret {
+					s.focusUser()
+				} else {
+					s.field = fieldSecret
+				}
 			}
 			return nil
+		}
+		if s.field == fieldUser && s.userFresh {
+			s.userFresh = false
+			if msg.Text != "" || k == "backspace" || k == "delete" {
+				s.user = lineInput{}
+				if k == "backspace" || k == "delete" {
+					return nil
+				}
+			}
 		}
 		if in.edit(msg) {
 			return nil
 		}
 		switch k {
 		case "enter":
-			if s.field == fieldAddr {
+			switch s.field {
+			case fieldAddr:
 				return m.addAddress()
+			case fieldName:
+				return m.saveName()
+			case fieldUser:
+				s.field = fieldSecret
+				return nil
 			}
 			return m.enterMachine()
 		case "esc":
@@ -601,13 +758,23 @@ func (m *Model) machinesKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.escMachine()
 	case "a":
 		s.field = fieldAddr
+	case "n":
+		if r != nil && r.kind == mAdded {
+			m.startRename(r)
+		}
 	case "r":
 		return tea.Batch(m.scanMachines(), m.loadRemotes())
 	case "x":
-		if r != nil && r.kind == mAdded {
+		if r == nil {
+			break
+		}
+		switch r.kind {
+		case mAdded:
 			m.removeMachine(r)
-		} else if r != nil && r.kind == mRun {
+		case mRun:
 			m.stopMachine(r)
+		case mFound, mClosed, mFailed:
+			m.dropMachine(r)
 		}
 	case "y":
 		if r != nil && r.target != "" {
@@ -649,9 +816,14 @@ func (m *Model) machinesPaste(text string) {
 	case fieldAddr:
 		s.addr.insert(clean)
 	case fieldUser:
+		if s.userFresh {
+			s.user, s.userFresh = lineInput{}, false
+		}
 		s.user.insert(clean)
 	case fieldSecret:
 		s.secret.insert(clean)
+	case fieldName:
+		s.rename.insert(clean)
 	}
 }
 
@@ -661,6 +833,8 @@ func (m *Model) machinesKeys() string {
 	switch {
 	case s.field == fieldAddr:
 		return "type an address · enter add · esc back"
+	case s.field == fieldName:
+		return "type a name · enter save · an empty name uses the address · esc back"
 	case r != nil && r.ask != nil && r.ask.sudo:
 		return "enter turn on · esc skip"
 	case r != nil && r.ask != nil:
@@ -670,11 +844,11 @@ func (m *Model) machinesKeys() string {
 	if r != nil {
 		switch r.kind {
 		case mFound, mClosed:
-			ks = append(ks, "enter add")
+			ks = append(ks, "enter add", "x remove")
 		case mFailed:
-			ks = append(ks, "enter try again")
+			ks = append(ks, "enter try again", "x remove")
 		case mAdded:
-			ks = append(ks, "x remove", "y copy ssh")
+			ks = append(ks, "n name", "x remove", "y copy ssh")
 		case mRun:
 			ks = append(ks, "x stop")
 		}
@@ -896,6 +1070,7 @@ func (m *Model) machineDetail(w int) ([]string, []lineHit) {
 		if r.kind == mClosed {
 			commands()
 			button("Add it when ssh opens", m.beginRow(r))
+			button("Remove", m.dropRow(r))
 			break
 		}
 		text(dim, "smif will do this, and asks only when it has to:")
@@ -905,6 +1080,7 @@ func (m *Model) machineDetail(w int) ([]string, []lineHit) {
 			out = append(out, dim(fmt.Sprintf("%d  ", i+1))+l)
 		}
 		button("Add this machine", m.beginRow(r))
+		button("Remove", m.dropRow(r))
 	case mRun:
 		if r.closed {
 			commands()
@@ -941,6 +1117,7 @@ func (m *Model) machineDetail(w int) ([]string, []lineHit) {
 		out = append(out, "")
 		text(stBad.Render, r.bad)
 		button("Try again", m.beginRow(r))
+		button("Remove", m.dropRow(r))
 	case mAdded:
 		if r.bad != "" {
 			text(stWarn.Render, "! Away: "+r.bad)
@@ -955,9 +1132,19 @@ func (m *Model) machineDetail(w int) ([]string, []lineHit) {
 			out = append(out, machineSessionLine(v))
 		}
 		out = append(out, "", dim("Read only. To answer, ssh there: y copies the command."))
+		out = append(out, "", dim(r.target))
+		if s.field == fieldName {
+			out = append(out, "", machineField2("Name", s.rename.view(max(10, w-12)), true))
+		} else {
+			button("Name it", func() tea.Cmd { m.startRename(r); return nil })
+		}
 		button("Remove", func() tea.Cmd { m.removeMachine(r); return nil })
 	}
 	return out, hits
+}
+
+func (m *Model) dropRow(r *machineRow) func() tea.Cmd {
+	return func() tea.Cmd { m.dropMachine(r); return nil }
 }
 
 func (m *Model) beginRow(r *machineRow) func() tea.Cmd {
@@ -993,8 +1180,13 @@ func (m *Model) loginBox(r *machineRow, w, at int) ([]string, []lineHit) {
 		out = append(out, stBad.Render("✗ "+r.problem))
 	}
 	user := s.user.Value()
-	if s.field == fieldUser {
+	switch {
+	case s.field == fieldUser && s.userFresh:
+		user = stCursor.Render(user)
+	case s.field == fieldUser:
 		user = s.user.view(max(10, w-12))
+	default:
+		user += stDim.Render("  tab changes it")
 	}
 	out = append(out, machineField2("User", user, s.field == fieldUser))
 	userAt := at + len(out) - 1
@@ -1003,7 +1195,7 @@ func (m *Model) loginBox(r *machineRow, w, at int) ([]string, []lineHit) {
 	out = append(out, "", stAccent.Render("[ Log in ]"))
 	loginAt := at + len(out) - 1
 	hits := []lineHit{
-		{userAt, 0, -1, func() tea.Cmd { s.field = fieldUser; return nil }},
+		{userAt, 0, -1, func() tea.Cmd { s.focusUser(); return nil }},
 		{passAt, 0, -1, func() tea.Cmd { s.field = fieldSecret; return nil }},
 		{loginAt, 0, 10, m.enterMachine},
 	}

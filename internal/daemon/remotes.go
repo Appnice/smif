@@ -66,7 +66,7 @@ func fileExists(path string) bool {
 }
 
 // fetchRemote asks one host for its sessions.
-func fetchRemote(ctx context.Context, host string) ([]api.SessionView, error) {
+func fetchRemote(ctx context.Context, host, name string) ([]api.SessionView, error) {
 	ctx, cancel := context.WithTimeout(ctx, remoteTimeout)
 	defer cancel()
 	argv := RemoteArgv(host, RemoteCommand)
@@ -84,15 +84,33 @@ func fetchRemote(ctx context.Context, host string) ([]api.SessionView, error) {
 	if err := json.Unmarshal(out, &rows); err != nil {
 		return nil, fmt.Errorf("no session list: %v", err)
 	}
+	rows = ownRows(rows)
 	for i := range rows {
 		v := &rows[i]
-		v.Host = host
+		label := host
+		if name != "" {
+			label = name
+		}
+		v.Host, v.HostName = host, name
 		v.SessionID = host + "/" + v.SessionID
-		v.Repo = host + ":" + v.Repo
+		v.Repo = label + ":" + v.Repo
 		v.Term, v.TTY, v.Queue = "ssh", "", nil
-		v.CanPrompt, v.Why = false, "on "+host+": read only"
+		v.CanPrompt, v.Why = false, "on "+label+": read only"
 	}
 	return rows, nil
+}
+
+// ownRows keeps a host's own sessions. Its list also holds the machines it
+// watches, and those can be this one, or the host itself: taking them would
+// repeat each row on every poll, with no end.
+func ownRows(rows []api.SessionView) []api.SessionView {
+	own := rows[:0]
+	for _, v := range rows {
+		if v.Host == "" {
+			own = append(own, v)
+		}
+	}
+	return own
 }
 
 func lastErrLine(s string) string {
@@ -122,7 +140,7 @@ func (d *Daemon) pollRemotes() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			rows, err := fetchRemote(d.ctx, host)
+			rows, err := fetchRemote(d.ctx, host, d.Config().Daemon.RemoteNames[host])
 			d.remotes.mu.Lock()
 			defer d.remotes.mu.Unlock()
 			if d.remotes.hosts == nil {
@@ -160,7 +178,7 @@ func (d *Daemon) remoteChecks() []api.ProviderCheck {
 	defer d.remotes.mu.Unlock()
 	out := []api.ProviderCheck{}
 	for _, host := range d.Config().Daemon.Remotes {
-		r, c := d.remotes.hosts[host], api.ProviderCheck{Name: host, State: "ok"}
+		r, c := d.remotes.hosts[host], api.ProviderCheck{Name: host, Title: d.Config().Daemon.RemoteNames[host], State: "ok"}
 		c.Detail = fmt.Sprintf("%d sessions", len(r.rows))
 		if r.err != "" {
 			c.State, c.Detail = "none", r.err

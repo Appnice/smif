@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"time"
 
@@ -38,6 +39,13 @@ func cmdRemote() *cobra.Command {
 		Short: "Take a machine out of your list",
 		Args:  cobra.ExactArgs(1),
 		RunE:  func(cmd *cobra.Command, args []string) error { return remoteRemove(args[0]) },
+	}, &cobra.Command{
+		Use:   "name <ssh-host> [name]",
+		Short: "Name a machine in your list, or take its name away",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return remoteName(args[0], strings.Join(args[1:], ""))
+		},
 	})
 	return c
 }
@@ -74,6 +82,20 @@ func remoteRemove(host string) error {
 	}
 	fmt.Printf("%s left your list. Its key stays there and can only list sessions: remove the smif-daemon line from ~/.ssh/authorized_keys.\n", host)
 	return nil
+}
+
+func remoteName(host, name string) error {
+	c, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(c.Daemon.Remotes, host) {
+		return fmt.Errorf("%s is not in daemon.remotes", host)
+	}
+	if err := config.SetRemoteName("", host, name); err != nil {
+		return err
+	}
+	return machineDaemon{}.Reload()
 }
 
 func printStep(e machines.Event) {

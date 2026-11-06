@@ -68,7 +68,10 @@ What facts cannot see:
   - It asks for your password once, unless your ssh login already works, and on Linux for sudo to keep smif running after
     logout. Skip that, and the machine can drop out of the list when nobody is logged in there.
   - It installs smif there if it is missing, and adds a key of its own, `~/.ssh/smif_ed25519`, that can only list sessions.
-  - `smif remote add me@host` does the same in the terminal, and `smif remote rm me@host` takes a machine out.
+  - `x` takes any machine off the list. An added one leaves `daemon.remotes`. A found one stays hidden until you type its
+    address. `smif remote add me@host` does the setup in the terminal, and `smif remote rm me@host` takes a machine out.
+  - `n` names an added machine, and the name replaces its address in the lists and notifications. `smif remote name
+    me@host tower` does the same. The names live under `[daemon.remote_names]`.
 
   These rows are read only: to answer, ssh there, and `y` copies the command. smif runs `smif sessions --json` there every
   15 s over one shared connection. A machine that is away leaves the list after a minute, and `smif doctor` says why.

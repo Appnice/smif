@@ -93,6 +93,8 @@ type Daemon struct {
 	// Remotes are ssh hosts that run smif too (ADR-0023): their sessions show
 	// here, read only.
 	Remotes []string `toml:"remotes"`
+	// RemoteNames are the names you gave them, by host.
+	RemoteNames map[string]string `toml:"remote_names"`
 	// KeepAwake stops idle sleep on macOS while a session works.
 	KeepAwake bool `toml:"keep_awake"`
 	// Watchdogs (ADR-0015), each a duration or "off": remind again while a
@@ -686,6 +688,11 @@ func (c *Config) Validate() error {
 	for _, h := range c.Daemon.Remotes {
 		if !remoteHostRe.MatchString(h) {
 			add("daemon.remotes: %q is not an ssh host name", h)
+		}
+	}
+	for h, n := range c.Daemon.RemoteNames {
+		if !ValidRemoteName(n) {
+			add("daemon.remote_names: %q for %s must be letters, digits, dots or dashes, at most %d", n, h, remoteNameMax)
 		}
 	}
 	if why := notifyURLProblem(c.Daemon.NotifyURL); why != "" {

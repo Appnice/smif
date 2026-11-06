@@ -17,6 +17,71 @@ import (
 // ValidRemote says whether host can go in daemon.remotes.
 func ValidRemote(host string) bool { return remoteHostRe.MatchString(host) }
 
+const remoteNameMax = 32
+
+var remoteNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// ValidRemoteName says whether a name can stand for a machine.
+func ValidRemoteName(name string) bool {
+	return len(name) <= remoteNameMax && remoteNameRe.MatchString(name)
+}
+
+// namesHeader is the table of names. A name is the last key in a line of its own.
+var namesHeader = regexp.MustCompile(`(?m)^[ \t]*\[daemon\.remote_names\][ \t]*(#.*)?$`)
+
+// SetRemoteName names a machine, and an empty name takes the name away. The
+// rest of the file stays as it is.
+func SetRemoteName(file, host, name string) error {
+	if file == "" {
+		file = paths.ConfigFile()
+	}
+	if name != "" && !ValidRemoteName(name) {
+		return fmt.Errorf("%q: a name is letters, digits, dots or dashes, at most %d", name, remoteNameMax)
+	}
+	b, err := os.ReadFile(file)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	text := withName(string(b), host, name)
+	after, err := Parse([]byte(text))
+	if err != nil || after.Daemon.RemoteNames[host] != name {
+		return fmt.Errorf("cannot edit %s: set daemon.remote_names by hand", file)
+	}
+	return replaceFile(file, text)
+}
+
+func withName(text, host, name string) string {
+	key := strconv.Quote(host)
+	line := ""
+	if name != "" {
+		line = key + " = " + strconv.Quote(name) + "\n"
+	}
+	head := namesHeader.FindStringIndex(text)
+	if head == nil {
+		if name == "" {
+			return text
+		}
+		if text != "" {
+			text = strings.TrimRight(text, "\n") + "\n\n"
+		}
+		return text + "[daemon.remote_names]\n" + line
+	}
+	start, end := head[1], len(text)
+	if next := nextTable.FindStringIndex(text[start:]); next != nil {
+		end = start + next[0]
+	}
+	body := text[start:end]
+	old := regexp.MustCompile(`(?m)^[ \t]*` + regexp.QuoteMeta(key) + `[ \t]*=.*\n?`)
+	if old.MatchString(body) {
+		body = old.ReplaceAllLiteralString(body, line)
+	} else if strings.HasPrefix(body, "\n") {
+		body = "\n" + line + body[1:]
+	} else {
+		body = "\n" + line + body
+	}
+	return text[:start] + body + text[end:]
+}
+
 var (
 	daemonHeader = regexp.MustCompile(`(?m)^[ \t]*\[daemon\][ \t]*(#.*)?$`)
 	nextTable    = regexp.MustCompile(`(?m)^[ \t]*\[`)
@@ -76,7 +141,7 @@ func RemoveRemote(file, host string) (bool, error) {
 		return false, nil
 	}
 	want := slices.Delete(slices.Clone(c.Daemon.Remotes), i, i+1)
-	text := withRemotes(string(b), want)
+	text := withName(withRemotes(string(b), want), host, "")
 	after, err := Parse([]byte(text))
 	if err != nil || !slices.Equal(after.Daemon.Remotes, want) {
 		return false, fmt.Errorf("cannot edit %s: remove %q from daemon.remotes by hand", file, host)

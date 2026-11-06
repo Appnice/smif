@@ -251,7 +251,8 @@ type SessionView struct {
 	// (nil when there is none).
 	Activity *SessionActivity `json:"activity,omitempty"`
 	// Host is the ssh host of a session on another machine (ADR-0023).
-	Host string `json:"host,omitempty"`
+	Host     string `json:"host,omitempty"`
+	HostName string `json:"host_name,omitempty"` // the name you gave that machine
 	// Facts is what the transcript and git show from the newest human
 	// prompt on (ADR-0021; nil when unknown).
 	Facts *SessionFacts `json:"facts,omitempty"`
@@ -646,6 +647,7 @@ type HealthView struct {
 // real session checked.
 type ProviderCheck struct {
 	Name     string `json:"name"`
+	Title    string `json:"title,omitempty"` // a remote's name
 	Verified bool   `json:"verified"`
 	State    string `json:"state"`
 	Detail   string `json:"detail,omitempty"`
@@ -729,4 +731,12 @@ func ShortSession(id string) string {
 		return id[:8]
 	}
 	return id
+}
+
+// HostLabel is what to call the machine a session runs on.
+func (v SessionView) HostLabel() string {
+	if v.HostName != "" {
+		return v.HostName
+	}
+	return v.Host
 }

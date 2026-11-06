@@ -58,6 +58,6 @@ func startUI(interval time.Duration, machines bool) error {
 	ensureDaemon()
 	src := &ui.DaemonSource{Dial: func() (ui.Caller, error) { return humanClient(2 * time.Second) }}
 	defer src.Close()
-	_, err := tea.NewProgram(ui.New(src, ui.Options{Interval: interval, SeenFile: filepath.Join(paths.DataDir(), "ui-seen.json"), PartsDir: paths.PartsDir(), Machines: machines, MachineDaemon: machineDaemon{}})).Run()
+	_, err := tea.NewProgram(ui.New(src, ui.Options{Interval: interval, SeenFile: filepath.Join(paths.DataDir(), "ui-seen.json"), PartsDir: paths.PartsDir(), Machines: machines, MachineDaemon: machineDaemon{}, HiddenFile: filepath.Join(paths.DataDir(), "machines-hidden.json")})).Run()
 	return err
 }

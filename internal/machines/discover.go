@@ -160,6 +160,10 @@ func hostAliases(file string, depth int) []string {
 				} else if !filepath.IsAbs(p) {
 					p = filepath.Join(home(), ".ssh", p)
 				}
+				// Colima and Lima write the VM that runs Docker here.
+				if strings.Contains(p, "/.colima/") || strings.Contains(p, "/.lima/") {
+					continue
+				}
 				matches, _ := filepath.Glob(p)
 				for _, m := range matches {
 					out = append(out, hostAliases(m, depth+1)...)

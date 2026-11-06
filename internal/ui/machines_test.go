@@ -2,6 +2,9 @@ package ui
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -137,6 +140,7 @@ func TestMachinesSetup(t *testing.T) {
 	if !strings.Contains(s, "Password") || !strings.Contains(s, "needs you") {
 		t.Fatalf("login:\n%s", s)
 	}
+	press(m, "enter") // keeps the proposed user
 	for _, c := range "hunter2" {
 		press(m, string(c))
 	}
@@ -257,6 +261,163 @@ func TestMachinesOneRowPerMachine(t *testing.T) {
 	m.Update(machineHealthMsg{[]api.ProviderCheck{{Name: "me@devbox", State: "ok"}}})
 	if m.mach.row("mini.local") != nil {
 		t.Fatal("mini.local stayed")
+	}
+}
+
+// x takes any row off the list: a failed one at once, and a found one stays
+// off after the next look and after a restart, until you type its address.
+func TestMachinesRemoveAnyRow(t *testing.T) {
+	t.Setenv("SMIF_CONFIG", filepath.Join(t.TempDir(), "config.toml"))
+	file := filepath.Join(t.TempDir(), "hidden.json")
+	m, _ := machinesModel(t)
+	m.mach.hiddenFile = file
+	m.mach.start = func(ctx context.Context, s *machines.Setup) error {
+		<-ctx.Done()
+		return machines.ErrStopped
+	}
+
+	press(m, "a")
+	for _, c := range "me@adres-ip" {
+		press(m, string(c))
+	}
+	press(m, "enter")
+	r := m.mach.selected()
+	r.cancel()
+	r.cancel = nil
+	m.Update(<-m.mach.events)
+	m.Update(machineDoneMsg{name: "adres-ip", host: "me@adres-ip", err: errors.New("no machine has that name")})
+	if r = m.mach.row("adres-ip"); r == nil || r.kind != mFailed {
+		t.Fatalf("row %+v", r)
+	}
+	if s := screen(m); !strings.Contains(s, "x remove") || !strings.Contains(s, "Remove") {
+		t.Fatalf("no way to remove:\n%s", s)
+	}
+	press(m, "x")
+	if m.mach.row("adres-ip") != nil {
+		t.Fatal("the failed row stayed")
+	}
+	if _, err := os.Stat(file); err == nil {
+		t.Fatal("hid a typed address")
+	}
+
+	for i, r := range m.mach.rows {
+		if r.name == "devbox" {
+			m.mach.cursor = i
+		}
+	}
+	press(m, "x")
+	found := machinesFoundMsg{m.mach.discover(nil, nil)}
+	m.Update(found)
+	if m.mach.row("devbox") != nil {
+		t.Fatal("devbox came back")
+	}
+	if got := loadHidden(file); !got["devbox"] {
+		t.Fatalf("hidden %v", got)
+	}
+
+	m.mach.hidden = loadHidden(file)
+	press(m, "a")
+	for _, c := range "devbox" {
+		press(m, string(c))
+	}
+	press(m, "enter")
+	if r = m.mach.row("devbox"); r == nil || r.kind != mRun || loadHidden(file)["devbox"] {
+		t.Fatalf("typing did not bring it back: %+v", r)
+	}
+	m.stopMachine(r)
+}
+
+// A user smif guessed comes first and the first key replaces it. A user you
+// typed stays, and the keys go to the password.
+func TestMachinesLoginUser(t *testing.T) {
+	m, _ := machinesModel(t)
+	got := make(chan string, 1)
+	m.mach.start = func(ctx context.Context, s *machines.Setup) error {
+		s.Report(machines.Event{Step: machines.StepLogin, State: machines.Running})
+		user, pass, ok := s.Ask.Login("guessed", "")
+		if ok {
+			got <- user + ":" + pass
+		}
+		<-ctx.Done()
+		return machines.ErrStopped
+	}
+	press(m, "enter")
+	m.Update(<-m.mach.events)
+	m.Update(<-m.mach.events)
+	if m.mach.field != fieldUser {
+		t.Fatalf("field %d", m.mach.field)
+	}
+	for _, c := range "patryk" {
+		press(m, string(c))
+	}
+	press(m, "enter")
+	if m.mach.field != fieldSecret {
+		t.Fatalf("enter left field %d", m.mach.field)
+	}
+	press(m, "p")
+	press(m, "enter")
+	if a := <-got; a != "patryk:p" {
+		t.Fatalf("answer %q", a)
+	}
+	m.stopMachine(m.mach.row("devbox"))
+	m.Update(<-m.mach.events)
+
+	m.mach.row("devbox").target = "named@devbox"
+	press(m, "enter")
+	m.Update(<-m.mach.events)
+	m.Update(<-m.mach.events)
+	if m.mach.field != fieldSecret {
+		t.Fatalf("a named user took the keys: %d", m.mach.field)
+	}
+	if s := screen(m); !strings.Contains(s, "tab changes it") {
+		t.Fatalf("no hint:\n%s", s)
+	}
+	press(m, "tab")
+	if m.mach.field != fieldUser {
+		t.Fatalf("tab left field %d", m.mach.field)
+	}
+	m.stopMachine(m.mach.row("devbox"))
+}
+
+// n names an added machine: the config has it, and the row shows it.
+func TestMachinesName(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "config.toml")
+	t.Setenv("SMIF_CONFIG", file)
+	os.WriteFile(file, []byte("[daemon]\nremotes = [\"me@1.2.3.4\"]\n"), 0o600)
+	m, d := machinesModel(t)
+	d.rows = []api.ProviderCheck{{Name: "me@1.2.3.4", State: "ok"}}
+	m.Update(machineHealthMsg{d.rows})
+	for i, r := range m.mach.rows {
+		if r.target == "me@1.2.3.4" {
+			m.mach.cursor = i
+		}
+	}
+	press(m, "n")
+	if m.mach.field != fieldName {
+		t.Fatalf("field %d", m.mach.field)
+	}
+	m.mach.rename = lineInput{}
+	for _, c := range "linux-pc" {
+		press(m, string(c))
+	}
+	press(m, "enter")
+	if s := screen(m); !strings.Contains(s, "linux-pc") || !strings.Contains(s, "It is linux-pc now") {
+		t.Fatalf("name:\n%s", s)
+	}
+	b, _ := os.ReadFile(file)
+	if !strings.Contains(string(b), `"me@1.2.3.4" = "linux-pc"`) {
+		t.Fatalf("config:\n%s", b)
+	}
+	d.rows[0].Title = "linux-pc"
+	m.Update(machineHealthMsg{d.rows})
+	if r := m.mach.byTarget("me@1.2.3.4"); r == nil || r.name != "linux-pc" {
+		t.Fatalf("row %+v", r)
+	}
+	press(m, "n")
+	m.mach.rename = lineInput{}
+	press(m, "enter")
+	if b, _ = os.ReadFile(file); strings.Contains(string(b), "linux-pc") {
+		t.Fatalf("the name stayed:\n%s", b)
 	}
 }
 

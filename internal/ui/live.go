@@ -116,7 +116,7 @@ func waitReason(sv *api.SessionView) string {
 	s := nowStep(sv)
 	switch {
 	case sv.Host != "":
-		return "it waits for you on " + sv.Host
+		return "it waits for you on " + sv.HostLabel()
 	case sv.Background:
 		return "it waits for you: claude attach opens it"
 	case s == nil:
