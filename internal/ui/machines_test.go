@@ -465,6 +465,52 @@ func TestWritableRemoteRow(t *testing.T) {
 	}
 }
 
+// n on a remote row starts the session there, and needs writing on.
+func TestNewSessionOnAnotherMachine(t *testing.T) {
+	src := &fakeRemoteOpener{got: make(chan string, 1)}
+	m := New(src, Options{Now: func() time.Time { return time.Unix(1000, 0) }})
+	m.width, m.height = 120, 40
+	v := api.SessionView{SessionID: "h/a", Host: "me@h", HostName: "PC", HostDir: "/home/me/api", Repo: "PC:/home/me/api", Turn: "idle"}
+	m.snap = &Snapshot{Sessions: []api.SessionView{v}}
+	m.noteSessions()
+	press(m, "n")
+	if m.home.newing || !strings.Contains(m.status, "read only") {
+		t.Fatalf("newing %v, status %q", m.home.newing, m.status)
+	}
+	m.snap.Sessions[0].Writable = true
+	press(m, "n")
+	if !m.home.newing || m.home.newDir != "/home/me/api" || !strings.Contains(m.newLine(), "on PC") {
+		t.Fatalf("new: %v %q %q", m.home.newing, m.home.newDir, m.newLine())
+	}
+	for _, c := range "worker" {
+		press(m, string(c))
+	}
+	cmd := m.newKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("no command")
+	}
+	cmd()
+	if got := <-src.got; got != "me@h /home/me/api worker" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+type fakeRemoteOpener struct {
+	fakePrompter
+	got chan string
+}
+
+func (f *fakeRemoteOpener) Fetch(context.Context) Snapshot { return Snapshot{} }
+
+func (f *fakeRemoteOpener) NewSession(context.Context, string, string, string, string) error {
+	return nil
+}
+
+func (f *fakeRemoteOpener) NewRemoteSession(_ context.Context, host, dir, name string) error {
+	f.got <- host + " " + dir + " " + name
+	return nil
+}
+
 func TestMachinesNarrow(t *testing.T) {
 	m, _ := machinesModel(t)
 	m.width, m.height = 80, 24

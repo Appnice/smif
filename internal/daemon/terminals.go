@@ -79,7 +79,7 @@ func termSupport(p store.Presence) string {
 	case termApple, termITerm, termTmux, termHerdr:
 		return ""
 	case "":
-		return "Smif does not know which terminal this session runs in"
+		return "smif can type into tmux, herdr, Terminal.app and iTerm2, and this terminal is none of them. Run the session in tmux"
 	}
 	return "prompts work in Terminal.app, iTerm2, tmux and herdr; this session runs in " + p.Term
 }
@@ -280,10 +280,18 @@ func (autoTerminal) Open(ctx context.Context, term, dir, label string, argv []st
 		ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
 		args := append([]string{"new-window", "-c", dir, "--"}, argv...)
-		if out, err := exec.CommandContext(ctx, tmuxPath(), args...).CombinedOutput(); err != nil {
-			return fmt.Errorf("tmux new-window: %v: %s", err, strings.TrimSpace(string(out)))
+		out, err := exec.CommandContext(ctx, tmuxPath(), args...).CombinedOutput()
+		if err == nil {
+			return nil
 		}
-		return nil
+		// No tmux runs yet: on a machine nobody sits at, that is the usual case.
+		if strings.Contains(string(out), "no server") || strings.Contains(string(out), "no current") || strings.Contains(string(out), "error connecting") {
+			args = append([]string{"new-session", "-d", "-s", tmuxSessionName(label), "-c", dir, "--"}, argv...)
+			if out, err = exec.CommandContext(ctx, tmuxPath(), args...).CombinedOutput(); err == nil {
+				return nil
+			}
+		}
+		return fmt.Errorf("tmux: %v: %s", err, strings.TrimSpace(string(out)))
 	case termHerdr:
 		if herdrPath() == "" {
 			return errors.New("the daemon cannot find the herdr command")
@@ -291,6 +299,15 @@ func (autoTerminal) Open(ctx context.Context, term, dir, label string, argv []st
 		return herdrOpen(ctx, dir, label, line)
 	}
 	return fmt.Errorf("new sessions open in Terminal.app, iTerm2, tmux or herdr, not %s", term)
+}
+
+// tmuxSessionName is a name tmux takes: it treats dots and colons as separators.
+func tmuxSessionName(label string) string {
+	name := strings.NewReplacer(".", "-", ":", "-", " ", "-").Replace(label)
+	if name == "" {
+		return "smif"
+	}
+	return name
 }
 
 // shellQuote quotes s for sh: 'it'\”s'.

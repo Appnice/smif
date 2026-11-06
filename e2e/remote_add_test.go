@@ -39,6 +39,9 @@ case " $* " in
   *) grep -q 'restrict,command=' $d/authorized 2>/dev/null && case " $* " in *" -i "*) ;; *) false ;; esac || {
        echo 'me@mini: Permission denied (publickey).' >&2; exit 255; }
      case "$last" in
+       *'remote-read new'*)
+         grep -q 'remote-read --write' $d/authorized || { echo 'smif: writing is off for this machine' >&2; exit 1; }
+         cat > $d/opened ;;
        *'remote-read send'*|*'remote-read queue'*)
          grep -q 'remote-read --write' $d/authorized || { echo 'smif: writing is off for this machine' >&2; exit 1; }
          cat > $d/typed; echo '{"mode":"typed","agent":"shop","session_id":"x"}' ;;
@@ -144,6 +147,17 @@ func TestRemoteAdd(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(filepath.Join(dir, "typed")); string(b) != "go on" {
 		t.Fatalf("typed %q", b)
+	}
+	c, err := e.Client()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if err := c.Call("session.new", api.SessionNewParams{Host: "me@mini", Dir: "/srv/shop", Name: "worker"}, nil, 10*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "opened")); !strings.Contains(string(b), `"dir":"/srv/shop"`) || !strings.Contains(string(b), `"name":"worker"`) {
+		t.Fatalf("opened %q", b)
 	}
 	if out, err := e.CLI("", "remote", "write", "me@mini", "off"); err != nil || strings.Contains(config(), "remote_write = [\"me@mini\"]") {
 		t.Fatalf("write off: %v\n%s\n%s", err, out, config())

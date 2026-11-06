@@ -27,6 +27,8 @@ Adding a machine is one setup in `internal/machines`, with two faces: the Machin
   `authorized_keys` line, not in a request, turning it on or off takes a login there, and the text goes on stdin. A
   permission prompt stays out of reach. sshd reads that line at login, so the setup closes the daemon's shared connection:
   otherwise a machine turned read only would keep writing until the connection ended.
+- **New sessions there start in tmux.** No program can type into a plain terminal window on Linux, so `n` on a session of
+  a writable machine starts claude in a tmux that smif can reach, and starts tmux if none runs.
 - **Rows do not travel twice.** A host's list also holds the machines it watches, so the poll keeps only its own rows. Two
   machines can watch each other. A target that is an address of this machine is refused, and Colima and Lima VMs stay out.
 - **ssh off.** smif cannot turn it on from outside, so the screen shows the command and tries again every 3 s.

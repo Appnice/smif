@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -248,6 +249,16 @@ func (d *Daemon) newArgv(h, title string) ([]string, error) {
 // and the harness's name come from the call; the command is the config's
 // or the built-in table's.
 func (d *Daemon) sessionNew(ctx context.Context, p api.SessionNewParams) (any, error) {
+	if p.Host != "" {
+		b, err := json.Marshal(api.SessionNewParams{Dir: p.Dir, Name: p.Name})
+		if err != nil {
+			return nil, err
+		}
+		if _, err := d.remoteWrite(p.Host, "new", string(b)); err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true}, nil
+	}
 	dir := filepath.Clean(p.Dir)
 	if !filepath.IsAbs(dir) {
 		return nil, api.Errf(api.CodeParams, "the folder must be an absolute path")

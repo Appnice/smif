@@ -254,6 +254,7 @@ type SessionView struct {
 	Host     string `json:"host,omitempty"`
 	HostName string `json:"host_name,omitempty"` // the name you gave that machine
 	Writable bool   `json:"writable,omitempty"`  // you allowed typing into that machine
+	HostDir  string `json:"host_dir,omitempty"`  // Repo on that machine, with no label
 	// Facts is what the transcript and git show from the newest human
 	// prompt on (ADR-0021; nil when unknown).
 	Facts *SessionFacts `json:"facts,omitempty"`
@@ -338,6 +339,8 @@ type SavedPrompt struct {
 // ("Apple_Terminal", "iTerm.app", "tmux", "herdr"; "" = the daemon's
 // default).
 type SessionNewParams struct {
+	// Host starts it on another machine you may write to, in tmux there.
+	Host    string `json:"host,omitempty"`
 	Dir     string `json:"dir"`
 	Name    string `json:"name,omitempty"`
 	Term    string `json:"term,omitempty"`

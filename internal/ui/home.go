@@ -65,6 +65,8 @@ type homeState struct {
 	newing     bool // n: the new session's name is asked (quick.go)
 	newName    lineInput
 	newDir     string
+	newHost    string // n on a session of another machine
+	newLabel   string
 	newTerm    string
 	newHarness string // the harness n picked ("" = claude, nothing to pick)
 	queuePick  bool   // ctrl+q: the cursor is on the queued prompts (queue.go)

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -101,7 +102,7 @@ func cmdRemoteRead() *cobra.Command {
 				}
 				printJSON(t)
 				return nil
-			case "send", "queue", "cancel":
+			case "send", "queue", "cancel", "new":
 				if !write {
 					return errors.New("writing is off for this machine")
 				}
@@ -121,6 +122,15 @@ func cmdRemoteRead() *cobra.Command {
 
 // remoteWrite takes one line from stdin to this machine's daemon.
 func remoteWrite(op string, args []string) error {
+	if op == "new" {
+		var p api.SessionNewParams
+		if err := json.NewDecoder(io.LimitReader(os.Stdin, 1<<16)).Decode(&p); err != nil {
+			return err
+		}
+		// Only the folder and the name come from the other side.
+		var r map[string]any
+		return call("session.new", api.SessionNewParams{Dir: p.Dir, Name: p.Name, Term: "tmux"}, &r, 20*time.Second)
+	}
 	if len(args) != 1 {
 		return errors.New("bad request")
 	}

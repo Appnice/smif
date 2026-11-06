@@ -99,7 +99,7 @@ func fetchRemote(ctx context.Context, host, name string, write bool) ([]api.Sess
 		if name != "" {
 			label = name
 		}
-		v.Host, v.HostName = host, name
+		v.Host, v.HostName, v.HostDir = host, name, v.Repo
 		v.SessionID = host + "/" + v.SessionID
 		v.Repo = label + ":" + v.Repo
 		v.Term, v.TTY = "ssh", ""

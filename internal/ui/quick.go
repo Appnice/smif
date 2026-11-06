@@ -26,6 +26,16 @@ type SessionOpener interface {
 	NewSession(ctx context.Context, dir, name, term, harness string) error
 }
 
+// RemoteOpener starts a session in tmux on another machine (ADR-0024).
+type RemoteOpener interface {
+	NewRemoteSession(ctx context.Context, host, dir, name string) error
+}
+
+// NewRemoteSession starts claude on that machine.
+func (s *DaemonSource) NewRemoteSession(ctx context.Context, host, dir, name string) error {
+	return s.callT(ctx, "session.new", api.SessionNewParams{Host: host, Dir: dir, Name: name}, nil, 25*time.Second)
+}
+
 // NewSession opens a new terminal tab that runs a harness in dir ("" =
 // claude). The daemon builds the command from the harness's name.
 func (s *DaemonSource) NewSession(ctx context.Context, dir, name, term, harness string) error {
@@ -134,6 +144,17 @@ func (m *Model) newOpen() {
 		return
 	}
 	dir, term := "", ""
+	m.home.newHost = ""
+	if r := m.homeSelected(); r != nil && r.sess != nil && r.sess.Host != "" {
+		if !r.sess.Writable {
+			m.setStatus(r.sess.HostLabel()+" is read only. Press w on it under Machines (m) to allow writing.", true)
+			return
+		}
+		m.home.newHost, m.home.newLabel = r.sess.Host, r.sess.HostLabel()
+		m.home.newing, m.home.newDir, m.home.newTerm, m.home.newName = true, r.sess.HostDir, "", lineInput{}
+		m.home.newHarness = ""
+		return
+	}
 	if r := m.homeSelected(); r != nil && r.sess != nil {
 		dir = r.sess.Repo
 		if canFocus(r.sess.Term) {
@@ -159,7 +180,7 @@ func (m *Model) newKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.home.newing = false
 		return nil
 	case "left", "right":
-		if len(m.harnessChoices()) > 1 {
+		if m.home.newHost == "" && len(m.harnessChoices()) > 1 {
 			step := 1
 			if k == "left" {
 				step = -1
@@ -176,6 +197,19 @@ func (m *Model) newKey(msg tea.KeyPressMsg) tea.Cmd {
 		dir, name, term, h := m.home.newDir, strings.TrimSpace(m.home.newName.Value()), m.home.newTerm, m.home.newHarness
 		if !m.newIsClaude() {
 			name = ""
+		}
+		if host := m.home.newHost; host != "" {
+			r, ok := m.src.(RemoteOpener)
+			if !ok {
+				m.setStatus("This UI cannot open sessions on another machine.", true)
+				return nil
+			}
+			m.setStatus("Starting it on "+m.home.newLabel+", in tmux…", false)
+			return func() tea.Msg {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				return openedMsg{name: name, dir: dir, err: r.NewRemoteSession(ctx, host, dir, name)}
+			}
 		}
 		m.setStatus("Opening a new session in "+shortHome(dir)+"…", false)
 		return func() tea.Msg {
@@ -208,6 +242,9 @@ func (m *Model) onOpened(msg openedMsg) {
 // newLine is the footer while the new session is asked for.
 func (m *Model) newLine() string {
 	parts := []string{"new session in " + shortHome(m.home.newDir)}
+	if m.home.newHost != "" {
+		parts[0] = "new session on " + m.home.newLabel + " in " + m.home.newDir + ", in tmux"
+	}
 	if m.home.newHarness != "" {
 		parts = append(parts, "← "+m.home.newHarness+" →")
 	}
