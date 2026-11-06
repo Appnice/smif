@@ -94,13 +94,12 @@ secret.
 
 ## Other machines
 
-```toml
-[daemon]
-remotes = ["mini", "me@vps"]
+```sh
+smif remote add me@mini.local
 ```
 
-Sessions on those ssh hosts join your list, read only, and a session that starts to wait notifies you here.
-See [docs/usage.md](docs/usage.md).
+Sessions on that machine join your list, read only, and a session that starts to wait notifies you here. The command
+sets up your ssh key and smif over there. See [docs/usage.md](docs/usage.md).
 
 ## Stop watching the screen
 

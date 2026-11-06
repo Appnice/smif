@@ -59,11 +59,12 @@ What facts cannot see:
 - **Watchdogs.** A reminder while a session still waits (`daemon.remind_waiting`, default every 10 min, at most
   3 times), and one alert when a working session writes nothing for `daemon.alert_silent` (default 10 min) or works
   longer than `daemon.alert_long_turn` (off by default).
-- **Other machines.** Set `remotes = ["mini", "me@vps"]` under `[daemon]`, and the sessions of those ssh hosts join your
-  list, with the host in the folder name. A session that starts to wait notifies here too. The host needs smif, and an
-  ssh login that asks for nothing (a key, or an agent). smif runs `smif sessions --json` there every 15 s over one shared
-  connection. These rows are read only: to answer, ssh there. A host that is away leaves the list after a minute, and
-  `smif doctor` says why.
+- **Other machines.** Run `smif remote add me@mini.local`, and the sessions of that ssh host join your list, with the host
+  in the folder name. A session that starts to wait notifies here too. On a Mac, first turn on System Settings > General >
+  Sharing > Remote Login. The command installs your ssh key with `ssh-copy-id`, offers to install smif there, adds the host
+  to `daemon.remotes` and checks that the daemon reaches it. smif runs `smif sessions --json` there every 15 s over one
+  shared connection. These rows are read only: to answer, ssh there. A host that is away leaves the list after a minute,
+  and `smif doctor` says why. To remove a host, delete it from `daemon.remotes` and run `smif reload`.
 - **Keep awake.** With `keep_awake = true` under `[daemon]`, a Mac does not sleep from idling while a session works. A
   session that writes nothing for 30 min no longer counts, and a closed lid still sleeps. macOS only.
 - **Phone ping.** Set `daemon.notify_url`, and each notification above also goes to that URL as one POST. See below.

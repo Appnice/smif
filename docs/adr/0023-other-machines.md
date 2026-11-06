@@ -12,6 +12,10 @@ shared ssh connection, and adds the rows to `session.list`.
 - A host that fails keeps its rows for one minute, then they leave. `smif doctor` shows a warning, never a failure.
 - A host name starts with a letter or digit, so it can never read as an ssh option. `--` ends the options as well.
 - The command is a constant. Nothing from a config value but the host, and nothing from a session, reaches ssh.
+- `smif remote add <host>` does the setup: `ssh-copy-id` when the login is refused, the install script after a yes when
+  smif is missing, the host in the config with the rest of the file untouched, and a wait for the daemon's own answer.
+  That last step matters: a service may not have the ssh agent your shell has. The other side needs no `smif install`,
+  because `smif sessions` starts its daemon.
 
 ## Why not more
 
@@ -23,5 +27,7 @@ shared ssh connection, and adds the rows to `session.list`.
 
 ## Checked
 
-`TestRemoteSessions` covers the rows, argv and refusals with a stand-in, and the real UI drew them. The real `ssh` ran only
-against a refused port, so the warning path is live and a working host is not: this Mac has no second machine with smif.
+`TestRemoteSessions` and `TestRemoteAdd` cover the rows, argv, refusals and setup with a stand-in. `smif remote add` also ran
+with real `ssh` against a real `sshd` on this Mac, with a separate home: refused key, unknown host key, the v0.1.0 install
+from smif.dev, a daemon started over ssh, and a session row in the list. Not checked: real `ssh-copy-id` with a password,
+and a second physical machine.

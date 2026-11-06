@@ -20,8 +20,8 @@ const (
 	remoteEvery   = 15 * time.Second
 	remoteTimeout = 12 * time.Second
 	remoteStale   = time.Minute // rows older than this leave the list
-	// remoteCommand runs in a non-login shell, which has no ~/.local/bin.
-	remoteCommand = `PATH="$HOME/.local/bin:$PATH" smif sessions --json`
+	// RemoteCommand runs in a non-login shell, which has no ~/.local/bin.
+	RemoteCommand = `PATH="$HOME/.local/bin:$PATH" smif sessions --json`
 )
 
 type remote struct {
@@ -42,18 +42,18 @@ func sshCommand() string {
 	return "ssh"
 }
 
-// remoteArgv is the ssh call. The host passed config validation, and -- ends
+// RemoteArgv is the ssh call. The host passed config validation, and -- ends
 // the options. A shared connection keeps a poll cheap.
-func remoteArgv(host string) []string {
+func RemoteArgv(host, command string) []string {
 	return []string{sshCommand(), "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "ControlMaster=auto",
-		"-o", "ControlPath=~/.ssh/smif-%C", "-o", "ControlPersist=60", "--", host, remoteCommand}
+		"-o", "ControlPath=~/.ssh/smif-%C", "-o", "ControlPersist=60", "--", host, command}
 }
 
 // fetchRemote asks one host for its sessions.
 func fetchRemote(ctx context.Context, host string) ([]api.SessionView, error) {
 	ctx, cancel := context.WithTimeout(ctx, remoteTimeout)
 	defer cancel()
-	argv := remoteArgv(host)
+	argv := RemoteArgv(host, RemoteCommand)
 	var errb strings.Builder
 	c := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	c.Stderr = &errb

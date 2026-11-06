@@ -53,7 +53,7 @@ func main() {
 		cmdDaemon(), cmdInit(), cmdInstall(), cmdUninstall(), cmdStatus(), cmdInbox(), cmdThread(), cmdRun(),
 		cmdDigest(), cmdDiff(), cmdApply(), cmdReply(), cmdSend("send", "tell"), cmdSend("ask", "ask"), cmdSend("emit", "event"),
 		cmdAwait(), cmdRetry(), cmdCancel(), cmdDLQ(), cmdTail(), cmdDoctor(), cmdConfig(), cmdMCP(), cmdHook(), cmdStatusline(),
-		cmdBlob(), cmdAgents(), cmdGC(), cmdReload(), cmdUI(), cmdWatch(), cmdStats(), cmdSessions(), cmdPrompt(), cmdNotify(),
+		cmdBlob(), cmdAgents(), cmdGC(), cmdReload(), cmdUI(), cmdWatch(), cmdStats(), cmdSessions(), cmdPrompt(), cmdNotify(), cmdRemote(),
 	)
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "smif:", err)
