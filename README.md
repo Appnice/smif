@@ -32,6 +32,15 @@
   <img alt="Many machines. One place. A desktop, a server and a laptop join your laptop over ssh. Their sessions sit in one list, each row named after its machine, and a line typed there goes to the session on that machine." src="docs/img/many-machines.gif" width="100%">
 </p>
 
+## Features
+
+- **[See every session](#see-every-session):** one live list shows what each session runs now and which one needs you.
+- **[Answer from one place](#answer-from-one-place):** pick a row and type. A busy session queues your line.
+- **[Other machines](#other-machines):** add a machine over ssh, and its sessions join the same list.
+- **[Stop watching the screen](#stop-watching-the-screen):** get a notification when a session starts to wait or answers after a long turn.
+- **[Send messages between projects](#send-messages-between-projects):** sessions ask each other things without interrupting yours.
+- **[Other agents](#other-agents):** Claude Code and Codex are checked against real agents, and others show up too.
+
 ## Install
 
 ```sh
