@@ -484,6 +484,10 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 		if r != nil && r.sess != nil {
 			return m.copyCode(r.sess)
 		}
+	case "Y":
+		if r != nil && r.sess != nil {
+			return m.copyAnswer(r.sess.LastAnswer)
+		}
 	case "p":
 		if r != nil && r.sess != nil {
 			m.pickOpen(r)

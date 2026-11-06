@@ -171,7 +171,9 @@ With a single agent, `n` asks only for the name, and left and right move the tex
 - `p` sends a saved prompt to the session. `n` opens a new session in its folder, and asks which agent when there is a choice.
 - `R` opens the history of past sessions, the closed ones first ([History and restart](#history-and-restart)).
 - `enter` on a session opens the chat. `s` writes from the preview. Idle: typed in. Busy or waiting: queued, and
-  `ctrl+f` asks a fork, which answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front, or opens `claude attach` for a `[background]` session. `y` (in the chat `ctrl+y`) copies
+  `ctrl+f` asks a fork, which answers in the chat. `o` (in the chat `ctrl+o`) brings its tab to the front, or opens `claude attach` for a `[background]` session. A mouse drag selects text inside one pane, and letting go copies it, so the list next to it stays out. `Y` copies the
+  newest answer whole. With `SMIF_NO_MOUSE=1` the mouse stays with your terminal, and in iTerm2 `option` plus a drag does a native
+  selection for one drag. `y` (in the chat `ctrl+y`) copies
   the newest code block whole; press it again for the block before.
 - In the prompt box, a long paste stays whole: you see its first and last lines, its size and whether it matches
   the clipboard. `ctrl+v` attaches an image, and a dropped file works too. `ctrl+p` picks a part to read or remove.

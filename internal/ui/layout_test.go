@@ -169,7 +169,7 @@ func TestHelpListsEveryKey(t *testing.T) {
 	for _, k := range []string{
 		"tab", "shift+tab", "↑/k", "↓/j", "pgup", "pgdown", "g", "G", "r", "enter", "i", "f/F", "s/S", "x", "d", "m", "a", "c", "t", "b", "n",
 		"1", "2", "3", "esc", "backspace", "?", "q", "ctrl+c", "y",
-		"alt+enter", "ctrl+u", "ctrl+k", "ctrl+w", "ctrl+a", "ctrl+e", "ctrl+f", "ctrl+q", "R", "A", "ctrl+s",
+		"Y", "drag", "alt+enter", "ctrl+u", "ctrl+k", "ctrl+w", "ctrl+a", "ctrl+e", "ctrl+f", "ctrl+q", "R", "A", "ctrl+s",
 	} {
 		if !strings.Contains(out, " "+k) {
 			t.Errorf("help lacks the key %q", k)

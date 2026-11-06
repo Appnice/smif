@@ -43,6 +43,8 @@ var helpText = []helpEntry{
 	{"o", "on a session: bring its terminal tab to the front (a waiting session: answer its permission prompt or question there). " +
 		"A [background] session has no tab: o opens claude attach in a new tab"},
 	{"y", "on a session: copy the newest code block of its answers, whole and unbroken (in the chat ctrl+y); press again for the block before it"},
+	{"Y", "on a session: copy its newest answer, whole"},
+	{"drag", "select text inside one pane; letting go copies it. The wheel scrolls. SMIF_NO_MOUSE=1 keeps the mouse for your terminal"},
 	{"p", "on a session: the saved prompts ([prompts] in the config); enter or 1-9 sends one the way s would. In a prompt, @name stands for it"},
 	{"n", "open a new terminal tab that runs claude in the selected session's folder (asks for its name). " +
 		"With another harness on the PATH, ← → pick it; only claude takes a name"},

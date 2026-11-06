@@ -88,6 +88,8 @@ secret.
 | `p` | Send a saved prompt |
 | `n` | New session in the same folder |
 | `y` | Copy the newest code block |
+| `Y` | Copy the newest answer |
+| mouse drag | Select inside one pane and copy |
 | `?` | All keys |
 
 ## Stop watching the screen

@@ -55,6 +55,7 @@ type Model struct {
 	interval time.Duration
 	now      func() time.Time
 	clip     func(string) error // writes the system clipboard
+	sel      *selection         // a mouse drag in progress
 
 	clipRead  func() (string, error) // reads its text
 	clipImage func(string) error     // saves its image at a path
@@ -213,6 +214,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onReopen(msg)
 	case tea.KeyPressMsg:
 		return m, m.keyMsg(msg)
+	case tea.MouseClickMsg, tea.MouseMotionMsg, tea.MouseReleaseMsg, tea.MouseWheelMsg:
+		return m, m.mouseKey(msg)
 	case tea.PasteMsg:
 		// A paste goes into the reply box as text; elsewhere it is ignored,
 		// so pasted words never act as key bindings.
@@ -408,8 +411,11 @@ const statusTTL = 30 * time.Second
 // View renders the screen.
 // View is the Bubble Tea v2 view: the screen on the alternate screen.
 func (m *Model) View() tea.View {
-	v := tea.NewView(m.Render())
+	v := tea.NewView(m.highlight(m.Render()))
 	v.AltScreen = true
+	if mouseOn() {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
 	v.WindowTitle = "smif"
 	return v
 }
