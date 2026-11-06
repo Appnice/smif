@@ -8,8 +8,8 @@
 </p>
 
 <p align="center">
-  <b>All your Claude Code sessions. One calm terminal.</b><br>
-  See which one waits for you, what each one runs now, and answer any of them without hunting for the tab.
+  <b>Many sessions. Many machines. One place.</b><br>
+  See which Claude Code or Codex session waits for you, on any machine, and answer it without hunting for the tab.
 </p>
 
 <p align="center">
@@ -25,7 +25,11 @@
 </p>
 
 <p align="center">
-  <img alt="smif with eight Claude Code sessions: one waits on a question, one just answered, one works on terraform plan. Tab jumps to the next session that needs you, a saved prompt is typed into an idle session, its tool calls show live, and its answer lands." src="docs/img/hero.gif" width="100%">
+  <img alt="Many sessions. One place. A messy pile of terminal windows, where you cannot tell which tab needs you, becomes one list in smif: two sessions need you, three work, one has a new answer, two are idle." src="docs/img/many-sessions.gif" width="100%">
+</p>
+
+<p align="center">
+  <img alt="Many machines. One place. A desktop, a server and a laptop join your laptop over ssh. Their sessions sit in one list, each row named after its machine, and a line typed there goes to the session on that machine." src="docs/img/many-machines.gif" width="100%">
 </p>
 
 ## Install
@@ -54,6 +58,10 @@ macOS a file saved from a browser needs `xattr -d com.apple.quarantine smif`.
 </details>
 
 ## See every session
+
+<p align="center">
+  <img alt="smif with eight Claude Code sessions: one waits on a question, one just answered, one works on terraform plan. Tab jumps to the next session that needs you, a saved prompt is typed into an idle session, its tool calls show live, and its answer lands." src="docs/img/hero.gif" width="100%">
+</p>
 
 | Row | Meaning |
 |---|---|
@@ -95,15 +103,12 @@ secret.
 
 ## Other machines
 
-<p align="center">
-  <img alt="Two laptops joined by ssh. Sessions on the other device join the list on your laptop. One starts to wait and your laptop tells you. If you allowed writing, a line goes back over ssh. A permission prompt stays yours." src="docs/img/machines.gif" width="100%">
-</p>
-
 Press `m` in smif, or run `smif remote add`. Pick a machine from your network, `~/.ssh/config` or Tailscale, or type an
 address, and smif sets it up. You type the password once.
 
-You can read its sessions here, and a session that starts to wait notifies you. Writing to them is off until you turn it
-on for that machine with `w`. See [docs/usage.md](docs/usage.md).
+You can read its sessions here, and a session that starts to wait notifies you. Writing is off until you turn it on for
+that machine with `w`. Then you can type into its sessions and start new ones with `n`. smif uses its own key, which
+cannot open a shell, and there is no server in the middle. See [docs/usage.md](docs/usage.md).
 
 ## Stop watching the screen
 

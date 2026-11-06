@@ -1,0 +1,152 @@
+<!doctype html>
+<!-- The two README pictures. ?p=sessions|machines picks one, &t=<ms> draws one frame of it; without t it plays. -->
+<html lang="en">
+<meta charset="utf-8">
+<title>smif pictures</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body::before { display: none; }
+  html, body { margin: 0; background: var(--bg); }
+  #s { position: relative; width: 1600px; height: 780px; overflow: hidden; background: var(--bg); color: var(--fg); font-family: var(--mono); }
+  #s > * { position: absolute; }
+  h1 { left: 0; right: 0; top: 36px; margin: 0; text-align: center; font: 700 92px/1.1 var(--display); letter-spacing: -.02em; color: var(--fg-hi); }
+  h1 span { color: var(--yellow); }
+  svg { inset: 0; }
+
+  .win { box-sizing: border-box; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 28px rgba(0, 0, 0, .45); }
+  .bar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; background: var(--panel-2); font-size: 24px; color: var(--dim); white-space: nowrap; }
+  .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--mute); flex: none; }
+  .bar b { margin-left: 8px; font-weight: 400; }
+  .bar u { margin-left: auto; width: 15px; height: 15px; border-radius: 50%; flex: none; }
+  .txt { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .txt s { display: block; height: 11px; border-radius: 3px; background: rgba(235, 219, 178, .13); }
+  .ask { left: 60px; width: 680px; top: 678px; text-align: center; font: 500 40px/1.2 var(--text); color: var(--dim); }
+  .arrow { left: 748px; width: 90px; top: 372px; text-align: center; font-size: 32px; color: var(--yellow); }
+
+  .list { box-sizing: border-box; background: var(--term); display: flex; flex-direction: column; }
+  .ln { display: grid; align-items: center; height: 66px; margin: 0 -14px; padding: 0 14px; border-radius: 8px; font-size: 33px; }
+  .ln b { color: var(--fg-hi); font-weight: 700; }
+  .ln em { font-style: normal; text-align: right; }
+  .ln.on { background: rgba(250, 189, 47, .15); }
+  .field { margin-top: auto; height: 66px; display: flex; align-items: center; box-sizing: border-box; padding: 0 16px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 9px; font-size: 29px; color: var(--fg-hi); white-space: pre; }
+  .field span { color: var(--yellow); }
+  .field i { width: 15px; height: 31px; margin-left: 2px; background: var(--fg-hi); }
+
+  .glass { background: linear-gradient(#34373a, #2a2c2d); border: 1px solid var(--line-2); box-sizing: border-box; }
+  .label { font-size: 38px; }
+  .led { width: 14px; height: 14px; border-radius: 50%; }
+</style>
+<body>
+<div id="s"></div>
+<script>
+const C = { "!": "var(--orange)", "▶": "var(--aqua)", "●": "var(--yellow)", "○": "var(--mute)" };
+const MACHINE = { here: "var(--dim)", desktop: "#8ec07c", server: "#83a598", laptop: "#d3869b" };
+const q = new URLSearchParams(location.search);
+const kind = q.get("p") || "sessions";
+const clock = (s) => `${Math.floor(s / 60)}m${String(s % 60).padStart(2, "0")}s`;
+const line = (mark, name, right, color, on, cols) => `<div class="ln${on ? " on" : ""}" style="grid-template-columns:${cols}"><span style="color:${C[mark]}">${mark}</span><b>${name}</b><em style="color:${color}">${right}</em></div>`;
+
+/* Many sessions: a pile of windows, then the one list. */
+const PILE = [
+  ["api", 96, 200, 420, 250, -3], ["scraper", 330, 182, 390, 240, 2], ["firmware", 62, 300, 400, 250, 2],
+  ["docs", 300, 280, 420, 260, -2], ["payments", 166, 396, 420, 240, 3], ["notes", 44, 430, 330, 220, -2],
+  ["infra", 372, 410, 350, 236, -3], ["storefront", 214, 250, 400, 250, 1],
+];
+const SESSIONS_MS = 6000;
+function sessions(t) {
+  const sec = Math.floor(t / 1000);
+  const blink = Math.floor(t / 500) % 2 === 0;
+  const tab = t < 3000 ? "storefront" : "infra";
+  let html = `<h1>Many sessions. <span>One place.</span></h1>`;
+  for (const [name, x, y, w, h, r] of PILE) {
+    const waits = name === "infra" || name === "storefront";
+    html += `<div class="win" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;transform:rotate(${r}deg)"><div class="bar"><i></i><i></i><i></i><b>${name}</b>${waits ? `<u style="background:var(--orange);opacity:${blink ? 1 : .25}"></u>` : ""}</div><div class="txt"><s style="width:82%"></s><s style="width:64%"></s><s style="width:74%"></s><s style="width:46%"></s><s style="width:60%"></s></div></div>`;
+  }
+  html += `<div class="ask">Which tab needs you?</div>`;
+  html += `<svg width="1600" height="780" fill="none"><path d="M766 440 H826 M804 416 L828 440 L804 464" stroke="#fabd2f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="arrow">smif</div>`;
+  const cols = "48px 1fr auto";
+  const rows = [
+    ["!", "storefront", "needs you", C["!"]], ["▶", "payments", clock(252 + sec), C["▶"]], ["●", "docs", "new", C["●"]],
+    ["▶", "firmware", clock(2460 + sec), C["▶"]], ["!", "infra", "needs you", C["!"]], ["▶", "api", clock(134 + sec), C["▶"]],
+    ["○", "scraper", "idle", "var(--dim)"], ["○", "notes", "idle", "var(--dim)"],
+  ];
+  html += `<div class="win" style="left:856px;top:176px;width:684px;height:574px;box-shadow:none;background:var(--term)"><div class="list" style="padding:12px 30px;height:100%">${rows.map((r) => line(r[0], r[1], r[2], r[3], r[1] === tab, cols)).join("")}</div></div>`;
+  return html;
+}
+
+/* Many machines: each has a colour, and its rows carry that colour. */
+const DEVICES = [
+  { name: "desktop", y: 262, to: 372 }, { name: "server", y: 452, to: 440 }, { name: "laptop", y: 642, to: 508 },
+];
+const SENDS = [
+  { id: "firmware", to: "desktop", text: "why did the build fail?", at: 800 },
+  { id: "api", to: "server", text: "review this diff", at: 5000 },
+];
+const MACHINES_MS = 8400;
+function device(d, flash) {
+  const c = MACHINE[d.name], y = d.y;
+  const led = `<div class="led" style="background:${flash ? "#fabd2f" : c}"></div>`;
+  let art;
+  if (d.name === "desktop") {
+    art = `<div class="glass" style="left:70px;top:${y - 78}px;width:210px;height:126px;border-radius:10px;padding:9px"><div style="height:100%;background:var(--term);border-radius:3px;display:flex;align-items:center;justify-content:center">${led}</div></div><div style="left:156px;top:${y + 48}px;width:38px;height:20px;background:#34373a"></div><div style="left:120px;top:${y + 68}px;width:110px;height:9px;background:#45484b;border-radius:3px"></div>`;
+  } else if (d.name === "server") {
+    const unit = (top) => `<div class="glass" style="left:60px;top:${top}px;width:230px;height:62px;border-radius:7px;display:flex;align-items:center;gap:12px;padding:0 18px">${led}<div style="flex:1;height:6px;background:var(--panel);border-radius:3px"></div></div>`;
+    art = unit(y - 70) + unit(y + 4);
+  } else {
+    art = `<div class="glass" style="left:84px;top:${y - 74}px;width:182px;height:122px;border-radius:10px 10px 0 0;border-bottom:0;padding:8px"><div style="height:100%;background:var(--term);border-radius:3px;display:flex;align-items:center;justify-content:center">${led}</div></div><div style="left:60px;top:${y + 48}px;width:230px;height:13px;background:#45484b;border-radius:2px 2px 9px 9px"></div>`;
+  }
+  return art + `<div class="label" style="left:310px;top:${y - 26}px;color:${c}">${d.name}</div>`;
+}
+function machines(t) {
+  const send = SENDS.find((s) => t >= s.at && t < s.at + 3800);
+  const fly = send ? t - send.at - 1500 : -1;
+  const typed = send ? send.text.slice(0, Math.floor((t - send.at) / 52)) : "";
+  let html = `<h1>Many machines. <span>One place.</span></h1>`;
+  let wires = "", dots = "";
+  for (const d of DEVICES) {
+    const c = MACHINE[d.name];
+    const path = `M478 ${d.y} C 620 ${d.y}, 640 ${d.to}, 812 ${d.to}`;
+    wires += `<path id="w-${d.name}" d="${path}" stroke="${c}" stroke-opacity=".6" stroke-width="2.5"/>`;
+  }
+  html += `<svg id="w" width="1600" height="780" fill="none">${wires}<g id="d"></g></svg>`;
+  html += `<div style="left:600px;top:238px;font-size:34px;color:var(--yellow)">ssh</div>`;
+  for (const d of DEVICES) {
+    html += device(d, send && send.to === d.name && fly > 700 && fly < 1500);
+  }
+  const cols = "48px 1fr auto";
+  const after = (id, ms) => t >= ms;
+  const rows = [
+    ["!", "storefront", "here"], ["▶", "payments", "here"], [after("f", 2300) ? "▶" : "○", "firmware", "desktop"],
+    ["!", "infra", "server"], [after("a", 6500) ? "▶" : "○", "api", "server"], ["●", "notes", "laptop"],
+  ];
+  html += `<div class="glass" style="left:812px;top:164px;width:728px;height:552px;border-radius:16px 16px 0 0;border-bottom:0;padding:13px"><div class="list" style="height:100%;border-radius:5px;padding:12px 28px 16px;position:relative">${rows.map((r) => line(r[0], r[1], r[2], MACHINE[r[2]], send && send.id === r[1], cols)).join("")}<div class="field">${send ? `<span>${send.id}</span> › ${typed}<i></i>` : ""}</div></div></div>`;
+  html += `<div style="left:772px;top:716px;width:808px;height:22px;background:linear-gradient(#45484b,#2a2c2d);border-radius:3px 3px 14px 14px"></div>`;
+  document.getElementById("s").innerHTML = html;
+  for (const d of DEVICES) {
+    const p = document.getElementById("w-" + d.name), len = p.getTotalLength();
+    for (const i of [0, 1, 2]) {
+      const u = ((t / 2400 + i / 3 + DEVICES.indexOf(d) * .17) % 1);
+      const pt = p.getPointAtLength(u * len);
+      dots += `<circle cx="${pt.x}" cy="${pt.y}" r="5" fill="${MACHINE[d.name]}" opacity="${Math.sin(u * Math.PI)}"/>`;
+    }
+    if (send && send.to === d.name && fly >= 0 && fly < 800) {
+      for (const lag of [0, 90, 180]) {
+        const u = 1 - (fly - lag) / 620;
+        if (u <= 0 || u >= 1) continue;
+        const pt = p.getPointAtLength(u * len);
+        dots += `<circle cx="${pt.x}" cy="${pt.y}" r="15" fill="#fabd2f" opacity=".25"/><circle cx="${pt.x}" cy="${pt.y}" r="7" fill="#fabd2f"/>`;
+      }
+    }
+  }
+  document.getElementById("d").innerHTML = dots;
+}
+function draw(t) {
+  if (kind === "machines") machines(t % MACHINES_MS);
+  else document.getElementById("s").innerHTML = sessions(t % SESSIONS_MS);
+}
+document.fonts.ready.then(() => {
+  if (q.has("t")) { draw(Number(q.get("t"))); document.title = "ready"; return; }
+  const start = performance.now();
+  (function tick(now) { draw(now - start); requestAnimationFrame(tick); })(start);
+});
+</script>

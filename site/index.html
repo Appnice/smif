@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>smif · every Claude Code session in one terminal</title>
-<meta name="description" content="smif finds every Claude Code session on your machine and shows, live, which one works, which one waits for you and what each one just said. Answer any of them without hunting for the tab.">
+<title>smif · many sessions, many machines, one place</title>
+<meta name="description" content="smif shows every Claude Code and Codex session, on every machine you add, in one live list: which one works, which one waits for you and what it just said. Answer any of them from one place.">
 <meta name="theme-color" content="#141617">
 <link rel="canonical" href="https://smif.dev/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://smif.dev/">
-<meta property="og:title" content="smif · every Claude Code session in one terminal">
-<meta property="og:description" content="See which session waits for you, what each one runs now, and answer any of them from one live view. Local, single binary, MIT.">
-<meta property="og:image" content="https://smif.dev/og.png">
+<meta property="og:title" content="smif · many sessions, many machines, one place">
+<meta property="og:description" content="See which session waits for you, on any machine, and answer it from one live list. Local, single binary, MIT.">
+<meta property="og:image" content="https://smif.dev/media/many-sessions.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -46,9 +46,9 @@
 <section class="hero">
   <div class="hero__glow" aria-hidden="true"></div>
   <div class="wrap hero__copy">
-    <p class="pill reveal"><span class="dot dot--live" aria-hidden="true"></span> live view for Claude Code</p>
-    <h1 class="hero__title reveal">All your Claude Code sessions.<br><span class="hl">One calm terminal.</span></h1>
-    <p class="hero__lede reveal">smif finds every Claude Code session on your machine and shows, live, which one works, which one waits for you and what each one just said. Answer any of them without hunting for the tab.</p>
+    <p class="pill reveal"><span class="dot dot--live" aria-hidden="true"></span> live view for Claude Code and Codex</p>
+    <h1 class="hero__title reveal">Many sessions. Many machines.<br><span class="hl">One place.</span></h1>
+    <p class="hero__lede reveal">smif shows every Claude Code and Codex session, on every machine you add, in one live list: which one works, which one waits for you and what it just said. Answer any of them without hunting for the tab.</p>
     <div class="hero__cta reveal">
       <div class="cmd" data-copy="curl -fsSL https://smif.dev/install.sh | sh">
         <span class="cmd__prompt" aria-hidden="true">$</span>
@@ -62,6 +62,19 @@
     <ul class="facts reveal" aria-label="Facts">
       <li>single binary</li><li>macOS &amp; Linux</li><li>no cloud, no telemetry</li><li>MIT</li>
     </ul>
+  </div>
+
+  <div class="wrap wrap--wide">
+    <div class="duo reveal">
+      <picture>
+        <source media="(prefers-reduced-motion: reduce)" srcset="media/many-sessions.png">
+        <img src="media/many-sessions.gif" width="1600" height="780" alt="Many sessions. One place. A pile of terminal windows, where you cannot tell which tab needs you, becomes one list in smif: two sessions need you, three work, one has a new answer, two are idle.">
+      </picture>
+      <picture>
+        <source media="(prefers-reduced-motion: reduce)" srcset="media/many-machines.png">
+        <img src="media/many-machines.gif" width="1600" height="780" alt="Many machines. One place. A desktop, a server and a laptop join your laptop over ssh. Their sessions sit in one list, each row named after its machine, and a line typed there goes to the session on that machine.">
+      </picture>
+    </div>
   </div>
 
   <div class="wrap wrap--wide" id="demo">
@@ -267,41 +280,8 @@
 <section class="section section--alt" id="machines" data-write="off">
   <div class="wrap">
     <p class="eyebrow reveal">Other machines</p>
-    <h2 class="h2 reveal">Two machines. One list.</h2>
+    <h2 class="h2 reveal">Add a machine once.</h2>
     <p class="lede reveal">Press <kbd>m</kbd>, pick the machine, type its password once. ssh is the only wire, and no server sits in the middle.</p>
-
-    <div class="mx reveal" role="img" aria-label="Your laptop shows one list of sessions. Three of them run on another device in another room, and reach the laptop over ssh.">
-      <figure class="mx__device">
-        <div class="mx__lid">
-          <div class="mx__screen mx__list">
-            <div class="mx__row"><span class="wait">!</span><b>storefront</b><em>this laptop</em></div>
-            <div class="mx__row"><span class="work">▶</span><b>payments</b><em>this laptop</em></div>
-            <div class="mx__row is-there"><span class="work">▶</span><b>firmware</b><em>office</em></div>
-            <div class="mx__row is-there"><span class="wait">!</span><b>infra</b><em>office</em></div>
-            <div class="mx__row is-there"><span class="new">●</span><b>docs</b><em>office</em></div>
-          </div>
-        </div>
-        <div class="mx__base"></div>
-        <figcaption>your laptop</figcaption>
-      </figure>
-
-      <div class="mx__wire" aria-hidden="true">
-        <span class="mx__label">ssh</span>
-        <i></i><i></i><i></i>
-      </div>
-
-      <figure class="mx__device mx__device--small">
-        <div class="mx__lid">
-          <div class="mx__screen mx__lights">
-            <div><span class="led led--work"></span>firmware</div>
-            <div><span class="led led--wait"></span>infra</div>
-            <div><span class="led led--new"></span>docs</div>
-          </div>
-        </div>
-        <div class="mx__base"></div>
-        <figcaption>another device, in another room</figcaption>
-      </figure>
-    </div>
 
     <div class="rights reveal">
       <div class="rights__head">
