@@ -1,7 +1,7 @@
 smif  daemon v0.1.0 pid 4242 up 2h03m · claude 2.1.316 ok · updated 13:10:05
 queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok
 ────────────────────────────────────────────────────────────────────────────────
-  HELP · lines 1-19 of 160 · ↑/↓ scroll · q quit · any other key closes
+  HELP · lines 1-19 of 197 · ↑/↓ scroll · q quit · any other key closes
 
   KEYS: HOME (the start screen: what asks you, sessions with their state, then …
   ↑/k, ↓/j              move through the list; the preview on the right
@@ -13,12 +13,12 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok
   [ ], ←/h →/l          show only one agent's rows (the top line names it),
                         previous or next
   0, 1-9                all agents, or the agent with that number
-  /                     filter by text (enter keeps it, esc clears it)
+  /                     filter by text, the harness name included (enter keeps
+                        it, esc clears it)
   :                     command prompt: ask, tell, prompt, answer, retry,
                         cancel, open, agent, filter, read, inbox, digest,
                         dashboard, help, quit; tab completes commands, agents
                         and intents, ↑/↓ choose, enter runs, esc closes
   esc                   clear the agent and the filter
   z                     hide or show the quiet sessions (idle, answer read)
-  enter                 open the thread of the message, the run of a running
 ↑/↓ scroll · any other key closes the help · q quit

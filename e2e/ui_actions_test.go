@@ -70,6 +70,8 @@ func (u *liveUI) press(keys ...string) {
 			msg = tea.KeyPressMsg{Code: tea.KeyTab}
 		case "down":
 			msg = tea.KeyPressMsg{Code: tea.KeyDown}
+		case "ctrl+s":
+			msg = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
 		default:
 			msg = tea.KeyPressMsg{Code: []rune(k)[0], Text: k}
 		}

@@ -34,7 +34,7 @@
 │                                                          │ │                                                         │
 │                                                          │ │                                                         │
 │                                                          │ │ o bring its tab to the front and answer there           │
-│                                                          │ │ Smif never answers a permission prompt for you. s asks… │
+│                                                          │ │ It waits in its tab: enter queues, ctrl+f asks a fork.  │
 ╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
 Terminal shows release.
-o answer in its tab · ↑↓ move · tab next that needs you · enter chat · s ask a fork · n new session · ? help · q quit
+o answer in its tab · ↑↓ move · tab next that needs you · enter chat · s queue · n new session · ? help · q quit

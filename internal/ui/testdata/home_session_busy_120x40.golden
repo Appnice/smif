@@ -33,8 +33,8 @@
 │                                                          │ │                                                         │
 │                                                          │ │                                                         │
 │                                                          │ │                                                         │
-│                                                          │ │ s ask while it works…                                   │
-│                                                          │ │ It is busy: a fork of this session answers from what i… │
+│                                                          │ │ s queue a prompt for when it is idle…                   │
+│                                                          │ │ It is busy: enter queues for idle, ctrl+f asks a fork.  │
 ╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
 Not sent to release: claude started no turn
-↑↓ move · tab next that needs you · enter chat · s ask a fork · n new session · o its tab · / filter · ? help · q quit
+↑↓ move · tab next that needs you · enter chat · s queue · n new session · o its tab · / filter · ? help · q quit

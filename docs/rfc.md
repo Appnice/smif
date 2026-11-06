@@ -98,7 +98,7 @@ Channels (`notifications/claude/channel`) need a development flag, are best-effo
 - Cross-machine or multi-user delivery. The transport is a local Unix socket; the protocol must not preclude a relay later.
 - Windows. macOS and Linux only.
 - Mail, workers and `smif_ask` on harnesses other than Claude Code. The runner is an interface so Codex or OpenCode can be added later. The session view reads other agents through harness providers, section 3.4 **(ADR-0019)**.
-- A GUI. CLI, status line and OS notifications only.
+- A GUI. CLI, status line and OS notifications only, plus an optional one-way phone ping **(ADR-0021)**.
 - Replacing the user's own orchestration harnesses. Smif is a mail system, not a planner.
 ### 3.3 Requirements
 MUST unless stated otherwise. Each requirement has an acceptance test (section 9.5).
@@ -128,7 +128,7 @@ MUST unless stated otherwise. Each requirement has an acceptance test (section 9
 | R-OPS-2 | Structured logs, an append-only audit log and a health check. |
 
 ### 3.4 Agents in the session view (ADR-0019)
-This section covers the session view only: `session.list`, `session.tail`, `session.prompt`, `session.send` and `session.focus`. Mail, workers and `smif_ask` stay on Claude Code.
+This section covers the session view only: `session.list`, `session.tail`, `session.prompt`, `session.send`, `session.queue`, `session.focus` and `session.attach`. Mail, workers and `smif_ask` stay on Claude Code.
 
 **A real agent checked only the Claude Code provider.** Every file path, field, process name and state rule for another agent comes from reading its source and docs. The fixtures come from the same reading, and the live checks ran fake processes in herdr panes. These prove smif's parser and gates, not the real formats. An unverified provider MUST stay read only: no typing, no fork, no hooks. Only a row in `docs/compat.md` with the version a real session checked lifts this, in the provider's code.
 
@@ -137,7 +137,7 @@ This section covers the session view only: `session.list`, `session.tail`, `sess
 | Full | A provider a real session checked | State, steps, final answer, notifications, typing, a fork |
 | Full, read only | A provider from a source reading, marked `unverified` | State, steps, final answer, notifications. No typing, no fork |
 | herdr | The agent runs in a herdr pane | Name, folder, herdr's state, focus. Typing only for an agent that a real session checked. No steps, no answer, no notifications |
-| Listed | A known process name on a terminal | Name and folder, state `unknown`, no typing |
+| Listed | A known process name on a terminal, or one from `[harnesses.<name>]` in the config **(ADR-0021)** | Name and folder, state `unknown`, no typing |
 
 | Agent | Level | Typing | Checked against a real agent |
 |---|---|---|---|
@@ -342,7 +342,7 @@ Result schema (R-RUN-2). If the installed CLI supports native structured output 
 - Rotation runs one compaction turn on the old session that rewrites `~/.local/share/smif/agents/<agent>/memory.md` (max 4 000 chars, human-editable), then starts a fresh session whose policy prompt includes that file.
 - The old session id is archived on the run record so `claude --resume` still opens it for inspection.
 ## 7. Interfaces
-Four surfaces: the daemon socket API, an MCP server for sessions, a CLI for humans and scripts, and Claude Code hooks that report presence and draw the status line. None of them can push message content into an interactive session. The only text Smif types into a session is the human's own prompt (`session.prompt`, ADR-0012). A busy session, or an agent's ask to a session's name, is answered by a read-only fork of that session (`--fork-session`), never typed in (ADR-0013).
+Four surfaces: the daemon socket API, an MCP server for sessions, a CLI for humans and scripts, and Claude Code hooks that report presence and draw the status line. None of them can push message content into an interactive session. The only text Smif types into a session is the human's own prompt (`session.prompt`, ADR-0012), at once or from the queue that only the human fills (`session.queue`, ADR-0021). `session.send` to a busy session, or an agent's ask to a session's name, is answered by a read-only fork of that session (`--fork-session`), never typed in (ADR-0013).
 ### 7.1 Daemon API (JSON-RPC methods)
 | Method | Purpose |
 |---|---|
@@ -355,10 +355,13 @@ Four surfaces: the daemon socket API, an MCP server for sessions, a CLI for huma
 | `run.diff` / `run.apply` | Inspect or merge a worker branch; the daemon runs the merge so it is audited **(ADR-0006)** |
 | `agent.list` / `agent.status` | Agents, capabilities (`intents` from their rules), queue depth, budget left |
 | `presence.update` | From hooks: session start, heartbeat, end, and the turn (`busy` on `UserPromptSubmit`, `idle` on `Stop`) with the claude pid, tty and terminal, and the session's name and last prompt from its transcript (human token only); `session.list` also asks the harness providers, for Claude Code its session files **(ADR-0012, ADR-0019)**; `agent` (from `SMIF_AGENT`) wins over `cwd` |
-| `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their harness and support level (`full`, `herdr` or `listed`), the `unverified` mark of a provider no real session checked, which leaves the session read only **(ADR-0019)**, turn, last answer and what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux, herdr) **(ADR-0012, ADR-0018)** The UI attaches long pastes, images and files as `@path` in that line (**ADR-0020**) |
+| `session.list` / `session.tail` / `session.focus` / `session.prompt` / `session.send` | Human only (`session.send`: typed in when idle, else a read-only fork of the session answers, **ADR-0013**): live interactive sessions with their harness and support level (`full`, `herdr` or `listed`), the `unverified` mark of a provider no real session checked, which leaves the session read only **(ADR-0019)**, turn, last answer, what the newest exchange does now (prompt, tool calls, the pending one; **ADR-0014**) and its facts (files, commits, tests after the last edit, uncommitted paths, context tokens; **ADR-0021**); the last turns of one session from its transcript (final messages only); bring its tab or pane to the front; type one line of the human's own text into an idle session (Terminal.app, iTerm2, tmux, herdr) **(ADR-0012, ADR-0018)** The UI attaches long pastes, images and files as `@path` in that line (**ADR-0020**) |
 | `stats.get` | Human only: counts over a window, per agent and day (ADR-0011) |
 | `inbox.counts` | Per-agent counters for the status line; for the human, also the other sessions that wait or answered (**ADR-0014**) |
-| `prompts.list` / `session.new` | Human only (**ADR-0015**): the saved prompts (`[prompts]`; `@name` in `session.send` and `session.prompt` stands for one); open `claude --name <name>` in a folder in a new Terminal.app window, iTerm2 tab, tmux window or herdr workspace |
+| `session.queue` / `session.queue.cancel` | Human only (**ADR-0021**, no MCP tool, inbound mail never reaches it): one line of the human's text waits until its session is idle. A daemon watcher types the oldest item 2 s after the session reads idle, through the gates of `session.prompt`, one item per idle. A refused item stays with its reason, retried at most every 30 s. It expires after 24 h, and a session that ended turns its items `gone` with a notification. `session.list` gives each session its queued items. A read-only or listed session takes no item |
+| `session.attach` | Human only (**ADR-0021**, no MCP tool): opens `claude attach <id>` for a background session in a new tab. `session.list` marks these sessions `background`, read from `claude agents --json --all`. A background session takes no typing, no queue item and no fork. The id comes from the list and the program from the config, never from the call |
+| `session.history` / `session.search` / `session.resume` / `session.closed` / `session.reopen` | Human only (**ADR-0021**, no MCP tool): past Claude Code sessions with no `sdk-` entrypoint and no subagent files, read from the head and tail of each transcript; a text search of user and assistant text that stops at 50 hits or 10 s; `claude --resume <id>` in the session's folder in a new tab, for an id in the index, a folder that exists and a session that does not run; the restore list; a reopen of that list, at most 20, 500 ms apart. The id and folder come from the index and the program from the config, never from the call. `open-sessions.json` in the data dir keeps the live sessions and the list across a restart |
+| `prompts.list` / `session.new` / `session.harnesses` | Human only (**ADR-0015**): the saved prompts (`[prompts]`; `@name` in `session.send` and `session.prompt` stands for one); open a coding agent in a folder in a new Terminal.app window, iTerm2 tab, tmux window or herdr workspace; the agents `session.new` can start now. `session.new` takes a harness *name*, default `claude`. The daemon builds argv from the config or its built-in table, and only `claude` gets `--name <name>`. An unknown name is refused **(ADR-0021)** |
 | `digest.get` | Summaries of handled items since a cursor (human pull only); optional `until` bounds the advance **(ADR-0008)** |
 | `audit.since` | Audit rows after a cursor, for the live feed of `smif ui` and `smif watch` (human only) **(ADR-0008)** |
 | `blob.put` / `blob.get` | Attachment storage |
@@ -394,6 +397,7 @@ There is deliberately no MCP tool that reads another agent's inbound mail or the
 | `smif watch [--events]` | Plain-text live view for a pipe, tmux or ssh: a summary every few seconds, or one line per audit event; retries while the daemon is down **(ADR-0008)** |
 | `smif doctor` | Checks CLI version and flags (10.2), socket, permissions, hooks, git, notifier, and each harness provider's file format (an unverified provider's format is `unchecked`, never a failure, **ADR-0019**) |
 | `smif config validate` | Schema and rule validation, including catch-all rule presence |
+| `smif notify test` | Sends one ping to `daemon.notify_url` from the CLI process **(ADR-0021)** |
 
 All read commands support `--json`.
 ### 7.4 Hooks, status line and slash command
@@ -401,6 +405,7 @@ All read commands support `--json`.
 - Status line: `smif statusline` prints one segment, e.g. `! shop waits · ● docs answered · mail: puzzle 1 running, 2 handled, 1 needs you`: first the other live sessions that wait in their tab or have an unseen answer **(ADR-0014)**, then the mail counts. If the user already has a `statusLine` command, install wraps it (`smif statusline --wrap '<existing command>'`) and appends the segment. The status line call also counts as a presence heartbeat.
 - Slash command `~/.claude/commands/smif.md` runs `smif digest --cwd "$PWD" --since last` through the command file's shell-execution syntax, so digest content enters the session only when the human types `/smif`.
 - Notifications **(ADR-0017)**: on macOS a small `Smif.app` in the data dir (an AppleScript applet with smif's icon, built and signed ad hoc on first use, fed through `notify-queue/`), else `terminal-notifier` or `osascript`; `notify-send` on Linux, for `needs_human`, dead letters and budget exhaustion. Title = agent, body = summary (≤ 280 chars), never the raw inbound body. Also for a session that starts to wait in its tab, or answers after a turn of 30 s or more (`daemon.session_notify`, **ADR-0014**); title = the session's name, body = what it asks for or the answer's first line.
+- Phone ping **(ADR-0021)**: `daemon.notify_url` (empty = off) gets one POST for each notification above and each watchdog notification, with the headers `Title: smif` and `Tags: bell`. The body is the name and what happened (`shop waits for you`), built from the kind and the session name, never from the summary, so smif adds no prompt, answer or command text. A title that the agent made can repeat words of a prompt. `https`, or `http` to localhost; no redirect; 5 s timeout, no retry, at most 16 at once; the watcher never waits for it. No log, error or doctor line names the URL. `smif notify test` sends one. This is the one thing that sends data off the machine, and nothing comes back.
 ### 7.5 Command handler contract
 Stdin: the envelope JSON. Env: `SMIF_AGENT`, `SMIF_MESSAGE_ID`, `SMIF_ATTEMPT`, `SMIF_BLOB_DIR`. Cwd: the agent's repo. Stdout: one JSON object `{status, summary, reply, reply_data, artifacts}`. Exit non-zero, timeout (default 30 s) or invalid JSON is a failed attempt; stderr is stored on the run.
 ### 7.6 Configuration
@@ -413,15 +418,22 @@ default_ttl = "24h"
 presence_ttl = "30m"
 notify = "os"
 session_notify = "waiting,answered"  # or "waiting", "answered", "none" (ADR-0014)
+notify_url = ""            # phone ping: https, or http to localhost; empty is off (ADR-0021)
 remind_waiting = "10m"     # watchdogs (ADR-0015): a duration or "off"
 alert_silent = "10m"
 alert_long_turn = "off"
+context_warn = "200k"      # a session's row shows its context over this; a count or "off" (ADR-0021)
+test_commands = []         # regexes added to the built-in test commands of the session facts (ADR-0021)
 terminal = "auto"          # session prompts: "auto" (Terminal.app, iTerm2, tmux, herdr), "none", "log:<path>" (ADR-0012)
 
 [defaults]
 claude_command = "claude"
 max_hops = 4
 max_attempts = 3
+
+[harnesses.omnis]          # a coding agent with no code (ADR-0021): Listed level, `n` can start it
+process = ["omnis"]
+command = "omnis"          # one word; a built-in provider's name may set only this
 
 [profiles.triage]
 model = "sonnet"
@@ -534,6 +546,7 @@ Core tables (migrations versioned in `internal/store/migrations`):
 | `runs` | `id`, `message_id`, `agent`, `handler`, `profile`, `attempt`, `state`, `pid`, `pgid`, `session_id`, `workspace`, `branch`, `head_sha`, `result_json`, `usage_json`, `cost_usd`, `error`, timestamps |
 | `presence` | `repo`, `session_id`, `last_seen`, `state`, `turn`, `turn_at`, `tty`, `pid`, `term`, `title`, `last_prompt` (ADR-0012), `harness` (ADR-0019) |
 | `session_asks` | `message_id`, `session_id`, `cwd`, `created_at`: an ask a fork of that session answers, written by the daemon only (ADR-0013) |
+| `session_queue` | `id`, `session_id`, `agent`, `name`, `text`, `created_at`, `state` (`queued`, `sent`, `cancelled`, `expired`, `gone`), `error`: a prompt that waits for its session to be idle. Each state change writes an audit row in the same transaction (ADR-0021) |
 | `cursors` | `agent`, `digest_cursor` |
 | `budgets` | `agent`, `day`, `cost_usd`, `tokens` |
 | `blobs` | `sha256`, `size`, `mime`, `refcount` |

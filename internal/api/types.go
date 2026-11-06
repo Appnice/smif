@@ -221,7 +221,10 @@ type SessionView struct {
 	Level   string `json:"level"`   // the support level: full | herdr | listed (ADR-0019)
 	// Unverified marks a session whose provider no real session checked
 	// (ADR-0019): read only, no typing and no fork.
-	Unverified bool      `json:"unverified,omitempty"`
+	Unverified bool `json:"unverified,omitempty"`
+	// Background marks a session that `claude agents` lists (ADR-0021): it
+	// has no tab, takes no typing, and session.attach opens it.
+	Background bool      `json:"background,omitempty"`
 	SessionID  string    `json:"session_id"`
 	Repo       string    `json:"repo"`
 	Turn       string    `json:"turn"` // idle | busy | waiting | unknown
@@ -247,6 +250,36 @@ type SessionView struct {
 	// Activity is what the newest exchange does now, from the transcript
 	// (nil when there is none).
 	Activity *SessionActivity `json:"activity,omitempty"`
+	// Facts is what the transcript and git show from the newest human
+	// prompt on (ADR-0021; nil when unknown).
+	Facts *SessionFacts `json:"facts,omitempty"`
+	// Queue is what waits for this session to be idle, oldest first
+	// (session.list only, ADR-0021).
+	Queue []QueuedPrompt `json:"queue,omitempty"`
+}
+
+// QueuedPrompt is one prompt that waits for its session to be idle. Error
+// says why the last try did not type it ("" = it only waits for idle).
+type QueuedPrompt struct {
+	ID        int64     `json:"id"`
+	Text      string    `json:"text"`
+	CreatedAt time.Time `json:"created_at"`
+	Error     string    `json:"error,omitempty"`
+}
+
+// SessionFacts is next to an answer in the preview. The UI states these
+// facts and does not judge the answer. Tests is passed or failed only for
+// a test after the last edit of a non-doc file, none when no test finished
+// after it, empty with no such edit. Dirty counts the paths `git status
+// --porcelain` lists (nil when git gave nothing: no repo, too slow).
+// ContextHigh is true over daemon.context_warn.
+type SessionFacts struct {
+	Files         int    `json:"files,omitempty"`
+	Commits       int    `json:"commits,omitempty"`
+	Tests         string `json:"tests,omitempty"`
+	Dirty         *int   `json:"dirty,omitempty"`
+	ContextTokens int64  `json:"context_tokens,omitempty"`
+	ContextHigh   bool   `json:"context_high,omitempty"`
 }
 
 // SessionActivity is the newest exchange of a session: the human's prompt
@@ -294,19 +327,103 @@ type SavedPrompt struct {
 	Text string `json:"text"`
 }
 
-// SessionNewParams is session.new: open a new terminal tab that runs claude
-// in Dir, named Name (ADR-0015). Term picks the terminal ("Apple_Terminal",
-// "iTerm.app", "tmux", "herdr"; "" = the daemon's default).
+// SessionNewParams is session.new: open a new terminal tab that runs a
+// coding agent in Dir (ADR-0015, ADR-0021). Harness names the agent ("" =
+// claude); the daemon builds the command from that name, never from the
+// call. Name reaches argv only for claude. Term picks the terminal
+// ("Apple_Terminal", "iTerm.app", "tmux", "herdr"; "" = the daemon's
+// default).
 type SessionNewParams struct {
-	Dir  string `json:"dir"`
-	Name string `json:"name,omitempty"`
-	Term string `json:"term,omitempty"`
+	Dir     string `json:"dir"`
+	Name    string `json:"name,omitempty"`
+	Term    string `json:"term,omitempty"`
+	Harness string `json:"harness,omitempty"`
 }
 
 // SessionFocusParams is session.focus: bring the session's terminal tab to
 // the front.
 type SessionFocusParams struct {
 	SessionID string `json:"session_id"`
+}
+
+// SessionAttachParams is session.attach: open `claude attach` for a
+// background session in a new tab. Term as in session.new. The call picks a
+// session and a terminal, never the command.
+type SessionAttachParams struct {
+	SessionID string `json:"session_id"`
+	Term      string `json:"term,omitempty"`
+}
+
+// HistoryRow is one past Claude Code session (session.history, ADR-0021).
+// Name is its title or first prompt, on one line. Open marks a session that
+// runs now.
+type HistoryRow struct {
+	SessionID string    `json:"session_id"`
+	Dir       string    `json:"dir"`
+	Name      string    `json:"name"`
+	At        time.Time `json:"at"`
+	Open      bool      `json:"open,omitempty"`
+}
+
+// SessionSearchParams is session.search: words to find in the text of past
+// sessions.
+type SessionSearchParams struct {
+	Query string `json:"query"`
+}
+
+// SearchHit is one record that holds the words. Role is "you" or "claude".
+type SearchHit struct {
+	HistoryRow
+	Role string `json:"role"`
+	Text string `json:"text"`
+}
+
+// SessionSearchResult is what a search found. Stopped says why it ended
+// early: "hits" at the limit of hits, "time" at the limit of time.
+type SessionSearchResult struct {
+	Hits    []SearchHit `json:"hits"`
+	Stopped string      `json:"stopped,omitempty"`
+}
+
+// SessionResumeParams is session.resume: open `claude --resume` for a past
+// session in a new tab. Term as in session.new. The call picks a session
+// and a terminal, never the command.
+type SessionResumeParams struct {
+	SessionID string `json:"session_id"`
+	Term      string `json:"term,omitempty"`
+}
+
+// ClosedSession is one session on the restore list: its process went away
+// and the human did not close it alone (ADR-0021).
+type ClosedSession struct {
+	SessionID string    `json:"session_id"`
+	Dir       string    `json:"dir"`
+	Name      string    `json:"name,omitempty"`
+	ClosedAt  time.Time `json:"closed_at"`
+	// DiedWorking marks a session that was busy at the last look.
+	DiedWorking bool `json:"died_working,omitempty"`
+}
+
+// ClosedList is session.closed: the restore list, newest first. Reopening
+// is true while session.reopen works through it. Why says what the last
+// reopen could not do.
+type ClosedList struct {
+	Sessions  []ClosedSession `json:"sessions"`
+	Reopening bool            `json:"reopening,omitempty"`
+	Why       string          `json:"why,omitempty"`
+}
+
+// SessionReopenParams is session.reopen: reopen the restore list. Term as
+// in session.new.
+type SessionReopenParams struct {
+	Term string `json:"term,omitempty"`
+}
+
+// SessionReopenResult says how many sessions the daemon reopens now, one
+// each 500 ms, and how many stay on the list.
+type SessionReopenResult struct {
+	Opening int `json:"opening"`
+	Left    int `json:"left"`
 }
 
 // SessionTailParams is session.tail: the last turns of one session.
@@ -345,6 +462,26 @@ type SessionSendResult struct {
 	Agent     string `json:"agent"`
 	SessionID string `json:"session_id"`
 	MessageID string `json:"message_id,omitempty"`
+}
+
+// SessionQueueParams is session.queue: the human's text waits until the
+// session is idle (ADR-0021). The session is picked as in session.send.
+type SessionQueueParams struct {
+	SessionID string `json:"session_id,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Text      string `json:"text"`
+}
+
+// SessionQueueResult names the new item and its session.
+type SessionQueueResult struct {
+	ID        int64  `json:"id"`
+	Agent     string `json:"agent"`
+	SessionID string `json:"session_id"`
+}
+
+// SessionQueueCancelParams is session.queue.cancel: remove one queued item.
+type SessionQueueCancelParams struct {
+	ID int64 `json:"id"`
 }
 
 // SessionTail is the conversation of one interactive session, for the
@@ -493,7 +630,9 @@ type HealthView struct {
 	Sessions       string `json:"sessions"`
 	SessionsDetail string `json:"sessions_detail,omitempty"`
 	// Providers has one line per harness provider for smif doctor.
-	Providers  []ProviderCheck `json:"providers,omitempty"`
+	Providers []ProviderCheck `json:"providers,omitempty"`
+	// Background has one line per list of background sessions (ADR-0021).
+	Background []ProviderCheck `json:"background,omitempty"`
 	ConfigPath string          `json:"config_path"`
 	StartedAt  time.Time       `json:"started_at"`
 	PID        int             `json:"pid"`

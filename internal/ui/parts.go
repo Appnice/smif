@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -218,14 +219,20 @@ func writePart(dir, name string, data []byte) (string, error) {
 }
 
 // cleanParts removes part files old enough that nothing still needs them.
-func cleanParts(dir string, now time.Time) {
+// A queued prompt still needs each file that it names (ADR-0021), however
+// old the file is.
+func cleanParts(dir string, now time.Time, queued []string) {
 	ents, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
 	for _, e := range ents {
+		path := filepath.Join(dir, e.Name())
+		if slices.ContainsFunc(queued, func(text string) bool { return strings.Contains(text, path) }) {
+			continue
+		}
 		if info, err := e.Info(); err == nil && info.Mode().IsRegular() && now.Sub(info.ModTime()) > partsKept {
-			_ = os.Remove(filepath.Join(dir, e.Name()))
+			_ = os.Remove(path)
 		}
 	}
 }

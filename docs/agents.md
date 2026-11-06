@@ -33,6 +33,40 @@ smif types only when the agent's state source can tell a pending approval from i
 smif does not type. smif also never types into an agent that no real session checked, not even in a herdr pane
 that reads as idle.
 
+## Add an agent
+
+An agent that smif does not know needs no code. Add it to the config:
+
+```toml
+[harnesses.omnis]
+process = ["omnis"]   # process names, one word each
+command = "omnis"     # optional: what `n` starts
+```
+
+- A process with one of these names, on a terminal, shows as a Listed row: name and folder, state `unknown`, no typing.
+  `smif reload` picks up a change with no restart of the daemon.
+- A wrapper counts: `node /x/bin/omnis` matches too.
+- The name is a-z, 0-9, `-` and `_`, at most 32. A custom name needs `process`.
+- `command` is one word, a program name or a path, with no spaces or arguments. Use an absolute path: a relative one
+  such as `bin/x` passes the check, but the daemon looks for it from its own folder, and the new tab from the session's.
+  Without `command`, `n` does not offer the agent.
+- A name in the table above may set `process` to add a process name, and `command` to change what `n` starts.
+- Claude Code, Codex, Qwen Code, OpenCode, Copilot and Droid have a provider: they may set `command` only.
+  `[harnesses.claude] command` changes only what `n` starts. Workers keep `claude_command`.
+- A process name that a built-in agent or another harness owns is refused.
+
+## New sessions
+
+`n` offers Claude Code, plus each known or configured agent with a command on the daemon's PATH. Under launchd or
+systemd, that PATH is short: `smif install` fills it from where it finds `claude`, `git` and `gh`, plus the usual bin folders. For an agent in
+another folder, set `command` to the absolute path. Built-in agents use their usual program, for example
+`cursor-agent` for Cursor, `kiro-cli` for Kiro and `agy` for Antigravity.
+
+`session.new` takes a harness name. The daemon builds the command from the config or its built-in table, never from
+the call, and refuses an unknown name.
+
+## Checks
+
 `smif doctor` prints one line for each provider. An unverified format reads `unchecked`, never a failure. The file
-paths and fields per agent are in [compat.md](compat.md), and the decision is
-[ADR-0019](adr/0019-harness-providers.md).
+paths and fields per agent are in [compat.md](compat.md). The decisions are
+[ADR-0019](adr/0019-harness-providers.md) and [ADR-0021](adr/0021-session-work.md).

@@ -32,13 +32,44 @@ func (s *DaemonSource) FocusSession(ctx context.Context, sessionID string) error
 	return s.callT(ctx, "session.focus", api.SessionFocusParams{SessionID: sessionID}, nil, 20*time.Second)
 }
 
+// SessionAttacher opens `claude attach` for a background session in a new
+// tab (session.attach, ADR-0021). DaemonSource implements it.
+type SessionAttacher interface {
+	AttachSession(ctx context.Context, sessionID, term string) error
+}
+
+// AttachSession opens claude attach for the session.
+func (s *DaemonSource) AttachSession(ctx context.Context, sessionID, term string) error {
+	return s.callT(ctx, "session.attach", api.SessionAttachParams{SessionID: sessionID, Term: term}, nil, 20*time.Second)
+}
+
 type focusedMsg struct {
-	name string
-	err  error
+	name   string
+	attach bool
+	err    error
+}
+
+// attachSession is o on a background session. It has no tab, so claude
+// attach opens one in the UI's own terminal, else in the daemon's default.
+func (m *Model) attachSession(sv *api.SessionView) tea.Cmd {
+	a, ok := m.src.(SessionAttacher)
+	if !ok {
+		m.setStatus("This UI cannot open a background session.", true)
+		return nil
+	}
+	id, name, term := sv.SessionID, sessionName(sv), uiTerm()
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		return focusedMsg{name: name, attach: true, err: a.AttachSession(ctx, id, term)}
+	}
 }
 
 // focusSession is o on a session: its tab comes to the front.
 func (m *Model) focusSession(sv *api.SessionView) tea.Cmd {
+	if sv.Background {
+		return m.attachSession(sv)
+	}
 	f, ok := m.src.(SessionFocuser)
 	if !ok {
 		m.setStatus("This UI cannot show a session's tab.", true)
@@ -53,7 +84,14 @@ func (m *Model) focusSession(sv *api.SessionView) tea.Cmd {
 }
 
 func (m *Model) onFocused(msg focusedMsg) {
-	if msg.err != nil {
+	switch {
+	case msg.attach && msg.err != nil:
+		m.setStatus("Cannot open claude attach: "+oneLine(rpcMessage(msg.err)), true)
+		return
+	case msg.attach:
+		m.setStatus("Opened claude attach for "+msg.name+" in a new tab.", false)
+		return
+	case msg.err != nil:
 		m.setStatus("Cannot show the tab: "+oneLine(rpcMessage(msg.err)), true)
 		return
 	}
@@ -552,6 +590,16 @@ func (m *Model) sessionRowLine(r homeRow, selected bool, w int, now time.Time) s
 	if mark := harnessMark(sv); mark != "" {
 		what = stDim.Render(mark+" ") + what
 	}
+	if mark := contextMark(sv); mark != "" && tail != "" {
+		tail = stWarn.Render(mark) + stDim.Render(" · ") + tail
+	} else if mark != "" {
+		tail = stWarn.Render(mark)
+	}
+	if mark := queueMark(sv); mark != "" && tail != "" {
+		tail = stAccent.Render(mark) + stDim.Render(" · ") + tail
+	} else if mark != "" {
+		tail = stAccent.Render(mark)
+	}
 	w--
 	room := w - ansi.StringWidth(head) - ansi.StringWidth(tail) - 1
 	line := head + ansi.Truncate(what, max(0, room), "…")
@@ -709,7 +757,7 @@ func (m *Model) liveBody(sv *api.SessionView, turns []api.SessionTurn, w int, no
 			out = append(out, "  "+stWarn.Render("│")+" "+ansi.Truncate(stepLabel(cur, stWarn), w-4, "…"))
 			out = append(out, "  "+stWarn.Render("│")+" "+stDim.Render("asked "+clock(cur.At, now)+" · nothing has run since"))
 		} else {
-			out = append(out, "  "+stDim.Render("o brings its tab to the front"))
+			out = append(out, "  "+stDim.Render(openWord(sv)))
 		}
 		out = append(out, "")
 	}
@@ -785,29 +833,37 @@ func canFocus(term string) bool {
 	return term == "Apple_Terminal" || term == "iTerm.app" || term == "tmux" || term == "herdr"
 }
 
-// canWrite reports whether the human can write to the session now: typed
-// in when idle, or to a fork with its context when busy or waiting (the
-// fork needs an agent that owns the session's folder, and a session at the
-// full level).
-func canWrite(sv *api.SessionView) bool {
-	return sv.CanPrompt || fullLevel(sv) && !sv.Unverified && (sv.Turn == "busy" || sv.Turn == "waiting") && sv.Agent != ""
+// canQueue reports whether a prompt can wait for this session to be idle
+// (ADR-0021): it works now, and Smif may type into it.
+func canQueue(sv *api.SessionView) bool {
+	return (sv.Turn == "busy" || sv.Turn == "waiting") && !sv.Unverified && sv.Level != "listed" && !sv.Background
 }
+
+// canFork reports whether a read-only fork can answer for the session now:
+// it needs an agent that owns the session's folder and the full level.
+func canFork(sv *api.SessionView) bool {
+	return canQueue(sv) && fullLevel(sv) && sv.Agent != ""
+}
+
+// canWrite reports whether the human can write to the session now: typed
+// in when idle, or into the queue when it works or waits.
+func canWrite(sv *api.SessionView) bool { return sv.CanPrompt || canQueue(sv) }
 
 // writeHint says where the text goes.
 func writeHint(sv *api.SessionView) string {
 	switch {
 	case sv.CanPrompt:
 		return "It is idle: what you write is typed into its tab."
-	case !fullLevel(sv) || sv.Unverified:
+	case !canQueue(sv):
 		return "Cannot write now: " + sv.Why
-	case canWrite(sv) && sv.Turn == "waiting":
-		return "Smif never answers a permission prompt for you. s asks a fork instead, without touching the prompt."
-	case canWrite(sv):
-		return "It is busy: a fork of this session answers from what it knows. Nothing is typed into its tab."
-	case sv.Turn == "busy" || sv.Turn == "waiting":
-		return "It is busy, and no agent owns its folder, so no fork can answer: write when it is idle."
+	case sv.Turn == "waiting" && canFork(sv):
+		return "It waits in its tab: enter queues, ctrl+f asks a fork."
+	case sv.Turn == "waiting":
+		return "It waits in its tab: enter queues for idle."
+	case canFork(sv):
+		return "It is busy: enter queues for idle, ctrl+f asks a fork."
 	}
-	return "Cannot write now: " + sv.Why
+	return "It is busy: enter queues for idle. No agent owns its folder, so no fork can answer."
 }
 
 // routeShort is the line over the chat's box: where enter sends the text.
@@ -817,7 +873,7 @@ func routeShort(sv *api.SessionView) string {
 	case sv.CanPrompt:
 		return "to " + name + " · it is idle, so enter types into its tab"
 	case canWrite(sv):
-		return "to " + name + " · it is busy, so a fork answers"
+		return "to " + name + " · it works, so enter queues it for when it is idle"
 	}
 	return "to " + name + " · cannot write now"
 }
@@ -835,23 +891,38 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 		bottom = append([]string{""}, m.home.draft.boxLines(stAccent.Render("› "), w, 6)...)
 		bottom = append(bottom, m.partBoxLines(w, h)...)
 		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" esc cancels.", w, "…")))
+	case sv.Background:
+		bottom = []string{"", stAccent.Render("o") + " " + stDim.Render("open claude attach in a new tab"),
+			stDim.Render(ansi.Truncate("Background session: it has no tab, so Smif does not write to it.", w, "…"))}
 	case sv.Turn == "waiting" && sv.TTY != "" && canFocus(sv.Term):
 		bottom = []string{"", stWarn.Render("o") + " bring its tab to the front and answer there"}
 		if canWrite(sv) {
 			bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv), w, "…")))
 		}
-	case (!fullLevel(sv) || sv.Unverified) && !sv.CanPrompt:
+	case (!fullLevel(sv) || sv.Unverified) && !canWrite(sv):
 		bottom = append([]string{""}, dimLines(wrapLines(writeHint(sv), w, 0))...)
 	case canWrite(sv):
 		what := "reply…"
 		if !sv.CanPrompt {
-			what = "ask while it works…"
+			what = "queue a prompt for when it is idle…"
 		}
 		bottom = []string{"", stAccent.Render("s") + " " + stDim.Render(what), stDim.Render(ansi.Truncate(writeHint(sv), w, "…"))}
 	default:
 		bottom = []string{"", stDim.Render(ansi.Truncate(writeHint(sv), w, "…"))}
 	}
-	out = append(out, m.sessionBody(sv, w, h-len(out)-len(bottom), false)...)
+	bottom = append(m.queueLines(sv, w), bottom...)
+	room := h - len(out) - len(bottom)
+	facts := factsLines(sv.Facts, w)
+	body := m.sessionBody(sv, w, room-len(facts), false)
+	if facts != nil {
+		// The facts stay under the answer, however long the answer is.
+		body = body[:min(len(body), max(0, room-len(facts)))]
+		for len(body) > 0 && body[len(body)-1] == "" {
+			body = body[:len(body)-1]
+		}
+		body = append(body, facts...)
+	}
+	out = append(out, body...)
 	keep := h - len(bottom)
 	if len(out) > keep {
 		out = out[:max(0, keep)]
@@ -893,6 +964,9 @@ func (m *Model) chatBody(sv *api.SessionView, w int) []string {
 	if n := len(turns); n > 0 && turns[n-1].Role == "ask" {
 		out = append(out, "", rule(stLive.Render(spinner(now)+" fork"), "a copy of this session answers", w))
 	}
+	if len(out) > 0 {
+		out = append(out, factsLines(sv.Facts, w)...)
+	}
 	if l := m.liveLine(sv, w, now); l != "" {
 		out = append(out, "", l)
 	}
@@ -913,7 +987,7 @@ func (m *Model) sessionFullLines(sv *api.SessionView, w, h int) []string {
 		header = ansi.Truncate(header, max(0, w-24), "…") + "  " + stWarn.Render(fmt.Sprintf("%d need you · tab", n))
 	}
 	head := []string{ansi.Truncate(header, w, "…"), ""}
-	bottom := []string{"", stDim.Render(ansi.Truncate(routeShort(sv), w, "…"))}
+	bottom := append(m.queueLines(sv, w), "", stDim.Render(ansi.Truncate(routeShort(sv), w, "…")))
 	bottom = append(bottom, m.home.draft.boxLines(stAccent.Render("› "), w, 8)...)
 	bottom = append(bottom, m.partBoxLines(w, h)...)
 	bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv), w, "…")))

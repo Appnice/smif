@@ -538,6 +538,8 @@ func (m *Model) footerKeys() string {
 		return "y yes · any other key no · ctrl+c quit"
 	case m.help:
 		return "↑/↓ scroll · any other key closes the help · q quit"
+	case m.history != nil:
+		return m.historyKeys()
 	case m.run != nil:
 		ks := []string{"1 record · 2 transcript · 3 diff", "↑/↓ scroll"}
 		if r := m.run.run; r != nil && r.Branch != "" && !m.run.merged() {

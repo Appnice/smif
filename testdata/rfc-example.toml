@@ -1,4 +1,6 @@
 [daemon]
+context_warn = "200k"
+test_commands = []
 max_workers = 3
 command_pool = 4
 default_ttl = "24h"
@@ -9,6 +11,10 @@ notify = "os"
 claude_command = "claude"
 max_hops = 4
 max_attempts = 3
+
+[harnesses.omnis]
+process = ["omnis"]
+command = "omnis"
 
 [profiles.triage]
 model = "sonnet"

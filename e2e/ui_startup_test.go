@@ -37,8 +37,11 @@ func (l *lockedBuffer) String() string {
 // runInSilentPTY starts the smif binary on a new pseudo terminal (its
 // controlling terminal, 80x24, TERM=xterm-256color). Nothing answers the
 // terminal queries, as under macOS `script` or a slow ssh link. After
-// typeAfter it types keys (if not empty). It returns the terminal output,
-// the time from start to exit and the exit error; limit stops the program.
+// typeAfter it types keys (if not empty); each ptyPause in keys waits
+// typeAfter again. It returns the terminal output, the time from start to
+// exit and the exit error; limit stops the program.
+const ptyPause = "\x00"
+
 func runInSilentPTY(t *testing.T, env []string, keys string, typeAfter, limit time.Duration, args ...string) (string, time.Duration, error) {
 	t.Helper()
 	master, slave, err := openPTY()
@@ -79,6 +82,7 @@ func runInSilentPTY(t *testing.T, env []string, keys string, typeAfter, limit ti
 	go func() { exited <- cmd.Wait() }()
 
 	var typed <-chan time.Time
+	chunks := strings.Split(keys, ptyPause)
 	if keys != "" {
 		typed = time.After(typeAfter)
 	}
@@ -86,10 +90,13 @@ func runInSilentPTY(t *testing.T, env []string, keys string, typeAfter, limit ti
 	for {
 		select {
 		case <-typed:
-			if _, err := master.Write([]byte(keys)); err != nil {
-				t.Fatalf("type %q: %v", keys, err)
+			if _, err := master.Write([]byte(chunks[0])); err != nil {
+				t.Fatalf("type %q: %v", chunks[0], err)
 			}
 			typed = nil
+			if chunks = chunks[1:]; len(chunks) > 0 {
+				typed = time.After(typeAfter)
+			}
 		case err := <-exited:
 			took := time.Since(start)
 			select { // the reader ends when the slave closes

@@ -65,6 +65,7 @@ type Daemon struct {
 	blobs     *blob.Store
 	audit     *audit.Log
 	notifier  notify.Notifier
+	pinger    *notify.Pinger
 	lock      *os.File          // daemon.lock, held while the daemon lives
 	terminal  terminal          // types the human's prompts into sessions (ADR-0012)
 	promptMu  sync.Mutex        // one prompt checked at a time
@@ -72,8 +73,10 @@ type Daemon struct {
 	prompts   promptState       // prompts typed in the background (sessions.go)
 	procs     procCache         // tty and terminal of discovered processes
 	answers   answerCache       // each session's last answer (discover.go)
+	dirty     dirtyCache        // each session's uncommitted paths (facts.go)
 	harnesses *harness.Registry // the agents whose sessions Smif reads (ADR-0019)
 	scan      agentScan         // sessions at the herdr and listed levels (ADR-0019)
+	restore   restoreState      // the sessions to reopen (restore.go)
 	ws        *workspace.Manager
 	claude    *claude.Runner
 	commands  *command.Runner
@@ -171,11 +174,14 @@ func New(o Options) (*Daemon, error) {
 	st.OnAudit = d.audit.Write
 	d.blobs = blob.New(o.DataDir)
 	d.ws = &workspace.Manager{Root: filepath.Join(o.DataDir, "worktrees")}
+	d.pinger = notify.NewPinger(func(kind, why string) { d.log.Warn("phone ping failed", "kind", kind, "why", why) })
 	d.notifier = o.Notifier
 	if d.notifier == nil {
 		d.notifier = notify.New(cfg.Daemon.Notify, o.DataDir)
 	}
-	d.harnesses = harness.NewRegistry(claudeharness.New(paths.ClaudeDir()),
+	claudeSessions := claudeharness.New(paths.ClaudeDir())
+	claudeSessions.Command = func() string { return d.Config().Defaults.ClaudeCommand }
+	d.harnesses = harness.NewRegistry(claudeSessions,
 		qwenharness.New(paths.QwenDir(), paths.QwenRuntimeDir()), codexharness.New(paths.CodexDir()),
 		opencodeharness.New(paths.OpenCodeDB()), copilotharness.New(paths.CopilotDir()),
 		droidharness.New(paths.FactoryDir()))
@@ -222,14 +228,16 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("reconcile: %w", err)
 	}
 	d.probeClaude()
+	d.loadOpen(time.Now())
 	if err := d.srv.Listen(d.socket); err != nil {
 		return err
 	}
-	d.wg.Add(4)
+	d.wg.Add(5)
 	go func() { defer d.wg.Done(); _ = d.srv.Serve() }()
 	go func() { defer d.wg.Done(); d.dispatchLoop() }()
 	go func() { defer d.wg.Done(); d.housekeepingLoop() }()
 	go func() { defer d.wg.Done(); d.sessionWatchLoop() }()
+	go func() { defer d.wg.Done(); d.queueLoop() }()
 	d.log.Info("daemon started", "version", Version, "socket", d.socket, "data_dir", d.dataDir, "pid", os.Getpid(),
 		"agents", d.Config().AgentIDs(), "claude_ok", d.isClaudeOK())
 	d.kick()
@@ -383,6 +391,7 @@ func (d *Daemon) clearOnce(key string) {
 
 func (d *Daemon) notify(kind, agent, summary, msgID string) {
 	ev := notify.Event{Kind: kind, Agent: agent, Summary: notify.Clip(summary, 280), MessageID: msgID, At: time.Now()}
+	d.pinger.Send(d.Config().Daemon.NotifyURL, ev)
 	if err := d.notifier.Notify(ev); err != nil {
 		d.log.Warn("notification failed", "error", err.Error(), "agent", agent, "message_id", msgID)
 	}

@@ -135,8 +135,12 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 		return prev
 	}
 	next := map[string]watchedSession{}
+	var open []openSession
 	for _, p := range ps {
 		v := d.sessionView(cfg, p)
+		if p.Harness == harness.ClaudeName && p.Level == "" && p.AttachID == "" && p.PID > 0 {
+			open = append(open, openSession{SessionID: v.SessionID, PID: p.PID, Dir: nonEmpty(p.Cwd, p.Repo), Name: viewName(v), Busy: v.Turn == "busy"})
+		}
 		old, known := prev[v.SessionID]
 		w := old
 		w.turn, w.answerAt = v.Turn, v.LastAnswerAt
@@ -160,12 +164,12 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 		switch {
 		case v.Turn == "waiting" && old.turn != "waiting":
 			if strings.Contains(want, "waiting") {
-				d.notifySession("session_waiting", name, v, nonEmpty(step, "it waits for you in its tab"))
+				d.notifySession("session_waiting", name, v, nonEmpty(step, waitText(v)))
 			}
 		case v.Turn == "waiting" && remind > 0 && w.reminded < maxReminders && now.Sub(w.waitSince) >= remind*time.Duration(w.reminded+1):
 			w.reminded++
 			next[v.SessionID] = w
-			d.notifySession("session_reminder", name, v, "still waits ("+shortDur(now.Sub(w.waitSince))+"): "+nonEmpty(step, "in its tab"))
+			d.notifySession("session_reminder", name, v, "still waits ("+shortDur(now.Sub(w.waitSince))+"): "+nonEmpty(step, waitText(v)))
 		case v.Turn == "idle" && old.turn == "busy" && v.LastAnswerAt.After(old.answerAt) &&
 			!old.since.IsZero() && v.LastAnswerAt.Sub(old.since) >= notifyMinWork && strings.Contains(want, "answered"):
 			d.notifySession("session_answered", name, v, firstLine(v.LastAnswer))
@@ -194,7 +198,17 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 			}
 		}
 	}
+	d.trackOpen(open, now)
 	return next
+}
+
+// waitText says where a waiting session waits. A background session has
+// no tab.
+func waitText(v api.SessionView) string {
+	if v.Background {
+		return "it waits for you: claude attach opens it"
+	}
+	return "it waits for you in its tab"
 }
 
 // shortDur is a duration for a notification: 40s, 12m, 1h05m.
@@ -208,10 +222,12 @@ func shortDur(d time.Duration) string {
 	return fmt.Sprintf("%dh%02dm", int(d.Hours()), int(d.Minutes())%60)
 }
 
-// notifySession raises one OS notification about a session. The audit
+// notifySession raises one notification about a session, on the OS and on
+// the phone (ADR-0021). The audit
 // keeps only the kind and the session, never the text.
 func (d *Daemon) notifySession(kind, name string, v api.SessionView, text string) {
 	ev := notify.Event{Kind: kind, Agent: name, Summary: notify.Clip(text, 280), At: time.Now()}
+	d.pinger.Send(d.Config().Daemon.NotifyURL, ev)
 	if err := d.notifier.Notify(ev); err != nil {
 		d.log.Warn("notification failed", "error", err.Error(), "session", v.SessionID)
 	}

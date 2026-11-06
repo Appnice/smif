@@ -107,7 +107,17 @@ func (d *Daemon) mergeSessions(cfg *config.Config, rows []store.Presence, found 
 	}
 	seen := map[string]bool{}
 	var out []store.Presence
+	var marks map[string]time.Time
 	for _, s := range found {
+		if !s.EndedAt.IsZero() && time.Since(s.EndedAt) >= doneKept {
+			if marks == nil {
+				marks = d.readSeen()
+			}
+			if !unreadDone(s, marks) {
+				seen[s.SessionID] = true
+				continue
+			}
+		}
 		repo, ok := d.sessionRepo(s.Cwd)
 		if !ok {
 			continue
@@ -117,19 +127,28 @@ func (d *Daemon) mergeSessions(cfg *config.Config, rows []store.Presence, found 
 			p = rows[i]
 		}
 		seen[s.SessionID] = true
-		pi := d.procs.get(s.PID, s.StartedAt)
 		p.Harness, p.PID, p.Cwd = s.Harness, s.PID, filepath.Clean(s.Cwd)
-		if pi.tty != "" || p.TTY == "" {
-			p.TTY = pi.tty
-		}
-		if pi.term != "" || p.Term == "" {
-			p.Term = pi.term
+		p.AttachID = s.AttachID
+		if s.AttachID != "" {
+			p.TTY, p.Term = "", "" // no tab, also when a hook named one
+		} else {
+			pi := d.procs.get(s.PID, s.StartedAt)
+			if pi.tty != "" || p.TTY == "" {
+				p.TTY = pi.tty
+			}
+			if pi.term != "" || p.Term == "" {
+				p.Term = pi.term
+			}
 		}
 		if s.Name != "" {
 			p.Title = s.Name
 		}
 		if st, ok := d.harnesses.Get(s.Harness).(harness.Stater); ok {
-			if t, at := st.State(s); t != "" && (p.TurnAt.IsZero() || !at.Before(p.TurnAt)) {
+			t, at := st.State(s)
+			switch {
+			case s.AttachID != "":
+				p.Turn, p.TurnAt = t, at // the list decides: "" reads unknown
+			case t != "" && (p.TurnAt.IsZero() || !at.Before(p.TurnAt)):
 				p.Turn, p.TurnAt = t, at
 			}
 		}
@@ -144,6 +163,17 @@ func (d *Daemon) mergeSessions(cfg *config.Config, rows []store.Presence, found 
 		}
 	}
 	return out
+}
+
+// doneKept is how long a finished background session stays in the list.
+const doneKept = 24 * time.Hour
+
+// unreadDone reports a finished background session with an answer the UI's
+// seen file marks as unread. With no mark the UI never showed the session.
+// That does not count, or the first run would list every old session.
+func unreadDone(s harness.Session, marks map[string]time.Time) bool {
+	mark, ok := marks[s.SessionID]
+	return ok && s.LastAnswerAt.After(mark)
 }
 
 // answerCache keeps each session's last answer and activity, read again
@@ -165,27 +195,35 @@ type transcriptInfo struct {
 	answerAt time.Time
 	act      harness.Activity
 	wroteAt  time.Time
-	ok       bool // a source was read
+	ok       bool           // a source was read
+	facts    *harness.Facts // nil from a provider with no Factser
+	stamp    string         // the source's stamp, "" with no Stamper
 }
 
 // answerTurns is how many turns session.list reads.
 const answerTurns = 4
 
-func readInfo(p harness.Provider, sessionID string) transcriptInfo {
+func readInfo(p harness.Provider, sessionID string, isTest func(string) bool) transcriptInfo {
 	r := p.Read(sessionID, answerTurns)
 	text, at := harness.LastAnswer(r.Turns)
-	return transcriptInfo{answer: text, answerAt: at, act: r.Activity, wroteAt: r.WroteAt, ok: r.OK}
+	ti := transcriptInfo{answer: text, answerAt: at, act: r.Activity, wroteAt: r.WroteAt, ok: r.OK}
+	if fp, ok := p.(harness.Factser); ok {
+		if f, ok := fp.Facts(sessionID, isTest); ok {
+			ti.facts = &f
+		}
+	}
+	return ti
 }
 
 // get returns the final message of the session's newest answer and what
 // the newest exchange does now. p is nil for a harness with no provider.
-func (c *answerCache) get(p harness.Provider, sessionID string) transcriptInfo {
+func (c *answerCache) get(p harness.Provider, sessionID string, isTest func(string) bool) transcriptInfo {
 	if p == nil {
 		return transcriptInfo{}
 	}
 	sp, ok := p.(harness.Stamper)
 	if !ok {
-		return readInfo(p, sessionID)
+		return readInfo(p, sessionID, isTest)
 	}
 	key := p.Info().Name + "/" + sessionID
 	stamp := sp.Stamp(sessionID)
@@ -200,7 +238,8 @@ func (c *answerCache) get(p harness.Provider, sessionID string) transcriptInfo {
 	}
 	e := c.m[key]
 	if e.stamp != stamp {
-		e = answerEntry{stamp: stamp, info: readInfo(p, sessionID)}
+		e = answerEntry{stamp: stamp, info: readInfo(p, sessionID, isTest)}
+		e.info.stamp = stamp
 		c.m[key] = e
 	}
 	return e.info
@@ -232,6 +271,19 @@ func (d *Daemon) sessionsCanary() (state, detail string) {
 		}
 	}
 	return state, detail
+}
+
+// backgroundChecks is smif doctor's line for each list of background
+// sessions. These lists are research previews, so no state is a failure.
+func (d *Daemon) backgroundChecks() []api.ProviderCheck {
+	out := []api.ProviderCheck{}
+	for _, p := range d.harnesses.All() {
+		if c, ok := p.(harness.BackgroundChecker); ok {
+			state, detail := c.CheckBackground()
+			out = append(out, api.ProviderCheck{Name: p.Info().Name, Verified: p.Info().Verified, State: state, Detail: detail})
+		}
+	}
+	return out
 }
 
 // providerChecks is smif doctor's line for each provider. No real session

@@ -1,6 +1,7 @@
 // Package notify raises OS notifications for needs_human, dead letters and
 // budget exhaustion (RFC 7.4). Title = agent, body = summary (max 280
-// chars), never the raw inbound body.
+// chars), never the raw inbound body. ping.go sends the same events to a
+// phone, with no summary.
 package notify
 
 import (
@@ -114,6 +115,10 @@ func title(e Event) string {
 		return "Smif: " + e.Agent + " is silent"
 	case "session_long":
 		return "Smif: " + e.Agent + " works long"
+	case "session_queue_gone":
+		return "Smif: " + e.Agent + " ended"
+	case "claude_unavailable":
+		return "Smif: Claude Code is unavailable"
 	default:
 		return "Smif: " + e.Agent
 	}

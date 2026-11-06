@@ -26,24 +26,37 @@ var helpText = []helpEntry{
 	{"tab, shift+tab", "the next or previous row that needs you (a waiting session, a new answer, a question, a dead letter); with none, the next group"},
 	{"[ ], ←/h →/l", "show only one agent's rows (the top line names it), previous or next"},
 	{"0, 1-9", "all agents, or the agent with that number"},
-	{"/", "filter by text (enter keeps it, esc clears it)"},
+	{"/", "filter by text, the harness name included (enter keeps it, esc clears it)"},
 	{":", "command prompt: ask, tell, prompt, answer, retry, cancel, open, agent, filter, read, inbox, digest, dashboard, help, quit; " +
 		"tab completes commands, agents and intents, ↑/↓ choose, enter runs, esc closes"},
 	{"esc", "clear the agent and the filter"},
 	{"z", "hide or show the quiet sessions (idle, answer read)"},
+	{"b", "group SESSIONS by harness, with a count per harness, or back by root folder; the choice stays until you quit"},
 	{"enter", "open the thread of the message, the run of a running item, or the chat with a session: type and enter sends " +
-		"(typed into it when idle, else a fork of the session answers); ↑↓ pgup pgdn scroll, tab the next session that needs you, ctrl+o its tab, ctrl+y copy a code block, esc back"},
+		"(typed into it when idle, else queued for when it is idle; ctrl+f asks a fork instead); ↑↓ pgup pgdn scroll, tab the next session that needs you, ctrl+o its tab, ctrl+y copy a code block, esc back"},
 	{"a", "answer a needs-you item in the box under the preview (enter sends, alt+enter new line)"},
 	{"c", "cancel the selected item; asks y/N first"},
 	{"t", "retry a dead letter; asks y/N first"},
 	{"e", "mark the handled items read (the • dot)"},
-	{"s", "on a session: write to it under the preview (idle: typed into its tab; busy or waiting: a fork of the session answers, nothing is typed)"},
-	{"o", "on a session: bring its terminal tab to the front (a waiting session: answer its permission prompt or question there)"},
+	{"s", "on a session: write to it under the preview (idle: typed into its tab; busy or waiting: queued, nothing is typed now)"},
+	{"x", "on a session with queued prompts (the row shows ⧖ 2 queued): open the chat with the cursor on them"},
+	{"o", "on a session: bring its terminal tab to the front (a waiting session: answer its permission prompt or question there). " +
+		"A [background] session has no tab: o opens claude attach in a new tab"},
 	{"y", "on a session: copy the newest code block of its answers, whole and unbroken (in the chat ctrl+y); press again for the block before it"},
 	{"p", "on a session: the saved prompts ([prompts] in the config); enter or 1-9 sends one the way s would. In a prompt, @name stands for it"},
-	{"n", "open a new terminal tab that runs claude in the selected session's folder (asks for its name)"},
+	{"n", "open a new terminal tab that runs claude in the selected session's folder (asks for its name). " +
+		"With another harness on the PATH, ← → pick it; only claude takes a name"},
+	{"R", "history: past Claude Code sessions, the closed ones first (the top line then says 12 sessions closed · R reopens)"},
 	{"v", "dashboard: the six-panel overview (agents, events); v or esc there comes back"},
 	{"i, d, r, ?, q", "inbox, digest, refresh, this help, quit"},
+
+	section("KEYS: HISTORY (R)"),
+	{"↑/k, ↓/j, pgup, pgdown", "move through the list; g/home first row, G/end last row"},
+	{"enter", "reopen the session: claude --resume in a new tab, in the session's folder. An open session or a missing folder is refused"},
+	{"A", "reopen the closed sessions, at most 20, 500 ms apart; A again takes the rest. died working marks a session that was busy when it ended"},
+	{"/", "filter by name, folder or id (enter keeps it, esc clears it)"},
+	{"ctrl+s", "search the text of your prompts and Claude's answers for the filter's words, newest session first; it stops at 50 hits or 10 s"},
+	{"r, esc", "refresh; esc leaves a search, clears the filter, then goes back"},
 
 	section("KEYS: PROMPT BOX OF A SESSION (s, or the chat)"),
 	{"paste", "a text with several lines, or a very long one, becomes a part: [1] in your text, its first and last lines under it, its size, " +
@@ -51,7 +64,9 @@ var helpText = []helpEntry{
 	{"ctrl+v", "attach the image on the clipboard (a terminal cannot paste one); with no image, its text as a paste"},
 	{"ctrl+p", "move to the parts: ↑↓ choose, enter open it whole, x remove, esc back to the text"},
 	{"r, o", "in an open image: r takes the clipboard again, o opens it in the system's viewer (o also for a text)"},
-	{"enter", "send; parts go as files, to an idle session only. A possible secret, a very long line, a very big part or a mismatch " +
+	{"ctrl+f", "busy or waiting session: a read-only fork of it answers now, instead of the queue. Parts cannot go to a fork. Idle session: moves the text cursor right"},
+	{"ctrl+q", "move to the queued prompts: ↑↓ choose, x remove, esc back to the text. One goes in each time the session is idle; a prompt not sent in 24 h expires"},
+	{"enter", "send: typed in when the session is idle, else queued; parts go as files in that line, never to a fork. A possible secret, a very long line, a very big part or a mismatch " +
 		"with the clipboard open a check first: enter sends, e goes back, g shows the first warning"},
 
 	section("KEYS: DASHBOARD (v)"),

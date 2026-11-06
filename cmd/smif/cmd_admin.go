@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"github.com/appnice/smif/internal/daemon"
 	"github.com/appnice/smif/internal/install"
 	"github.com/appnice/smif/internal/mcpserver"
+	"github.com/appnice/smif/internal/notify"
 	"github.com/appnice/smif/internal/paths"
 	"github.com/appnice/smif/internal/presence"
 	"github.com/appnice/smif/internal/runner/claude"
@@ -83,6 +85,29 @@ func cmdConfig() *cobra.Command {
 	}
 	v.Flags().StringVar(&file, "config", "", "config file (default "+paths.ConfigFile()+")")
 	c.AddCommand(v, &cobra.Command{Use: "path", Short: "Print the config path", Run: func(*cobra.Command, []string) { fmt.Println(paths.ConfigFile()) }})
+	return c
+}
+
+// cmdNotify sends from this process, so the test also works with no daemon.
+func cmdNotify() *cobra.Command {
+	c := &cobra.Command{Use: "notify", Short: "Phone ping (daemon.notify_url)"}
+	c.AddCommand(&cobra.Command{
+		Use: "test", Short: "Send one ping to daemon.notify_url", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			if cfg.Daemon.NotifyURL == "" {
+				return errors.New("daemon.notify_url is not set")
+			}
+			if err := notify.NewPinger(nil).Post(cfg.Daemon.NotifyURL, notify.PingTestText); err != nil {
+				return fmt.Errorf("ping failed: %w", err)
+			}
+			fmt.Println("ping sent")
+			return nil
+		},
+	})
 	return c
 }
 
@@ -480,6 +505,9 @@ func cmdDoctor() *cobra.Command {
 				for _, w := range cfg.Warnings {
 					warn(w)
 				}
+				if cfg.Daemon.NotifyURL != "" {
+					fmt.Println("[info] phone ping is on: session names leave this machine (`smif notify test`)")
+				}
 				for _, id := range cfg.AgentIDs() {
 					a := cfg.Agent(id)
 					if a.AllowBypass {
@@ -549,6 +577,14 @@ func cmdDoctor() *cobra.Command {
 							check(true, name+" session files", p.Detail)
 						case "unchecked":
 							fmt.Printf("[info] %s format unchecked, read from its source and no real session checked it: %s\n", name, nonEmptyStr(p.Detail, "nothing to read"))
+						}
+					}
+					// A research preview: its absence or a change is no failure.
+					for _, p := range h.Background {
+						if p.State == "ok" {
+							check(true, "background sessions", p.Detail)
+						} else {
+							fmt.Printf("[info] no background sessions: %s\n", p.Detail)
 						}
 					}
 				}

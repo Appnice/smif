@@ -2,8 +2,10 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -76,8 +78,9 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 	prov := d.harnesses.Get(p.Harness)
 	readOnly := harness.ReadOnly(p.Harness, prov)
 	v.Unverified = prov != nil && !prov.Info().Verified
+	v.Background = p.AttachID != ""
 	if p.Level == "" {
-		ti := d.answers.get(prov, p.SessionID)
+		ti := d.answers.get(prov, p.SessionID, cfg.IsTestCommand)
 		v.LastAnswer, v.LastAnswerAt = ti.answer, ti.answerAt
 		if ti.ok {
 			v.Activity = activityView(ti, p.Cwd)
@@ -87,6 +90,7 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 		if v.Turn == "" || !harness.CanTellState(prov) {
 			v.Turn = "unknown"
 		}
+		v.Facts = d.factsView(cfg, p, ti, v.Turn)
 	} else if prov == nil && p.Level == harness.LevelHerdr {
 		// herdr gives the state, and its screen rules for this agent decide
 		// what idle means. Until a real session checks those, no typing.
@@ -98,6 +102,8 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 	}
 	d.prompts.apply(&v, p.TurnAt)
 	switch {
+	case v.Background:
+		v.Why = backgroundWhy
 	case p.Level == harness.LevelListed:
 		v.Turn, v.Why = "unknown", "listed only: Smif sees the process but not its state, so it does not type"
 	case readOnly != "":
@@ -121,6 +127,10 @@ func (d *Daemon) sessionView(cfg *config.Config, p store.Presence) api.SessionVi
 	}
 	return v
 }
+
+// backgroundWhy is why Smif neither types into nor forks a background
+// session (ADR-0021).
+const backgroundWhy = "a background session has no tab, so Smif does not write to it; o opens claude attach"
 
 // activityView is the API form of a transcript's activity, with paths
 // under the session's folder written relative to it and the home folder
@@ -157,9 +167,12 @@ func (d *Daemon) sessionList() ([]api.SessionView, error) {
 		return nil, err
 	}
 	cfg := d.Config()
+	queued := d.queuedBySession()
 	out := []api.SessionView{}
 	for _, p := range ps {
-		out = append(out, d.sessionView(cfg, p)) // Agent "": no agent's repo
+		v := d.sessionView(cfg, p) // Agent "": no agent's repo
+		v.Queue = queued[p.SessionID]
+		out = append(out, v)
 	}
 	// Discovery reads a map: sort, so every caller sees one fixed order.
 	sort.Slice(out, func(i, j int) bool {
@@ -179,9 +192,57 @@ func (d *Daemon) sessionList() ([]api.SessionView, error) {
 // . _ & -, at most 40.
 var sessionNameRe = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N} ._&-]{0,39}$`)
 
-// sessionNew opens a new terminal tab that runs claude in a folder, named
-// (session.new, human only, ADR-0015). Only the folder and the name come
-// from the call; the command is the configured claude.
+// harnessOptions are the agents session.new can start now, claude first:
+// claude, plus each known or configured harness with a command on the
+// daemon's PATH (session.harnesses, human only, ADR-0021).
+func (d *Daemon) harnessOptions() []string {
+	cfg := d.Config()
+	names := harness.BuiltinNames()
+	for name := range cfg.Harnesses {
+		if harness.BuiltinCommand(name) == "" {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	out := []string{harness.ClaudeName}
+	for _, name := range names {
+		if name == harness.ClaudeName {
+			continue
+		}
+		if c := cfg.HarnessCommand(name); c != "" {
+			if _, err := exec.LookPath(c); err == nil {
+				out = append(out, name)
+			}
+		}
+	}
+	return out
+}
+
+// newArgv builds a new session's argv. The command comes from the config or
+// the built-in table; the call only picks a name among them (R-ISO-3). The
+// title reaches argv only for claude, and the caller checked it.
+func (d *Daemon) newArgv(h, title string) ([]string, error) {
+	h = nonEmpty(h, harness.ClaudeName)
+	cfg := d.Config()
+	command := cfg.HarnessCommand(h)
+	switch {
+	case command == "":
+		return nil, api.Errf(api.CodeParams, "no harness named %q", h)
+	case h == harness.ClaudeName && title != "":
+		return []string{command, "--name", title}, nil
+	case h == harness.ClaudeName:
+		return []string{command}, nil
+	}
+	if _, err := exec.LookPath(command); err != nil {
+		return nil, api.Errf(api.CodeUnavailable, "the daemon cannot find %s on its PATH", command)
+	}
+	return []string{command}, nil
+}
+
+// sessionNew opens a new terminal tab that runs a coding agent in a folder
+// (session.new, human only, ADR-0015, ADR-0021). Only the folder, the name
+// and the harness's name come from the call; the command is the config's
+// or the built-in table's.
 func (d *Daemon) sessionNew(ctx context.Context, p api.SessionNewParams) (any, error) {
 	dir := filepath.Clean(p.Dir)
 	if !filepath.IsAbs(dir) {
@@ -194,22 +255,61 @@ func (d *Daemon) sessionNew(ctx context.Context, p api.SessionNewParams) (any, e
 	if name != "" && !sessionNameRe.MatchString(name) {
 		return nil, api.Errf(api.CodeParams, "a session name is letters, digits, spaces and . _ & -, at most 40")
 	}
-	switch p.Term {
-	case "", termApple, termITerm, termTmux, termHerdr:
-	default:
-		return nil, api.Errf(api.CodeParams, "new sessions open in Terminal.app, iTerm2, tmux or herdr, not %s", p.Term)
+	if err := checkOpenTerm(p.Term); err != nil {
+		return nil, err
 	}
-	argv := []string{d.Config().Defaults.ClaudeCommand}
-	if name != "" {
-		argv = append(argv, "--name", name)
+	argv, err := d.newArgv(p.Harness, name)
+	if err != nil {
+		return nil, err
 	}
 	if err := d.terminal.Open(ctx, p.Term, dir, name, argv); err != nil {
 		return nil, api.Errf(api.CodeUnavailable, "%v", err)
 	}
 	_ = d.store.Update(func(tx *store.Tx) error {
-		return tx.Audit("session.new", agentForRepo(d.Config(), gitRoot(dir)), "", "", "", map[string]any{"dir": dir, "name": name, "term": p.Term})
+		return tx.Audit("session.new", agentForRepo(d.Config(), gitRoot(dir)), "", "", "", map[string]any{"dir": dir, "name": name, "term": p.Term, "harness": nonEmpty(p.Harness, harness.ClaudeName)})
 	})
 	return map[string]any{"ok": true}, nil
+}
+
+// checkOpenTerm refuses a terminal that session.new and session.attach
+// cannot open a tab in.
+func checkOpenTerm(term string) error {
+	switch term {
+	case "", termApple, termITerm, termTmux, termHerdr:
+		return nil
+	}
+	return api.Errf(api.CodeParams, "new sessions open in Terminal.app, iTerm2, tmux or herdr, not %s", term)
+}
+
+// sessionAttach opens `claude attach <id>` for a background session in a
+// new tab (session.attach, human only, ADR-0021). The call picks a session.
+// The id comes from the list, and the program from the config (R-ISO-3).
+func (d *Daemon) sessionAttach(ctx context.Context, p api.SessionAttachParams) (any, error) {
+	if err := checkOpenTerm(p.Term); err != nil {
+		return nil, err
+	}
+	ps, err := d.fullSessions()
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range ps {
+		if s.SessionID != p.SessionID || s.AttachID == "" {
+			continue
+		}
+		dir := nonEmpty(s.Cwd, s.Repo)
+		if st, err := os.Stat(dir); err != nil || !st.IsDir() {
+			return nil, api.Errf(api.CodeRejected, "the session's folder %s is gone", dir)
+		}
+		argv := []string{d.Config().Defaults.ClaudeCommand, "attach", s.AttachID}
+		if err := d.terminal.Open(ctx, p.Term, dir, s.AttachID, argv); err != nil {
+			return nil, api.Errf(api.CodeUnavailable, "%v", err)
+		}
+		_ = d.store.Update(func(tx *store.Tx) error {
+			return tx.Audit("session.attach", agentForRepo(d.Config(), s.Repo), "", "", "", map[string]any{"session_id": s.SessionID, "term": p.Term})
+		})
+		return map[string]any{"ok": true}, nil
+	}
+	return nil, api.Errf(api.CodeNotFound, "no background session %s", p.SessionID)
 }
 
 // sessionFocus brings a live session's Terminal tab to the front
@@ -222,6 +322,9 @@ func (d *Daemon) sessionFocus(ctx context.Context, p api.SessionFocusParams) (an
 	for _, s := range ps {
 		if s.SessionID != p.SessionID {
 			continue
+		}
+		if s.AttachID != "" {
+			return nil, api.Errf(api.CodeRejected, "%s", backgroundWhy)
 		}
 		if s.TTY == "" {
 			return nil, api.Errf(api.CodeRejected, "Smif does not know this session's terminal")
@@ -434,6 +537,11 @@ func (d *Daemon) sessionPrompt(ctx context.Context, p api.SessionPromptParams) (
 	return res, nil
 }
 
+// errNotTyped marks a failure of the terminal itself: the watcher of the
+// queue may try that item again (ADR-0021). Every other error of
+// deliverPrompt comes after the keys went in, so the text is not typed twice.
+var errNotTyped = errors.New("not typed")
+
 // deliverPrompt types text into the session's tab and, on a real terminal,
 // waits for claude to start the turn. A terminal can take the keys and
 // claude still start no turn (the text sits in its input box): after 3 s
@@ -444,7 +552,7 @@ func (d *Daemon) deliverPrompt(ctx context.Context, target store.Presence, agent
 	defer d.typeMu.Unlock()
 	typedAt := time.Now()
 	if err := d.terminal.Type(ctx, target, text); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errNotTyped, err)
 	}
 	typeMS := time.Since(typedAt).Milliseconds()
 	retried := false

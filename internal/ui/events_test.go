@@ -206,6 +206,12 @@ type fakeDigest struct {
 	seqs   []int64
 	cursor int64
 	calls  []api.DigestParams
+
+	// The history screen (history_test.go).
+	historyErr, resumeErr error
+	noHistory             bool
+	searched, resumed     []string
+	reopened              int
 }
 
 func (f *fakeDigest) Digest(ctx context.Context, p api.DigestParams) (*api.DigestResult, error) {

@@ -1,6 +1,10 @@
 # ADR-0013: A busy session's fork answers
 
-**Status:** accepted, 2026-11-03.
+**Status:** accepted, 2026-11-03. Amended by ADR-0021 section 3, 2026-11-05.
+
+*Amended 2026-11-05.* In the UI box of a busy or waiting session, `enter` no longer asks a fork. It puts the text
+in a queue, which types it when the session is idle (`session.queue`). `ctrl+f` in that box asks the fork, where a
+fork can run. `session.send`, `smif prompt` with no flag, and an agent's ask to a session's name work as below.
 
 **Context.** ADR-0012 lets the human type into an idle session from Smif. The human also wants to write to a
 session that is working, and to open a chat with any session: list, arrows, enter, write. Text typed into a busy

@@ -59,12 +59,16 @@ type homeState struct {
 	full       bool                  // the selected session's whole answer fills the screen
 	fullScroll int
 	hideQuiet  bool // z: idle sessions whose answer was read are hidden
+	byHarness  bool // b: SESSIONS groups by harness, not by root folder (ADR-0021)
 	picking    bool // p: the saved prompts are open (quick.go)
 	pickIdx    int
 	newing     bool // n: the new session's name is asked (quick.go)
 	newName    lineInput
 	newDir     string
 	newTerm    string
+	newHarness string // the harness n picked ("" = claude, nothing to pick)
+	queuePick  bool   // ctrl+q: the cursor is on the queued prompts (queue.go)
+	queueSel   int
 	copyFrom   string // the session and newest block the copy key last saw (clipboard.go)
 	copyNext   int    // the block the copy key takes next, newest first
 	part       partState
@@ -97,7 +101,7 @@ type previewMsg struct {
 
 // homeActive reports whether the home screen is the screen on top.
 func (m *Model) homeActive() bool {
-	return !m.dashboard && m.run == nil && m.item == nil && m.digest == nil && m.inbox == nil && !m.help
+	return !m.dashboard && m.history == nil && m.run == nil && m.item == nil && m.digest == nil && m.inbox == nil && !m.help
 }
 
 // homeRows builds the list from the last snapshot: filtered by the agent
@@ -142,7 +146,7 @@ func (m *Model) homeRows() []homeRow {
 		}
 		hay := []string{r.msg.To, r.msg.From.Agent, r.msg.Intent, r.msg.Subject, r.msg.Summary, r.msg.HumanQuestion}
 		if r.sess != nil {
-			hay = append(hay, sessionName(r.sess), shortHome(r.sess.Repo), r.sess.LastAnswer)
+			hay = append(hay, sessionName(r.sess), shortHome(r.sess.Repo), r.sess.LastAnswer, sessionHarness(r.sess))
 		}
 		if q != "" && !strings.Contains(strings.ToLower(strings.Join(hay, " ")), q) {
 			continue
@@ -155,9 +159,10 @@ func (m *Model) homeRows() []homeRow {
 			return a.group < b.group
 		}
 		if a.group == grpSessions {
-			// A fixed order (root folder, name, agent, id): rows do not
-			// move when a session turns idle or busy; the mark shows the state.
-			if ar, br := sessionRoot(a.sess), sessionRoot(b.sess); ar != br {
+			// A fixed order (root folder or harness, name, agent, id): rows
+			// do not move when a session turns idle or busy; the mark shows
+			// the state.
+			if ar, br := m.sessionSection(a.sess), m.sessionSection(b.sess); ar != br {
 				return ar < br
 			}
 			an, bn := strings.ToLower(sessionName(a.sess)), strings.ToLower(sessionName(b.sess))
@@ -426,6 +431,14 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 			m.setStatus("Idle sessions you have read are hidden; z shows them.", false)
 		}
 		return m.loadPreview(false)
+	case "b":
+		m.home.byHarness = !m.home.byHarness
+		if m.home.byHarness {
+			m.setStatus("Sessions by harness; b goes back to folders.", false)
+		} else {
+			m.setStatus("Sessions by folder; b goes back to harnesses.", false)
+		}
+		return m.loadPreview(false)
 	case "]", "right", "l":
 		return m.homeCycleAgent(1)
 	case "[", "left", "h":
@@ -477,6 +490,14 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	case "n":
 		m.newOpen()
+	case "R":
+		return m.openHistory()
+	case "x":
+		if r != nil && r.sess != nil && len(r.sess.Queue) > 0 {
+			m.home.full, m.home.fullScroll, m.home.typing = true, 0, true
+			m.home.queuePick, m.home.queueSel = true, 0
+			return m.loadPreview(true)
+		}
 	case "enter":
 		if r == nil {
 			return nil
@@ -517,6 +538,9 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 // homeAnswerKey edits the answer box under the preview.
 func (m *Model) homeAnswerKey(msg tea.KeyPressMsg) tea.Cmd {
 	if cmd, ok := m.partKey(m.homeSelected(), msg.String()); ok {
+		return cmd
+	}
+	if cmd, ok := m.queueKey(m.homeSelected(), msg.String()); ok {
 		return cmd
 	}
 	if m.home.full {
@@ -645,8 +669,17 @@ func (m *Model) homeRowsAll() []homeRow {
 	return m.homeRows()
 }
 
-// homeLines draws the list and the preview in avail lines.
+// homeLines draws the screen under the top line: the line about closed
+// sessions (ADR-0021), then the list and the preview.
 func (m *Model) homeLines(w, avail int) []string {
+	if b := m.closedBanner(); b != "" {
+		return append([]string{b}, m.homeBody(w, avail-1)...)
+	}
+	return m.homeBody(w, avail)
+}
+
+// homeBody draws the list and the preview in avail lines.
+func (m *Model) homeBody(w, avail int) []string {
 	rows := m.homeRows()
 	sel := m.homeIndex(rows)
 	if len(rows) == 0 {
@@ -734,23 +767,32 @@ func (m *Model) homeList(rows []homeRow, sel, w, h int) []string {
 				head += stDim.Render(fmt.Sprintf(" · %d quiet hidden (z)", n))
 			}
 		}
+		if g == grpSessions && m.home.byHarness {
+			head += stDim.Render(" · by harness")
+		}
 		if len(lines) > 0 {
 			lines = append(lines, "")
 		}
 		lines = append(lines, groupStyle(g, len(idx) > 0).Render(head))
-		// Sessions in more than one root folder get a line per folder.
-		roots, root := map[string]int{}, ""
+		// Sessions in more than one root folder get a line per folder. By
+		// harness, every harness gets a line, also a single one.
+		sections, section := map[string]int{}, ""
 		if g == grpSessions {
 			for _, i := range idx {
-				roots[sessionRoot(rows[i].sess)]++
+				sections[m.sessionSection(rows[i].sess)]++
 			}
 		}
+		headed := len(sections) > 1 || (g == grpSessions && m.home.byHarness)
 		for _, i := range idx {
 			rw := w
-			if len(roots) > 1 {
-				if r := sessionRoot(rows[i].sess); r != root {
-					root = r
-					lines = append(lines, stDim.Render(fmt.Sprintf("  %s · %d", shortHome(r), roots[r])))
+			if headed {
+				if r := m.sessionSection(rows[i].sess); r != section {
+					section = r
+					name := r
+					if !m.home.byHarness {
+						name = shortHome(r)
+					}
+					lines = append(lines, stDim.Render(fmt.Sprintf("  %s · %d", name, sections[r])))
 				}
 				rw = w - 2
 			}
@@ -1083,10 +1125,13 @@ func (m *Model) homeKeys() string {
 			if k := m.partKeys(); k != "" {
 				return k
 			}
-			if m.home.full {
-				return "type to write · enter send · ctrl+v paste image · ctrl+p parts · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back · ctrl+c quit"
+			if m.home.queuePick && len(r.sess.Queue) > 0 {
+				return "↑↓ choose a queued prompt · x remove · esc back to the text"
 			}
-			return "enter sends it (typed in when idle, else to a fork) · ctrl+v paste image · ctrl+p parts · esc cancel · ctrl+c quit"
+			if m.home.full {
+				return "type to write · enter " + enterWord(r.sess) + queueKeyHints(r.sess) + " · ctrl+v paste image · ctrl+p parts · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back · ctrl+c quit"
+			}
+			return "enter " + enterWord(r.sess) + queueKeyHints(r.sess) + " · ctrl+v paste image · ctrl+p parts · esc cancel · ctrl+c quit"
 		}
 		return "enter send · alt+enter new line · esc cancel · ctrl+c quit"
 	}
@@ -1104,10 +1149,17 @@ func (m *Model) homeKeys() string {
 	}
 	if r := m.homeSelected(); r != nil && r.sess != nil {
 		if m.home.full {
-			return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · ctrl+o its tab · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back"
+			open := "ctrl+o its tab"
+			if r.sess.Background {
+				open = "ctrl+o attach"
+			}
+			return "type to write · enter send · ↑↓ pgup pgdn scroll · tab next that needs you · " + open + " · " + m.copyKeyHint(r.sess, "ctrl+y") + "esc back"
 		}
 		var ks []string
 		focus := r.sess.TTY != "" && canFocus(r.sess.Term)
+		if r.sess.Background {
+			ks = append(ks, "o attach")
+		}
 		if focus && r.sess.Turn == "waiting" {
 			ks = append(ks, "o answer in its tab")
 		}
@@ -1116,7 +1168,10 @@ func (m *Model) homeKeys() string {
 		case r.sess.CanPrompt:
 			ks = append(ks, "s write")
 		case canWrite(r.sess):
-			ks = append(ks, "s ask a fork")
+			ks = append(ks, "s queue")
+		}
+		if len(r.sess.Queue) > 0 {
+			ks = append(ks, "x remove queued")
 		}
 		if canWrite(r.sess) && len(m.prompts()) > 0 {
 			ks = append(ks, "p prompts")
@@ -1132,7 +1187,7 @@ func (m *Model) homeKeys() string {
 		if m.home.hideQuiet {
 			quiet = "z show quiet"
 		}
-		return strings.Join(append(ks, "/ filter", quiet, ": command", "v dashboard", "? help", "q quit"), " · ")
+		return strings.Join(append(ks, "/ filter", quiet, m.byKeyHint(), "R history", ": command", "v dashboard", "? help", "q quit"), " · ")
 	}
 	ks := []string{"↑↓ move", "enter open"}
 	if r := m.homeSelected(); r != nil {
@@ -1149,5 +1204,17 @@ func (m *Model) homeKeys() string {
 	if m.snap != nil && len(m.snap.Unread) > 0 {
 		ks = append(ks, "e mark read")
 	}
-	return strings.Join(append(ks, ": command", "[ ] agent", "/ filter", "v dashboard", "? help", "q quit"), " · ")
+	ks = append(ks, ": command", "[ ] agent", "/ filter")
+	if m.snap != nil && len(m.snap.Sessions) > 0 {
+		ks = append(ks, m.byKeyHint())
+	}
+	return strings.Join(append(ks, "R history", "v dashboard", "? help", "q quit"), " · ")
+}
+
+// byKeyHint names what b turns the SESSIONS group to.
+func (m *Model) byKeyHint() string {
+	if m.home.byHarness {
+		return "b by folder"
+	}
+	return "b by harness"
 }

@@ -169,6 +169,12 @@ func key(m *Model, keys ...string) {
 			msg = tea.KeyPressMsg{Code: tea.KeyUp}
 		case "down":
 			msg = tea.KeyPressMsg{Code: tea.KeyDown}
+		case "left":
+			msg = tea.KeyPressMsg{Code: tea.KeyLeft}
+		case "right":
+			msg = tea.KeyPressMsg{Code: tea.KeyRight}
+		case "ctrl+s":
+			msg = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
 		case "ctrl+o":
 			msg = tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl}
 		case "ctrl+y":
@@ -177,6 +183,10 @@ func key(m *Model, keys ...string) {
 			msg = tea.KeyPressMsg{Code: 'v', Mod: tea.ModCtrl}
 		case "ctrl+p":
 			msg = tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl}
+		case "ctrl+f":
+			msg = tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl}
+		case "ctrl+q":
+			msg = tea.KeyPressMsg{Code: 'q', Mod: tea.ModCtrl}
 		default:
 			// Literal text is typed one key at a time, as a terminal sends it.
 			for _, r := range k {

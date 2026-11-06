@@ -61,9 +61,10 @@ func (m *Model) addPart(p *promptPart) {
 }
 
 func (m *Model) partsDirReady() string {
-	if !m.home.part.cleaned {
+	// With no snapshot the queue is unknown, so nothing goes yet.
+	if !m.home.part.cleaned && m.snap != nil {
 		m.home.part.cleaned = true
-		cleanParts(m.partsDir, m.now())
+		cleanParts(m.partsDir, m.now(), m.queuedTexts())
 	}
 	return m.partsDir
 }
@@ -316,12 +317,12 @@ func (m *Model) checkKey(r *homeRow, k string) tea.Cmd {
 	return nil
 }
 
-// sendParts sends the box with its parts. Warnings stop it once, on the
-// check screen.
+// trySendParts sends the box with its parts: typed in when the session is
+// idle, else into the queue. Warnings stop it once, on the check screen.
 func (m *Model) trySendParts(r *homeRow) tea.Cmd {
 	h := &m.home.part
-	if !r.sess.CanPrompt {
-		m.setStatus("Parts go only to an idle session: a fork reads no attachments. Wait, or remove them with ctrl+p.", true)
+	if !canWrite(r.sess) {
+		m.setStatus(writeHint(r.sess), true)
 		return nil
 	}
 	if gone := partsGone(h.parts); gone != "" {
@@ -336,7 +337,7 @@ func (m *Model) trySendParts(r *homeRow) tea.Cmd {
 }
 
 func (m *Model) sendParts(r *homeRow) tea.Cmd {
-	return m.sendLine(r, partsPrompt(m.home.draft.Value(), m.home.part.parts))
+	return m.routeLine(r, partsPrompt(m.home.draft.Value(), m.home.part.parts))
 }
 
 // partKeys is the footer while the parts have the keys ("" = they do not).
