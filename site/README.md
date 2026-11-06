@@ -21,6 +21,7 @@ The videos are real smif runs on staged sessions, recorded with [VHS](https://gi
 - `cd site/demo && vhs tapes/hero.tape && vhs tapes/chat.tape && ./media.sh` records both clips and copies them to
   `media/`. The tapes start the director themselves.
 - The tapes never press `n`: a new session would start the real `claude`.
+- After a change to `styles.css` or `main.js`, raise `?v=` on their links in `index.html`. The server sends no `Cache-Control`, so a phone keeps the old file.
 - After a new hero recording, check the scene times in `main.js` (`ffmpeg -i demo/out/hero.mp4 -vf fps=1,tile=3x7`).
 - The README GIFs come from the same clips: for each of `hero` and `chat`,
   `ffmpeg -i site/media/hero.mp4 -vf "fps=15,scale=1280:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle" docs/img/hero.gif`.
