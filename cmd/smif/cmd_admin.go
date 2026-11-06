@@ -587,6 +587,13 @@ func cmdDoctor() *cobra.Command {
 							fmt.Printf("[info] %s format unchecked, read from its source and no real session checked it: %s\n", name, nonEmptyStr(p.Detail, "nothing to read"))
 						}
 					}
+					for _, p := range h.Remotes {
+						if p.State == "ok" {
+							check(true, "remote "+p.Name, p.Detail)
+						} else {
+							warn("remote " + p.Name + ": " + p.Detail)
+						}
+					}
 					// A research preview: its absence or a change is no failure.
 					for _, p := range h.Background {
 						if p.State == "ok" {

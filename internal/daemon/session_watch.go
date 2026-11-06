@@ -136,8 +136,10 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 	}
 	next := map[string]watchedSession{}
 	var open []openSession
+	working := false
 	for _, p := range ps {
 		v := d.sessionView(cfg, p)
+		working = working || sessionWorks(v, now)
 		if p.Harness == harness.ClaudeName && p.Level == "" && p.AttachID == "" && p.PID > 0 {
 			open = append(open, openSession{SessionID: v.SessionID, PID: p.PID, Dir: nonEmpty(p.Cwd, p.Repo), Name: viewName(v), Busy: v.Turn == "busy"})
 		}
@@ -199,6 +201,14 @@ func (d *Daemon) watchSessions(prev map[string]watchedSession, now time.Time) ma
 		}
 	}
 	d.trackOpen(open, now)
+	d.awake.set(cfg.Daemon.KeepAwake && working)
+	for _, v := range d.remoteRows(now) {
+		old, known := prev[v.SessionID]
+		next[v.SessionID] = watchedSession{turn: v.Turn}
+		if known && v.Turn == "waiting" && old.turn != "waiting" && strings.Contains(want, "waiting") {
+			d.notifySession("session_waiting", viewName(v), v, "it waits for you on "+v.Host)
+		}
+	}
 	return next
 }
 

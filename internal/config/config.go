@@ -90,6 +90,11 @@ type Daemon struct {
 	// http to localhost. Empty is off. It can hold a topic's secret, so
 	// no log, error or doctor line names it.
 	NotifyURL string `toml:"notify_url"`
+	// Remotes are ssh hosts that run smif too (ADR-0023): their sessions show
+	// here, read only.
+	Remotes []string `toml:"remotes"`
+	// KeepAwake stops idle sleep on macOS while a session works.
+	KeepAwake bool `toml:"keep_awake"`
 	// Watchdogs (ADR-0015), each a duration or "off": remind again while a
 	// session waits in its tab (every RemindWaiting, at most 3 times), and
 	// tell once when a working session writes nothing for AlertSilent or
@@ -568,6 +573,10 @@ func (c *Config) applyDefaults() {
 	}
 }
 
+// remoteHostRe is an ssh alias or user@host. It starts with no dash, so a
+// name can never read as an ssh option.
+var remoteHostRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._@-]*$`)
+
 func fillProfile(p Profile) Profile {
 	if p.Model == "" && p.Harness == "" {
 		p.Model = "sonnet"
@@ -673,6 +682,11 @@ func (c *Config) Validate() error {
 	n := c.Daemon.Notify
 	if n != "os" && n != "none" && !strings.HasPrefix(n, "log:") {
 		add("daemon.notify must be \"os\", \"none\" or \"log:<path>\"")
+	}
+	for _, h := range c.Daemon.Remotes {
+		if !remoteHostRe.MatchString(h) {
+			add("daemon.remotes: %q is not an ssh host name", h)
+		}
 	}
 	if why := notifyURLProblem(c.Daemon.NotifyURL); why != "" {
 		add("daemon.notify_url: %s", why)

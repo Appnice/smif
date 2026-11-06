@@ -250,6 +250,8 @@ type SessionView struct {
 	// Activity is what the newest exchange does now, from the transcript
 	// (nil when there is none).
 	Activity *SessionActivity `json:"activity,omitempty"`
+	// Host is the ssh host of a session on another machine (ADR-0023).
+	Host string `json:"host,omitempty"`
 	// Facts is what the transcript and git show from the newest human
 	// prompt on (ADR-0021; nil when unknown).
 	Facts *SessionFacts `json:"facts,omitempty"`
@@ -633,6 +635,7 @@ type HealthView struct {
 	Providers []ProviderCheck `json:"providers,omitempty"`
 	// Background has one line per list of background sessions (ADR-0021).
 	Background []ProviderCheck `json:"background,omitempty"`
+	Remotes    []ProviderCheck `json:"remotes,omitempty"`
 	ConfigPath string          `json:"config_path"`
 	StartedAt  time.Time       `json:"started_at"`
 	PID        int             `json:"pid"`

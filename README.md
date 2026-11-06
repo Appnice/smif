@@ -92,6 +92,16 @@ secret.
 | mouse drag | Select inside one pane and copy |
 | `?` | All keys |
 
+## Other machines
+
+```toml
+[daemon]
+remotes = ["mini", "me@vps"]
+```
+
+Sessions on those ssh hosts join your list, read only, and a session that starts to wait notifies you here.
+See [docs/usage.md](docs/usage.md).
+
 ## Stop watching the screen
 
 smif sends a notification when a session starts to wait, or answers after a long turn.
@@ -145,7 +155,7 @@ Mail also works between Claude Code and Codex, so one can ask the other to revie
 </p>
 
 smif reads the files Claude Code already writes, and one local daemon keeps the state. Nothing leaves your machine:
-no server, no cloud, no telemetry. The one exception is a phone ping that you turn on with `daemon.notify_url`: it
+no server, no cloud, no telemetry. The exceptions are the ssh hosts you list in `daemon.remotes` and a phone ping that you turn on with `daemon.notify_url`: it
 sends the agent or folder name and what happened, with no prompt or answer ([docs/safety.md](docs/safety.md)).
 
 ## Uninstall

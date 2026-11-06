@@ -177,6 +177,7 @@ func (d *Daemon) sessionList() ([]api.SessionView, error) {
 		v.Queue = queued[p.SessionID]
 		out = append(out, v)
 	}
+	out = append(out, d.remoteRows(time.Now())...)
 	// Discovery reads a map: sort, so every caller sees one fixed order.
 	sort.Slice(out, func(i, j int) bool {
 		a, b := strings.ToLower(out[i].Title), strings.ToLower(out[j].Title)

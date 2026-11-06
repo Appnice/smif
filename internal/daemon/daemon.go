@@ -82,6 +82,8 @@ type Daemon struct {
 	claude    *claude.Runner
 	commands  *command.Runner
 	codex     *codexrunner.Runner
+	awake     keepAwake
+	remotes   remoteState
 	limiter   *router.Limiter
 	log       *slog.Logger
 	logFile   *logSink
@@ -197,6 +199,7 @@ func New(o Options) (*Daemon, error) {
 	d.claude = &claude.Runner{Command: cfg.Defaults.ClaudeCommand, MaxOutput: cfg.Defaults.MaxOutputBytes, SmifBinary: exe, Socket: o.Socket,
 		Protected: []string{paths.ConfigDir(), o.DataDir}}
 	d.commands = &command.Runner{}
+	d.awake.start = startCaffeinate
 	d.codex = &codexrunner.Runner{MaxOutput: cfg.Defaults.MaxOutputBytes, Command: func() string { return d.Config().HarnessCommand("codex") }}
 	d.srv = api.NewServer()
 	d.srv.Auth = d.authenticate
@@ -240,6 +243,8 @@ func (d *Daemon) Start() error {
 	go func() { defer d.wg.Done(); d.dispatchLoop() }()
 	go func() { defer d.wg.Done(); d.housekeepingLoop() }()
 	go func() { defer d.wg.Done(); d.sessionWatchLoop() }()
+	d.wg.Add(1)
+	go func() { defer d.wg.Done(); d.remoteLoop() }()
 	go func() { defer d.wg.Done(); d.queueLoop() }()
 	d.log.Info("daemon started", "version", Version, "socket", d.socket, "data_dir", d.dataDir, "pid", os.Getpid(),
 		"agents", d.Config().AgentIDs(), "claude_ok", d.isClaudeOK())

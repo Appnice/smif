@@ -19,6 +19,8 @@
 - **Data.** SQLite with `synchronous=FULL`. Each state change writes an audit row in the same transaction.
 - **Access.** A Unix socket with mode 0600, a peer uid check and one token for each agent. Agents cannot read
   the mail of other agents or the stats. There is no server, no cloud and no telemetry.
+- **Other machines.** `daemon.remotes` runs one fixed command over ssh, and only the session list comes back. Nothing goes
+  out, and no text reaches that host. A host name that starts with a dash fails validation.
 - **What leaves the machine.** Nothing, unless you set `daemon.notify_url`. With that key, each notification also
   sends one POST to that URL. The POST holds a name and what happened, for example `shop waits for you`, and the
   headers `Title: smif` and `Tags: bell`. smif adds no prompt, answer, command, file path or message text.

@@ -67,6 +67,10 @@ func (m *Model) attachSession(sv *api.SessionView) tea.Cmd {
 
 // focusSession is o on a session: its tab comes to the front.
 func (m *Model) focusSession(sv *api.SessionView) tea.Cmd {
+	if sv.Host != "" {
+		m.setStatus("This session runs on "+sv.Host+": ssh there to answer it.", false)
+		return nil
+	}
 	if sv.Background {
 		return m.attachSession(sv)
 	}
@@ -836,7 +840,7 @@ func canFocus(term string) bool {
 // canQueue reports whether a prompt can wait for this session to be idle
 // (ADR-0021): it works now, and Smif may type into it.
 func canQueue(sv *api.SessionView) bool {
-	return (sv.Turn == "busy" || sv.Turn == "waiting") && !sv.Unverified && sv.Level != "listed" && !sv.Background
+	return (sv.Turn == "busy" || sv.Turn == "waiting") && !sv.Unverified && sv.Level != "listed" && !sv.Background && sv.Host == ""
 }
 
 // canFork reports whether a read-only fork can answer for the session now:
@@ -891,6 +895,8 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 		bottom = append([]string{""}, m.home.draft.boxLines(stAccent.Render("› "), w, 6)...)
 		bottom = append(bottom, m.partBoxLines(w, h)...)
 		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" esc cancels.", w, "…")))
+	case sv.Host != "":
+		bottom = []string{"", stDim.Render(ansi.Truncate("Runs on "+sv.Host+": ssh there to answer it. Smif only shows it here.", w, "…"))}
 	case sv.Background:
 		bottom = []string{"", stAccent.Render("o") + " " + stDim.Render("open claude attach in a new tab"),
 			stDim.Render(ansi.Truncate("Background session: it has no tab, so Smif does not write to it.", w, "…"))}

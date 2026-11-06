@@ -115,6 +115,8 @@ func stepLabel(s *api.SessionStep, st interface{ Render(...string) string }) str
 func waitReason(sv *api.SessionView) string {
 	s := nowStep(sv)
 	switch {
+	case sv.Host != "":
+		return "it waits for you on " + sv.Host
 	case sv.Background:
 		return "it waits for you: claude attach opens it"
 	case s == nil:
@@ -196,6 +198,9 @@ func harnessMark(sv *api.SessionView) string {
 
 // openWord says what o does on a session.
 func openWord(sv *api.SessionView) string {
+	if sv.Host != "" {
+		return "ssh " + sv.Host + " to answer it"
+	}
 	if sv.Background {
 		return "o opens claude attach"
 	}
