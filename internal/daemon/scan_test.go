@@ -771,7 +771,7 @@ func TestListedRows(t *testing.T) {
 		{pid: me, tty: "/dev/ttys3", argv: []string{"copilot"}},
 	}
 	herdr := []scanRow{{tty: "/dev/ttys3"}}
-	rows := d.scan.listedRows(context.Background(), procs, herdr, func(int) string { return termApple })
+	rows := d.scan.listedRows(context.Background(), procs, herdr, nil, func(int) string { return termApple })
 	if len(rows) != 1 {
 		t.Fatalf("rows %+v", rows)
 	}

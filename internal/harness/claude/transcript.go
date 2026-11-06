@@ -125,13 +125,7 @@ func readTranscript(path string, limit int) ([]harness.Turn, harness.Activity) {
 				}
 			}
 		}
-		var keep []string
-		for _, t := range text {
-			if t = strings.TrimSpace(t); t != "" && !strings.HasPrefix(t, "<") {
-				keep = append(keep, t)
-			}
-		}
-		body := strings.Join(keep, "\n\n")
+		body := plainText(text)
 		if rec.Type == "user" {
 			if body != "" {
 				turns = append(turns, answerTurn{Turn: harness.Turn{Role: harness.RoleHuman, Text: body, At: rec.Timestamp}})
@@ -193,6 +187,18 @@ func readTranscript(path string, limit int) ([]harness.Turn, harness.Activity) {
 		}
 	}
 	return out, act
+}
+
+// plainText joins a record's text blocks, without empty ones and system
+// text (it starts with "<"). In a user record, text means a human prompt.
+func plainText(blocks []string) string {
+	var keep []string
+	for _, t := range blocks {
+		if t = strings.TrimSpace(t); t != "" && !strings.HasPrefix(t, "<") {
+			keep = append(keep, t)
+		}
+	}
+	return strings.Join(keep, "\n\n")
 }
 
 // toolName is a tool's short name: an MCP tool (mcp__server__tool) loses

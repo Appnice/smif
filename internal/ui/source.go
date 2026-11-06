@@ -35,6 +35,11 @@ type Snapshot struct {
 	Sessions []api.SessionView
 	// Prompts are the human's saved prompts (prompts.list, ADR-0015).
 	Prompts []api.SavedPrompt
+	// Harnesses are the agents n can start, claude first
+	// (session.harnesses, ADR-0021).
+	Harnesses []string
+	// Closed is the restore list (session.closed, ADR-0021).
+	Closed api.ClosedList
 	// Events are the newest audit events (audit.since), oldest first, at
 	// most EventKeep.
 	Events []api.AuditEvent
@@ -148,12 +153,18 @@ func (s *DaemonSource) fetchOnce() (attempt, error) {
 			return a, err
 		}
 	}
-	// Saved prompts: an older daemon has no prompts.list; that is no error.
+	// An older daemon has no prompts.list, session.harnesses or
+	// session.closed; that is no error.
 	var rpcErr0 *api.Error
-	if err := s.c.Call("prompts.list", nil, &a.Prompts, timeout); err != nil && !errors.As(err, &rpcErr0) {
-		s.c.Close()
-		s.c = nil
-		return a, err
+	for _, c := range []struct {
+		method string
+		out    any
+	}{{"prompts.list", &a.Prompts}, {"session.harnesses", &a.Harnesses}, {"session.closed", &a.Closed}} {
+		if err := s.c.Call(c.method, nil, c.out, timeout); err != nil && !errors.As(err, &rpcErr0) {
+			s.c.Close()
+			s.c = nil
+			return a, err
+		}
 	}
 	a.Waiting = append(a.Waiting, retrying...)
 	a.Unread, a.DigestCursor = map[string]bool{}, digest.Cursor

@@ -1,7 +1,9 @@
 package harness
 
 import (
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -48,15 +50,62 @@ var listedScripts = []struct{ part, name string }{
 	{"@github/copilot/index.js", "copilot"},
 }
 
+// builtinCommands is the program that starts each agent of the table, for
+// session.new (ADR-0021). The daemon builds argv from this table or the
+// config, never from a call. Claude Code is left out: its command is the
+// config's claude_command, and only it takes --name.
+var builtinCommands = map[string]string{
+	"codex": "codex", "gemini": "gemini", "cursor": "cursor-agent", "devin": "devin", "antigravity": "agy",
+	"cline": "cline", "omp": "omp", "pi": "pi", "mastracode": "mastracode", "opencode": "opencode",
+	"copilot": "copilot", "kimi": "kimi", "kiro": "kiro-cli", "droid": "droid", "amp": "amp", "grok": "grok",
+	"hermes": "hermes", "kilo": "kilo", "qoder": "qodercli", "qwen": "qwen", "letta": "letta", "maki": "maki",
+	"muse": "muse",
+}
+
+// builtinProviders are the agents with a provider in this repo. A test in
+// internal/daemon keeps the list in step with the daemon's registry.
+var builtinProviders = []string{ClaudeName, "qwen", "codex", "opencode", "copilot", "droid"}
+
+// IsBuiltinProvider reports a name that a provider of this repo owns.
+func IsBuiltinProvider(name string) bool { return slices.Contains(builtinProviders, name) }
+
+// BuiltinNames are the agents of the built-in table, sorted, Claude Code
+// left out.
+func BuiltinNames() []string { return slices.Sorted(maps.Keys(builtinCommands)) }
+
+// BuiltinCommand is the program that starts a built-in agent ("" = none).
+func BuiltinCommand(name string) string { return builtinCommands[name] }
+
+// ProcessOwner names the built-in agent that owns a process name ("" =
+// none). claude counts here: a process table entry never makes a Claude
+// Code row, because a `claude -p` run is no session.
+func ProcessOwner(process string) string {
+	if process == ClaudeName {
+		return ClaudeName
+	}
+	return listedNames[process]
+}
+
 // ListedProcess names the agent a process runs ("" = none), from its argv.
 // argv[0] counts first (it is what the agent calls itself); under a node,
 // bun, python or sh wrapper the script counts.
-func ListedProcess(argv []string) string {
+func ListedProcess(argv []string) string { return ListedProcessWith(argv, nil) }
+
+// ListedProcessWith is ListedProcess plus the configured process names
+// (process name → agent, [harnesses.<name>] in the config, ADR-0021).
+func ListedProcessWith(argv []string, extra map[string]string) string {
 	if len(argv) == 0 {
 		return ""
 	}
+	lookup := func(base string) (string, bool) {
+		if name, ok := listedNames[base]; ok {
+			return name, true
+		}
+		name, ok := extra[base]
+		return name, ok
+	}
 	base := filepath.Base(argv[0])
-	if name, ok := listedNames[base]; ok {
+	if name, ok := lookup(base); ok {
 		return name
 	}
 	if rest, ok := strings.CutPrefix(base, "muse-bin-"); ok && rest != "" && strings.Trim(rest, "0123456789") == "" {
@@ -74,7 +123,8 @@ func ListedProcess(argv []string) string {
 				return s.name
 			}
 		}
-		return listedNames[filepath.Base(a)]
+		name, _ := lookup(filepath.Base(a))
+		return name
 	}
 	return ""
 }

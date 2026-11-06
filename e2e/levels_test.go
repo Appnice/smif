@@ -1,16 +1,21 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // The herdr level (ADR-0019) through the real binary, with
@@ -110,6 +115,94 @@ func TestHerdrLevel(t *testing.T) {
 		if got := log(); got != "" {
 			t.Fatalf("%s: prompts %q", c.herdr, got)
 		}
+	}
+}
+
+// [harnesses.omnis] through the real binary and the real process table: a
+// process named omnis on a terminal shows as a Listed row, session.harnesses
+// offers it, and session.new starts only the configured command. The "agent"
+// is a shell script on a pseudo terminal.
+func TestCustomHarness(t *testing.T) {
+	typed := filepath.Join(t.TempDir(), "typed.jsonl")
+	e := NewEnv(t, `terminal = "log:`+typed+`"`, "", AgentSpec{ID: "app", Rules: digestRule()})
+	omnis := filepath.Join(e.Root, "bin", "omnis")
+	if err := os.MkdirAll(filepath.Dir(omnis), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(omnis, []byte("#!/bin/sh\nread x\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.OpenFile(e.Config(), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(f, "\n[harnesses.omnis]\nprocess = [\"omnis\"]\ncommand = %q\n", omnis)
+	f.Close()
+	master, slave, err := openPTY()
+	if err != nil {
+		t.Skipf("no pty: %v", err)
+	}
+	defer master.Close()
+	defer slave.Close()
+	agent := exec.Command(omnis)
+	agent.Dir = e.Repos["app"]
+	agent.Stdin, agent.Stdout, agent.Stderr = slave, slave, slave
+	agent.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true, Ctty: 0}
+	if err := agent.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = agent.Process.Kill()
+		_ = agent.Wait()
+	})
+	e.env = append(e.env, "SMIF_NO_AGENT_SCAN=", "SMIF_HERDR=")
+	e.Start()
+
+	var row *api.SessionView
+	e.WaitFor("the omnis row", 15*time.Second, func() bool {
+		var ss []api.SessionView
+		e.Call("session.list", nil, &ss)
+		for i := range ss {
+			if ss[i].Harness == "omnis" {
+				row = &ss[i]
+				return true
+			}
+		}
+		return false
+	})
+	if row.Level != "listed" || row.Turn != "unknown" || row.CanPrompt || row.Agent != "app" {
+		t.Fatalf("row %+v", row)
+	}
+	var hs []string
+	e.Call("session.harnesses", nil, &hs)
+	if len(hs) < 2 || hs[0] != "claude" || !slices.Contains(hs, "omnis") {
+		t.Fatalf("harnesses %v", hs)
+	}
+	src := &ui.DaemonSource{Dial: func() (ui.Caller, error) { return e.Client() }}
+	defer src.Close()
+	if snap := src.Fetch(context.Background()); snap.Err != nil || !slices.Equal(snap.Harnesses, hs) {
+		t.Fatalf("the UI sees %v, %v", snap.Harnesses, snap.Err)
+	}
+	var x any
+	if err := src.NewSession(context.Background(), e.Repos["app"], "api", "tmux", "omnis"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(typed)
+	if err != nil || !strings.Contains(string(b), `"argv":[`+strconv.Quote(omnis)+`]`) {
+		t.Fatalf("session.new: %v %s", err, b)
+	}
+	c, err := e.Client()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if err := c.Call("session.new", api.SessionNewParams{Dir: e.Repos["app"], Harness: "/bin/sh"}, &x, 5e9); !api.IsCode(err, api.CodeParams) {
+		t.Errorf("an unknown harness: %v", err)
+	}
+	ac := e.AgentClient("app")
+	defer ac.Close()
+	if err := ac.Call("session.harnesses", nil, &hs, 5e9); !api.IsCode(err, api.CodeForbidden) {
+		t.Errorf("an agent read the harnesses: %v", err)
 	}
 }
 

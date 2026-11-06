@@ -140,7 +140,7 @@ func (l logTerminal) Focus(_ context.Context, p store.Presence) error {
 }
 
 func (l logTerminal) Open(_ context.Context, term, dir, label string, argv []string) error {
-	return l.write(map[string]any{"open": true, "term": term, "dir": dir, "label": label, "argv": argv})
+	return l.write(map[string]any{"open": true, "term": term, "dir": dir, "label": label, "argv": argv, "at_ms": time.Now().UnixMilli()})
 }
 
 // Supports applies the same terminal rule as the real terminals, on any OS.

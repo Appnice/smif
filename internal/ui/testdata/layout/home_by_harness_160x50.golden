@@ -1,0 +1,50 @@
+ smif   1 waiting  1 working  4 quiet  ⚑ 1 asks you  ✗ 1 dead                                                               ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                                                │ │ ⚑ NEEDS YOU  web → cafe · ask store.release · 4m ago                        │
+│ ▌ ⚑ cafe ← web Ship?                                                      4m │ │                                                                             │
+│                                                                              │ │ Ship?                                                                       │
+│ SESSIONS · 6 · by harness                                                    │ │                                                                             │
+│   aider · 1                                                                  │ │ THE WORKER ASKS                                                             │
+│     ? unknown aider    [listed] no typing                                 0s │ │ Ship 1.0.2 now or wait for review?                                          │
+│   claude · 2                                                                 │ │                                                                             │
+│     ○ idle   release   Yes, 1.0.2 is live in both stores:                10m │ │ MESSAGE                                                                     │
+│     ▶ 3m00s  web       Bash  go test -run TestCheckout -count 20 ./… 3 tools │ │ Store review passed for 1.0.2. Decide if we ship now.                       │
+│   codex · 2                                                                  │ │ #fake:result=needs_human                                                    │
+│     ○ idle   codex     [herdr] idle                                       5m │ │                                                                             │
+│     ! 2m     reviewer  codex [herdr] waits for you in its tab      needs you │ │ THREAD · 1 messages · 1 runs                                                │
+│   gemini · 1                                                                 │ │ ▸ 13:05  web → cafe  ask  Ship?                                             │
+│     ? unknown gemini   [herdr] no typing                                  1m │ │                                                                             │
+│                                                                              │ │ [a] answer   [enter] open   [c] cancel                                      │
+│ RUNNING · 1                                                                  │ │                                                                             │
+│   ◉ cafe ← observability NPE in CheckoutView                              1m │ │                                                                             │
+│                                                                              │ │                                                                             │
+│ QUEUED · 2                                                                   │ │                                                                             │
+│   ◌ web ← observability ANR on cart screen                                3m │ │                                                                             │
+│   ◌ web ← cafe retry · Icons for the dark mode                            1m │ │                                                                             │
+│                                                                              │ │                                                                             │
+│ DONE TODAY · 2 · 1 unread (e marks read)                                     │ │                                                                             │
+│  •✓ observability ← human harness run smif-ui: green                      2h │ │                                                                             │
+│   ✓ cafe ← web Is Cafe live?                                              5h │ │                                                                             │
+│                                                                              │ │                                                                             │
+│ DEAD · 1                                                                     │ │                                                                             │
+│   ✗ observability ← cafe crash.report                                    10m │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+│                                                                              │ │                                                                             │
+╰──────────────────────────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────────────────────────╯
+Sessions by harness; b goes back to folders.
+↑↓ move · enter open · a answer · c cancel · e mark read · : command · [ ] agent · / filter · b by folder · R history · v dashboard · ? help · q quit

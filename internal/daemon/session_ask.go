@@ -66,6 +66,9 @@ func countNamed(ps []store.Presence, name string) int {
 // (ADR-0019); workers run claude, so that is Claude Code alone for now, and a
 // second Forker also needs a harness in session_asks.
 func (d *Daemon) forkTarget(s store.Presence) (agent, cwd string, err error) {
+	if s.AttachID != "" {
+		return "", "", api.Errf(api.CodeRejected, "%s", backgroundWhy)
+	}
 	if s.Level != "" {
 		return "", "", api.Errf(api.CodeRejected, "no fork of a session at the %s level: write when it is idle", s.Level)
 	}
@@ -93,33 +96,29 @@ func (d *Daemon) forkTarget(s store.Presence) (agent, cwd string, err error) {
 	return agent, filepath.Clean(cwd), nil
 }
 
-// sessionSend is session.send (human only): type into an idle session, or
-// ask a fork of a busy or waiting one.
-func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.SessionSendParams) (*api.SessionSendResult, error) {
-	text, err := checkPrompt(d.expandPrompt(p.Text))
-	if err != nil {
-		return nil, err
-	}
+// writeTarget is the session a human writes to: by id, by name, or the
+// one session of an agent (an idle one first).
+func (d *Daemon) writeTarget(sessionID, name string) (*store.Presence, error) {
 	ps, err := d.liveSessions()
 	if err != nil {
 		return nil, err
 	}
 	var target *store.Presence
 	switch {
-	case p.SessionID != "":
+	case sessionID != "":
 		for i := range ps {
-			if ps[i].SessionID == p.SessionID {
+			if ps[i].SessionID == sessionID {
 				target = &ps[i]
 			}
 		}
-	case p.Name != "":
-		target = d.sessionByName(p.Name)
-		if target == nil && d.Config().Agent(p.Name) != nil {
+	case name != "":
+		target = d.sessionByName(name)
+		if target == nil && d.Config().Agent(name) != nil {
 			// No session has that name: an agent with one session (an
 			// idle one first).
 			var mine, idle []*store.Presence
 			for i := range ps {
-				if agentForRepo(d.Config(), ps[i].Repo) == p.Name {
+				if agentForRepo(d.Config(), ps[i].Repo) == name {
 					mine = append(mine, &ps[i])
 					if d.sessionView(d.Config(), ps[i]).CanPrompt {
 						idle = append(idle, &ps[i])
@@ -132,17 +131,31 @@ func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.Sessio
 			case len(idle) == 0 && len(mine) == 1:
 				target = mine[0]
 			case len(mine) > 1:
-				return nil, api.Errf(api.CodeRejected, "%s has %d sessions; name one (smif sessions shows the names)", p.Name, len(mine))
+				return nil, api.Errf(api.CodeRejected, "%s has %d sessions; name one (smif sessions shows the names)", name, len(mine))
 			}
 		}
 	default:
 		return nil, api.Errf(api.CodeParams, "name a session_id or a name")
 	}
 	if target == nil {
-		if n := countNamed(ps, p.Name); n > 1 {
-			return nil, api.Errf(api.CodeRejected, "%d sessions are named %q; use `smif prompt --session <id prefix> <text>`, without the name", n, p.Name)
+		if n := countNamed(ps, name); n > 1 {
+			return nil, api.Errf(api.CodeRejected, "%d sessions are named %q; use `smif prompt --session <id prefix> <text>`, without the name", n, name)
 		}
-		return nil, api.Errf(api.CodeNotFound, "no live session %s%s", p.SessionID, p.Name)
+		return nil, api.Errf(api.CodeNotFound, "no live session %s%s", sessionID, name)
+	}
+	return target, nil
+}
+
+// sessionSend is session.send (human only): type into an idle session, or
+// ask a fork of a busy or waiting one.
+func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.SessionSendParams) (*api.SessionSendResult, error) {
+	text, err := checkPrompt(d.expandPrompt(p.Text))
+	if err != nil {
+		return nil, err
+	}
+	target, err := d.writeTarget(p.SessionID, p.Name)
+	if err != nil {
+		return nil, err
 	}
 	v := d.sessionView(d.Config(), *target)
 	if v.CanPrompt {

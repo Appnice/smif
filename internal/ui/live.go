@@ -115,6 +115,8 @@ func stepLabel(s *api.SessionStep, st interface{ Render(...string) string }) str
 func waitReason(sv *api.SessionView) string {
 	s := nowStep(sv)
 	switch {
+	case sv.Background:
+		return "it waits for you: claude attach opens it"
 	case s == nil:
 		return "it waits for you in its tab"
 	case s.Tool == "AskUserQuestion":
@@ -186,7 +188,36 @@ func harnessMark(sv *api.SessionView) string {
 	if sv.Unverified {
 		parts = append(parts, "[unverified]")
 	}
+	if sv.Background {
+		parts = append(parts, "[background]")
+	}
 	return strings.Join(parts, " ")
+}
+
+// openWord says what o does on a session.
+func openWord(sv *api.SessionView) string {
+	if sv.Background {
+		return "o opens claude attach"
+	}
+	return "o brings its tab to the front"
+}
+
+// sessionHarness is the session's agent. A row from an older daemon has
+// none, and that daemon knows only Claude Code.
+func sessionHarness(sv *api.SessionView) string {
+	if sv == nil || sv.Harness == "" {
+		return harness.ClaudeName
+	}
+	return sv.Harness
+}
+
+// sessionSection is what the SESSIONS group sorts and heads by: the root
+// folder, or the harness after b.
+func (m *Model) sessionSection(sv *api.SessionView) string {
+	if m.home.byHarness {
+		return sessionHarness(sv)
+	}
+	return sessionRoot(sv)
 }
 
 // levelState is the row's text at the herdr and listed levels, in place of
@@ -221,7 +252,11 @@ func (m *Model) liveLine(sv *api.SessionView, w int, now time.Time) string {
 		if s := nowStep(sv); s != nil {
 			parts = append(parts, stepLabel(s, stWarn))
 		}
-		parts = append(parts, stDim.Render("ctrl+o its tab"))
+		if sv.Background {
+			parts = append(parts, stDim.Render("ctrl+o attach"))
+		} else {
+			parts = append(parts, stDim.Render("ctrl+o its tab"))
+		}
 	case kWorking:
 		parts = append(parts, stLive.Render("▶ working "+elapsed(now.Sub(workingSince(sv, now)))))
 		if s := nowStep(sv); s != nil {
@@ -287,6 +322,66 @@ func (m *Model) othersNeedYou(sv *api.SessionView) int {
 		}
 	}
 	return n
+}
+
+// factsLine is what the transcript and git show about the newest exchange:
+// "4 files · 1 commit · tests not run since the last edit · 3 uncommitted ·
+// 412k context". It states facts and does not judge the answer.
+func factsLine(f *api.SessionFacts) string {
+	if f == nil {
+		return ""
+	}
+	var parts []string
+	if f.Files > 0 {
+		parts = append(parts, countOf(f.Files, "file", "files"))
+	}
+	if f.Commits > 0 {
+		parts = append(parts, countOf(f.Commits, "commit", "commits"))
+	}
+	switch f.Tests {
+	case "passed":
+		parts = append(parts, "tests passed after the last edit")
+	case "failed":
+		parts = append(parts, "tests failed after the last edit")
+	case "none":
+		parts = append(parts, "tests not run since the last edit")
+	}
+	if f.Dirty != nil {
+		parts = append(parts, fmt.Sprintf("%d uncommitted", *f.Dirty))
+	}
+	if f.ContextTokens > 0 {
+		parts = append(parts, tokensShort(f.ContextTokens)+" context")
+	}
+	return strings.Join(parts, " · ")
+}
+
+// factsLines is the facts under an answer: a blank line, then at most two
+// lines, so a narrow pane keeps the context size (nil with no facts).
+func factsLines(f *api.SessionFacts, w int) []string {
+	s := factsLine(f)
+	if s == "" {
+		return nil
+	}
+	return append([]string{""}, dimLines(wrapLines(s, w, 2))...)
+}
+
+// contextMark is the row's context size, over daemon.context_warn.
+func contextMark(sv *api.SessionView) string {
+	if sv.Facts == nil || !sv.Facts.ContextHigh {
+		return ""
+	}
+	return tokensShort(sv.Facts.ContextTokens) + " ctx"
+}
+
+// tokensShort is a token count: 950, 412k, 1.2M.
+func tokensShort(n int64) string {
+	switch {
+	case n < 1000:
+		return fmt.Sprintf("%d", n)
+	case n < 999500:
+		return fmt.Sprintf("%dk", (n+500)/1000)
+	}
+	return fmt.Sprintf("%.1fM", float64(n)/1e6)
 }
 
 // toolCount is "1 tool", "3 tools".

@@ -1,0 +1,24 @@
+ smif   1 waiting  1 working  4 quiet  ⚑ 1… ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                                                │
+│ ▌ ⚑ cafe ← web Ship?                                                      4m │
+│                                                                              │
+│ SESSIONS · 6 · by harness                                                    │
+│   aider · 1                                                                  │
+│     ? unknown aider    [listed] no typing                                 0s │
+│   claude · 2                                                                 │
+│     ○ idle   release   Yes, 1.0.2 is live in both stores:                10m │
+│     ▶ 3m00s  web       Bash  go test -run TestCheckout -count 20 ./… 3 tools │
+│   codex · 2                                                                  │
+│     ○ idle   codex     [herdr] idle                                       5m │
+│     ! 2m     reviewer  codex [herdr] waits for you in its tab      needs you │
+│   gemini · 1                                                                 │
+│     ? unknown gemini   [herdr] no typing                                  1m │
+│                                                                              │
+│ RUNNING · 1                                                                  │
+│   ◉ cafe ← observability NPE in CheckoutView                              1m │
+│                                                                              │
+│ QUEUED · 2                                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Sessions by harness; b goes back to folders.
+↑↓ move · enter open · a answer · c cancel · e mark read · ? help · q quit

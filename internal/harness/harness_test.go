@@ -91,6 +91,44 @@ func TestValidID(t *testing.T) {
 	}
 }
 
+// A process name from the config counts like a built-in one, also under a
+// wrapper. The built-in table goes first.
+func TestListedProcessWith(t *testing.T) {
+	extra := map[string]string{"omnis": "omnis", "codex": "other"}
+	for argv, want := range map[string]string{"omnis --fast": "omnis", "/opt/bin/omnis": "omnis", "node /x/bin/omnis": "omnis",
+		"codex": "codex", "omni": "", "vim omnis": ""} {
+		if got := ListedProcessWith(strings.Fields(argv), extra); got != want {
+			t.Errorf("%q: %q, want %q", argv, got, want)
+		}
+	}
+	if got := ListedProcess([]string{"omnis"}); got != "" {
+		t.Errorf("no config: %q", got)
+	}
+}
+
+// Each agent of the process table has a program to start, and that program
+// shows as the same agent once it runs.
+func TestBuiltinCommands(t *testing.T) {
+	seen := map[string]bool{}
+	for _, name := range listedNames {
+		seen[name] = true
+		if BuiltinCommand(name) == "" {
+			t.Errorf("%s has no command", name)
+		}
+	}
+	for _, name := range BuiltinNames() {
+		if !seen[name] {
+			t.Errorf("%s is not in the process table", name)
+		}
+		if got := ListedProcess([]string{BuiltinCommand(name)}); got != name {
+			t.Errorf("%s: command %q reads as %q", name, BuiltinCommand(name), got)
+		}
+	}
+	if BuiltinCommand("claude") != "" || ProcessOwner("claude") != "claude" || ProcessOwner("omnis") != "" {
+		t.Error("claude stays out of the table, and owns its process name")
+	}
+}
+
 // Names from herdr's process table (a source reading, not real sessions).
 func TestListedProcess(t *testing.T) {
 	for _, c := range []struct {

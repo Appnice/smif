@@ -1,0 +1,24 @@
+ smif   1 working  1 quiet  ⚑ 1 asks you  … ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ NEEDS YOU · 1                                                                │
+│   ⚑ cafe ← web Ship?                                                      4m │
+│                                                                              │
+│ SESSIONS · 2                                                                 │
+│   /r/cafe · 1                                                                │
+│   ▌ ○ idle   release  Yes, 1.0.2 is live in both stores:      412k ctx · 10m │
+│   /r/web · 1                                                                 │
+│     ▶ 3m00s  web      Bash  go test -run TestCheckout -count 20 ./c… 3 tools │
+│                                                                              │
+│ RUNNING · 1                                                                  │
+│   ◉ cafe ← observability NPE in CheckoutView                              1m │
+│                                                                              │
+│ QUEUED · 2                                                                   │
+│   ◌ web ← observability ANR on cart screen                                3m │
+│   ◌ web ← cafe retry · Icons for the dark mode                            1m │
+│                                                                              │
+│ DONE TODAY · 2 · 1 unread (e marks read)                                     │
+│  •✓ observability ← human harness run smif-ui: green                      2h │
+│   ✓ cafe ← web Is Cafe live?                                              5h │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+↑↓ move · tab next that needs you · enter chat · s write · ? help · q quit

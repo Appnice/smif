@@ -38,6 +38,7 @@ From this:
 - A check opens before sending only when there is something to look at: what looks like a secret, a line of 5000
   characters or more, a file of 200 KB or more, a mismatch with the clipboard. It shows where, and never the whole secret.
 - Parts go only to an idle session. A fork does not read them, and no test has shown that `@path` works there.
+  ADR-0021 section 3 adds the queue: the line with its `@path` waits there, and is typed into an idle session.
 
 The daemon does not change: it gets one line of the human's text, as before.
 

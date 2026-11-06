@@ -12,6 +12,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/appnice/smif/internal/api"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -277,16 +279,22 @@ func TestDifferentClipboardWarns(t *testing.T) {
 	}
 }
 
-// A busy session answers through a fork, which reads no attachments.
-func TestPartsGoOnlyToAnIdleSession(t *testing.T) {
+// A busy session keeps a part in its queue, flat in the line (ADR-0021). A
+// fork reads no attachments, so ctrl+f refuses it.
+func TestPartsQueueForABusySession(t *testing.T) {
 	m, f := newSessionModel(t)
 	m.partsDir = t.TempDir()
 	m.clipRead = func() (string, error) { return "", nil }
 	key(m, "j", "j", "enter") // the busy session
 	paste(m, "a\nb\n")
-	key(m, "enter")
-	if len(f.prompts) != 0 || len(m.home.part.parts) != 1 || !strings.Contains(m.Status(), "only to an idle session") {
+	key(m, "ctrl+f")
+	if len(f.prompts) != 0 || len(m.home.part.parts) != 1 || !strings.Contains(m.Status(), "A fork reads no attachments") {
 		t.Fatalf("sent %q, status %q", f.prompts, m.Status())
+	}
+	path := m.home.part.parts[0].path
+	key(m, "enter")
+	if want := "queue busy-session-0001 @" + path + " (attached)"; len(f.prompts) != 1 || f.prompts[0] != want {
+		t.Fatalf("sent %q, want %q (%s)", f.prompts, want, m.Status())
 	}
 }
 
@@ -357,12 +365,41 @@ func TestCleanParts(t *testing.T) {
 	if err := os.Chtimes(fresh, t0.Add(-time.Hour), t0.Add(-time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	cleanParts(dir, t0)
+	cleanParts(dir, t0, nil)
 	if _, err := os.Stat(old); err == nil {
 		t.Fatal("old file stays")
 	}
 	if _, err := os.Stat(fresh); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A part of a queued prompt stays past the 24 h cleanup, and goes once no
+// item names it (ADR-0021).
+func TestCleanPartsKeepsQueuedFiles(t *testing.T) {
+	m, _ := newSessionModel(t)
+	dir := t.TempDir()
+	m.partsDir = dir
+	queued, loose := filepath.Join(dir, "queued.txt"), filepath.Join(dir, "loose.txt")
+	for _, p := range []string{queued, loose} {
+		if err := os.WriteFile(p, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(p, t0.Add(-25*time.Hour), t0.Add(-25*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.snap.Sessions[0].Queue = []api.QueuedPrompt{{ID: 1, Text: "see @" + queued + " (attached)", CreatedAt: t0.Add(-time.Hour)}}
+	m.partsDirReady()
+	if _, err := os.Stat(queued); err != nil {
+		t.Fatalf("the cleanup removed a queued part: %v", err)
+	}
+	if _, err := os.Stat(loose); err == nil {
+		t.Fatal("a part no item names stays")
+	}
+	cleanParts(dir, t0, nil)
+	if _, err := os.Stat(queued); err == nil {
+		t.Fatal("a part stays after its item left the queue")
 	}
 }
 

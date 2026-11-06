@@ -9,7 +9,7 @@ To set it up, run `smif install` and `smif init`. `smif init` finds your git rep
 |---|---|---|
 | An ask with a known answer | **command**: a script, no model | The asking session gets the answer in about 25 ms. |
 | A crash, an error, a code question | **worker**: a headless `claude -p` with a locked tool set | You get a summary in `/smif`. A fix is a branch for you to merge. |
-| An ask to a session's name | **fork** of that session | The asker gets an answer from the session's context. Nothing is typed into it. |
+| An ask to a session's name | **fork** of that session | The asker gets an answer from the session's context. Nothing is typed into it, and nothing enters its queue. |
 | Information (a build is done) | **digest** | You get one line in `/smif`. |
 | A decision for a human | **escalate** | You get a count in the status line, an OS notification and an item in the UI. |
 

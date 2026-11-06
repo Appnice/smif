@@ -94,6 +94,9 @@ var screens = []struct {
 	{"inbox_empty", sample, []string{"i", "s"}, []string{"No messages match the filter (agent: all, state: accepted)."}},
 	{"digest", sample, []string{"d"}, []string{"DIGEST · 2 unread handled items", "m marks"}},
 	{"digest_empty", sample, []string{"d", "m", "m"}, []string{"Nothing new since the read cursor."}},
+	{"home_closed", closedSnapshot, []string{"v"}, []string{"3 sessions closed · R reopens"}},
+	{"history", closedSnapshot, []string{"v", "R"}, []string{"HISTORY · 7 sessions · 3 closed", "> ", "died working", "closed", "A reopen all"}},
+	{"history_search", closedSnapshot, []string{"v", "R", "/", "login", "ctrl+s"}, []string{`SEARCH "login" · 2 hits, stopped at the limit of 10 s`, "claude", "enter reopen"}},
 }
 
 // TestLayoutGoldens renders every screen at 80x24 and 160x50. Each view
@@ -164,9 +167,9 @@ func TestHelpListsEveryKey(t *testing.T) {
 	key(m, "?")
 	out := view(m)
 	for _, k := range []string{
-		"tab", "shift+tab", "↑/k", "↓/j", "pgup", "pgdown", "g", "G", "r", "enter", "i", "f/F", "s/S", "x", "d", "m", "a", "c", "t",
+		"tab", "shift+tab", "↑/k", "↓/j", "pgup", "pgdown", "g", "G", "r", "enter", "i", "f/F", "s/S", "x", "d", "m", "a", "c", "t", "b", "n",
 		"1", "2", "3", "esc", "backspace", "?", "q", "ctrl+c", "y",
-		"alt+enter", "ctrl+u", "ctrl+k", "ctrl+w", "ctrl+a", "ctrl+e",
+		"alt+enter", "ctrl+u", "ctrl+k", "ctrl+w", "ctrl+a", "ctrl+e", "ctrl+f", "ctrl+q", "R", "A", "ctrl+s",
 	} {
 		if !strings.Contains(out, " "+k) {
 			t.Errorf("help lacks the key %q", k)

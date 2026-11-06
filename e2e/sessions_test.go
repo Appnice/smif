@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/ui"
 )
 
 // SESSIONS (ADR-0012): the hooks report idle and busy turns, the human
@@ -307,6 +308,88 @@ func TestSessionDiscovery(t *testing.T) {
 		a.Steps[0].Target != "cart/cart.go" || !a.Steps[0].Done || a.Now == nil || a.Now.Tool != "Bash" ||
 		a.Now.Target != "git push origin main" || a.WroteAt.IsZero() {
 		t.Fatalf("activity: %+v %+v", s, s.Activity)
+	}
+}
+
+// SESSION FACTS (ADR-0021): session.list carries what the transcript and
+// git show, and follows the transcript as it grows. daemon.test_commands
+// adds a test command, and context_warn sets the row's mark.
+func TestSessionFacts(t *testing.T) {
+	e := NewEnv(t, "test_commands = ['^\\./ci\\.sh']\ncontext_warn = \"100k\"", "", AgentSpec{ID: "app", Rules: digestRule()})
+	e.Start()
+	cwd := e.Repos["app"]
+	dir := filepath.Join(e.Home, ".claude", "sessions")
+	pdir := filepath.Join(e.Home, ".claude", "projects", "-r-app")
+	for _, d := range []string{dir, pdir} {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UnixMilli()
+	const id = "facts-session-1"
+	b, _ := json.Marshal(map[string]any{"pid": os.Getpid(), "sessionId": id, "cwd": cwd, "kind": "interactive", "name": "facts",
+		"status": "idle", "startedAt": now - 60000, "statusUpdatedAt": now})
+	if err := os.WriteFile(filepath.Join(dir, "facts.json"), b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(pdir, id+".jsonl")
+	add := func(lines ...string) {
+		t.Helper()
+		f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if _, err := f.WriteString(strings.Join(lines, "\n") + "\n"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	view := func() api.SessionView {
+		t.Helper()
+		var ss []api.SessionView
+		e.Call("session.list", nil, &ss)
+		for _, s := range ss {
+			if s.SessionID == id {
+				return s
+			}
+		}
+		t.Fatalf("no session %s in %+v", id, ss)
+		return api.SessionView{}
+	}
+	add(`{"type":"user","timestamp":"2026-11-05T09:00:00Z","message":{"content":"fix it"}}`,
+		`{"type":"assistant","timestamp":"2026-11-05T09:00:01Z","message":{"content":[{"type":"tool_use","id":"e1","name":"Edit","input":{"file_path":"`+cwd+`/main.go"}}],"usage":{"input_tokens":2,"cache_read_input_tokens":120000,"cache_creation_input_tokens":3000}}}`,
+		`{"type":"user","timestamp":"2026-11-05T09:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"e1","content":"ok"}]}}`)
+	if err := os.WriteFile(filepath.Join(cwd, "new.go"), []byte("package x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := view().Facts
+	if f == nil || f.Files != 1 || f.Tests != "none" || f.ContextTokens != 123002 || !f.ContextHigh {
+		t.Fatalf("facts: %+v", f)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for f.Dirty == nil || *f.Dirty < 1 {
+		if time.Now().After(deadline) {
+			t.Fatalf("no dirty count: %+v", f)
+		}
+		time.Sleep(50 * time.Millisecond)
+		f = view().Facts
+	}
+	add(`{"type":"assistant","timestamp":"2026-11-05T09:00:03Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"./ci.sh --fast"}}],"usage":{"input_tokens":2,"cache_read_input_tokens":90000}}}`,
+		`{"type":"user","timestamp":"2026-11-05T09:00:04Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"all good"}]}}`)
+	if f := view().Facts; f == nil || f.Tests != "passed" || f.ContextTokens != 90002 || f.ContextHigh {
+		t.Fatalf("after the test: %+v", f)
+	}
+	// The UI over the socket: the facts line in the preview.
+	src := &ui.DaemonSource{Dial: func() (ui.Caller, error) { return e.Client() }}
+	defer src.Close()
+	u := startUI(t, ui.New(src, ui.Options{}))
+	u.until("the session row", 10*time.Second, has("SESSIONS · 1"))
+	u.press("down")
+	v := u.until("the facts line", 10*time.Second, has("1 file · tests passed after the last edit"))
+	t.Logf("facts in the preview:\n%s", v)
+	add(`{"type":"user","timestamp":"2026-11-05T09:01:00Z","message":{"content":"thanks"}}`)
+	if f := view().Facts; f == nil || f.Files != 0 || f.Tests != "" {
+		t.Fatalf("after a new prompt: %+v", f)
 	}
 }
 

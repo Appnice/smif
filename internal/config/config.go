@@ -10,17 +10,23 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
+	"net"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	toml "github.com/pelletier/go-toml/v2"
 
+	"github.com/appnice/smif/internal/harness"
 	"github.com/appnice/smif/internal/paths"
 )
 
@@ -57,11 +63,16 @@ type Config struct {
 	// Prompts are the human's saved prompts (ADR-0015): name → one line of
 	// text, sent to a session with `p` in the UI or as @name.
 	Prompts map[string]string `toml:"prompts"`
+	// Harnesses adds coding agents with no code (ADR-0021): their sessions
+	// show at the Listed level, and `n` can start them.
+	Harnesses map[string]Harness `toml:"harnesses"`
 
 	// Path is where the config was loaded from (not part of the file).
 	Path string `toml:"-"`
 	// Warnings are non-fatal findings from Validate.
 	Warnings []string `toml:"-"`
+
+	testRes []*regexp.Regexp // daemon.test_commands, compiled by Validate
 }
 
 // Daemon holds process-wide settings.
@@ -75,6 +86,10 @@ type Daemon struct {
 	// (ADR-0014): "waiting,answered" (default), "waiting", "answered" or
 	// "none".
 	SessionNotify string `toml:"session_notify"`
+	// NotifyURL gets a POST for each notification (ADR-0021): https, or
+	// http to localhost. Empty is off. It can hold a topic's secret, so
+	// no log, error or doctor line names it.
+	NotifyURL string `toml:"notify_url"`
 	// Watchdogs (ADR-0015), each a duration or "off": remind again while a
 	// session waits in its tab (every RemindWaiting, at most 3 times), and
 	// tell once when a working session writes nothing for AlertSilent or
@@ -82,6 +97,11 @@ type Daemon struct {
 	RemindWaiting string `toml:"remind_waiting"`
 	AlertSilent   string `toml:"alert_silent"`
 	AlertLongTurn string `toml:"alert_long_turn"`
+	// TestCommands adds regexes to the built-in test command patterns of
+	// the session facts (ADR-0021). ContextWarn is the context size over
+	// which a session's row shows it: "200k", "1m", a count, or "off".
+	TestCommands []string `toml:"test_commands"`
+	ContextWarn  string   `toml:"context_warn"`
 	// Terminal types the human's prompts into idle sessions (ADR-0012):
 	// "auto" (Terminal.app on macOS), "none" (off) or "log:<path>" (tests).
 	Terminal           string     `toml:"terminal"`
@@ -150,6 +170,14 @@ type Agent struct {
 	ProfileOverrides map[string]map[string]any `toml:"profile_overrides"`
 
 	ID string `toml:"-"`
+}
+
+// Harness is one [harnesses.<name>] table. Process lists the process names
+// of the agent, Command the program that starts it. A name that a built-in
+// provider owns may set Command only.
+type Harness struct {
+	Process []string `toml:"process"`
+	Command string   `toml:"command"`
 }
 
 // Rule maps matching messages to a handler (RFC 6.1).
@@ -238,6 +266,76 @@ var forbiddenExtra = []string{
 // promptNameRe is a saved prompt's name.
 var promptNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
 
+// A harness name, a process name and a command are single words: argv
+// takes the command as one word, and a scan compares one word.
+var (
+	harnessNameRe    = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,31}$`)
+	harnessProcessRe = regexp.MustCompile(`^[A-Za-z0-9._+][A-Za-z0-9._+-]{0,63}$`)
+	harnessCommandRe = regexp.MustCompile(`^[A-Za-z0-9._+/][A-Za-z0-9._+/-]{0,255}$`)
+)
+
+// ValidHarnessName reports whether s can name a harness.
+func ValidHarnessName(s string) bool { return harnessNameRe.MatchString(s) }
+
+// ListedProcesses maps the configured process names to their harness.
+func (c *Config) ListedProcesses() map[string]string {
+	out := map[string]string{}
+	for name, h := range c.Harnesses {
+		for _, p := range h.Process {
+			out[p] = name
+		}
+	}
+	return out
+}
+
+// HarnessCommand is the program that starts a harness, from the config or
+// the built-in table ("" = none).
+func (c *Config) HarnessCommand(name string) string {
+	if h, ok := c.Harnesses[name]; ok && h.Command != "" {
+		return h.Command
+	}
+	if name == harness.ClaudeName {
+		return c.Defaults.ClaudeCommand
+	}
+	return harness.BuiltinCommand(name)
+}
+
+func (c *Config) validateHarnesses(add func(string, ...any)) {
+	claimed := map[string]string{}
+	for _, name := range slices.Sorted(maps.Keys(c.Harnesses)) {
+		h, where := c.Harnesses[name], "harnesses."+name
+		if !harnessNameRe.MatchString(name) {
+			add("%s: a name is a-z, 0-9, - and _, at most 32", where)
+			continue
+		}
+		known := name == harness.ClaudeName || harness.BuiltinCommand(name) != ""
+		switch {
+		case harness.IsBuiltinProvider(name) && len(h.Process) > 0:
+			add("%s: a built-in provider may set command only", where)
+		case !known && len(h.Process) == 0:
+			add("%s: process needs at least one name", where)
+		case known && len(h.Process) == 0 && h.Command == "":
+			add("%s: set process or command", where)
+		}
+		if h.Command != "" && !harnessCommandRe.MatchString(h.Command) {
+			add("%s.command %q: one program name or path, with no spaces or arguments", where, h.Command)
+		}
+		for _, p := range h.Process {
+			owner, ok := claimed[p]
+			if !ok {
+				owner = harness.ProcessOwner(p)
+			}
+			switch {
+			case !harnessProcessRe.MatchString(p):
+				add("%s.process %q: one process name, with no spaces or path", where, p)
+			case owner != "" && owner != name:
+				add("%s.process %q: %s already owns it", where, p, owner)
+			}
+			claimed[p] = name
+		}
+	}
+}
+
 // WatchdogEvery reads a watchdog setting: a duration of a second or more,
 // or "off" (0).
 func WatchdogEvery(v string) (time.Duration, error) {
@@ -252,6 +350,32 @@ func WatchdogEvery(v string) (time.Duration, error) {
 		return 0, fmt.Errorf("%q is under 1s; use \"off\" to turn it off", v)
 	}
 	return d, nil
+}
+
+// ContextWarnTokens reads daemon.context_warn: a positive token count with
+// an optional k or m, or "off" (0).
+func ContextWarnTokens(v string) (int64, error) {
+	if v == "off" {
+		return 0, nil
+	}
+	s, unit := strings.ToLower(strings.TrimSpace(v)), int64(1)
+	switch {
+	case strings.HasSuffix(s, "k"):
+		s, unit = strings.TrimSuffix(s, "k"), 1000
+	case strings.HasSuffix(s, "m"):
+		s, unit = strings.TrimSuffix(s, "m"), 1000*1000
+	}
+	n, err := strconv.ParseInt(s, 10, 32)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%q is not a token count such as \"200k\", or \"off\"", v)
+	}
+	return n * unit, nil
+}
+
+// IsTestCommand reports a shell command that runs tests: a built-in
+// pattern or one of daemon.test_commands.
+func (c *Config) IsTestCommand(command string) bool {
+	return harness.IsTestCommand(command, c.testRes)
 }
 
 // Load reads, decodes, defaults and validates a config file.
@@ -283,7 +407,14 @@ func Parse(b []byte) (*Config, error) {
 	if err := dec.Decode(&c); err != nil {
 		var sm *toml.StrictMissingError
 		if errors.As(err, &sm) {
-			return nil, fmt.Errorf("unknown keys: %s", strings.TrimSpace(sm.String()))
+			// Keys only: the parser's own text quotes the line, and a
+			// misspelt notify_url must not reach the audit log.
+			var keys []string
+			for i := range sm.Errors {
+				row, _ := sm.Errors[i].Position()
+				keys = append(keys, fmt.Sprintf("%s (line %d)", strings.Join(sm.Errors[i].Key(), "."), row))
+			}
+			return nil, fmt.Errorf("unknown keys: %s", strings.Join(keys, ", "))
 		}
 		var de *toml.DecodeError
 		if errors.As(err, &de) {
@@ -324,6 +455,9 @@ func (c *Config) applyDefaults() {
 	}
 	if d.AlertLongTurn == "" {
 		d.AlertLongTurn = "off"
+	}
+	if d.ContextWarn == "" {
+		d.ContextWarn = "200k"
 	}
 	if d.Notify == "" {
 		d.Notify = "os"
@@ -498,6 +632,29 @@ func contains(xs []string, s string) bool {
 	return false
 }
 
+// notifyURLProblem says what is wrong with a daemon.notify_url, "" if nothing
+// is. The answer never quotes the URL: url.Parse errors do, so they stay out.
+func notifyURLProblem(s string) string {
+	if s == "" {
+		return ""
+	}
+	u, err := url.Parse(s)
+	if err != nil || u.Hostname() == "" || strings.Contains(s, " ") {
+		return "not a full URL"
+	}
+	switch u.Scheme {
+	case "https":
+		return ""
+	case "http":
+		h := u.Hostname()
+		if ip := net.ParseIP(h); strings.EqualFold(h, "localhost") || (ip != nil && ip.IsLoopback()) {
+			return ""
+		}
+		return "http is allowed only to localhost; use https"
+	}
+	return "must be https, or http to localhost"
+}
+
 // Validate checks every rule in RFC 6 and 7.6. It collects all problems.
 func (c *Config) Validate() error {
 	c.Warnings = nil
@@ -514,10 +671,28 @@ func (c *Config) Validate() error {
 	if n != "os" && n != "none" && !strings.HasPrefix(n, "log:") {
 		add("daemon.notify must be \"os\", \"none\" or \"log:<path>\"")
 	}
+	if why := notifyURLProblem(c.Daemon.NotifyURL); why != "" {
+		add("daemon.notify_url: %s", why)
+	}
 	for key, v := range map[string]string{"remind_waiting": c.Daemon.RemindWaiting, "alert_silent": c.Daemon.AlertSilent,
 		"alert_long_turn": c.Daemon.AlertLongTurn} {
 		if _, err := WatchdogEvery(v); err != nil {
 			add("daemon.%s: %v", key, err)
+		}
+	}
+	if _, err := ContextWarnTokens(c.Daemon.ContextWarn); err != nil {
+		add("daemon.context_warn: %v", err)
+	}
+	c.testRes = nil
+	for i, s := range c.Daemon.TestCommands {
+		re, err := regexp.Compile(s)
+		switch {
+		case err != nil:
+			add("daemon.test_commands[%d]: %v", i, err)
+		case s == "":
+			add("daemon.test_commands[%d]: an empty regex matches every command", i)
+		default:
+			c.testRes = append(c.testRes, re)
 		}
 	}
 	for name, text := range c.Prompts {
@@ -528,6 +703,7 @@ func (c *Config) Validate() error {
 			add("prompts.%s: one line of text, at most 4000 characters", name)
 		}
 	}
+	c.validateHarnesses(add)
 	switch c.Daemon.SessionNotify {
 	case "waiting,answered", "answered,waiting", "waiting", "answered", "none":
 	default:

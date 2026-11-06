@@ -33,6 +33,9 @@ func (d *Daemon) GC() (*api.GCResult, error) {
 		}
 		n, _ = r.RowsAffected()
 		res.Messages = int(n)
+		if _, err := tx.Exec(`DELETE FROM session_queue WHERE state<>'queued' AND created_at<?`, msgCut); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(`DELETE FROM audit WHERE ts<?`, now.Add(-cfg.Daemon.AuditRetention.Duration).UnixMilli()); err != nil {
 			return err
 		}

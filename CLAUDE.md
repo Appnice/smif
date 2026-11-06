@@ -11,7 +11,8 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
 - `smif` (= `smif ui [--interval 1s]`) live human view; in a pipe plain `smif` prints one summary (needs a TTY; `NO_COLOR=1` drops colours, keeps bold/reverse)
   · `go test -run TestUIOverviewLive -v ./e2e/` prints it live · `go test ./internal/ui -update` rewrites goldens
 - `smif stats [--days N] [--json]` counts per agent/day (`stats.get`, ADR-0011) · `go test -run TestStatsCountsKnownTraffic ./e2e/`
-- `smif sessions` · `smif prompt <session name | agent> <text>` type into an idle session (Terminal.app, iTerm2, tmux: `terminals.go`, ADR-0012; herdr: `herdr.go`, ADR-0018) · `go test -run TestSessionPrompt ./e2e/` · `go test -run TestHerdrLevel ./e2e/`
+- `smif sessions` · `smif prompt [--when-idle] <session name | agent> <text>` type into an idle session (Terminal.app, iTerm2, tmux: `terminals.go`, ADR-0012; herdr: `herdr.go`, ADR-0018) · `go test -run TestSessionPrompt ./e2e/` · `go test -run TestHerdrLevel ./e2e/`
+- `smif notify test` one ping to `daemon.notify_url` (no daemon needed)
 - `smif watch [--events] [--once] [--last N]` plain text for pipes/tmux/ssh · `go test -run TestWatchEventsLive -v ./e2e/`
 - `make bench` (tiers S/R/T on the fake, $0, `bench/README.md`) · `make bench-real` (+ actual tokens on haiku via the login)
 - `make cover` · `make smoke-real` (real `claude -p` on haiku, `SMIF_E2E_REAL=1`, ~$0.01)
@@ -32,17 +33,17 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   (overview), `e2e/ui_actions_test.go` (actions), `e2e/ui_cancel_test.go` (cancel a running run), `e2e/ui_run_test.go` (inbox, thread, run, diff, apply),
   `e2e/ui_events_test.go` (events, digest, `watch`), `e2e/ui_tour_test.go` (every screen and action, five agents;
   `SMIF_TOUR_DIR=<dir>` keeps each screen as text)
-  `parts.go` the prompt box's parts (ADR-0020: paste, image, dropped file, warnings, `@path` prompt), `partsview.go` their keys and screens
+  `parts.go` the prompt box's parts (ADR-0020: paste, image, dropped file, warnings, `@path` prompt), `partsview.go` their keys and screens · `history.go` the `R` screen (ADR-0021)
 - `internal/daemon/` wiring: ingest + routing (`ingest.go`), scheduler loop and outcomes (`dispatch.go`),
   RPC methods (`methods.go`), retention (`gc.go`)
 - `internal/store/` SQLite (modernc, WAL, synchronous=FULL), migrations, the state machine (`transitions`)
 - `internal/router`, `internal/scheduler`, `internal/supervisor` (process groups), `internal/runner/{claude,command}`
 - `internal/harness/` Provider interface and registry (ADR-0019): required `Info`, `Discover`, `Read`; optional `Stater`, `Hooker`,
-  `Forker`, `Stamper`, `Checker`; `ReadOnly` is the typing gate; `listed.go` the process names of the Listed level; `herdr.go` the agents whose herdr idle counts (others read `unknown`, no typing; an agent with no provider stays read only until `herdrChecked` in `internal/daemon/herdr.go` names it). `internal/harness/claude/` the Claude Code provider (session files,
+  `Forker`, `Stamper`, `Checker`, `Factser`; `ReadOnly` is the typing gate; `listed.go` the process names of the Listed level; `herdr.go` the agents whose herdr idle counts (others read `unknown`, no typing; an agent with no provider stays read only until `herdrChecked` in `internal/daemon/herdr.go` names it). `internal/harness/claude/` the Claude Code provider (session files,
   transcripts, file status, fork folder, process name). Mail, workers and `smif_ask` stay on `internal/runner/claude`.
   `internal/harness/{qwen,codex,opencode,copilot,droid}/` read-only providers from a source reading (unverified, `docs/compat.md`); their `testdata/report-*` are hand-built from that reading. `read.go` holds the shared transcript helpers (`ScanTail`, `TurnLog`, `FileCache`); `proc.go` the process list and `MatchProcs`, for agents with no file that links a pid to a session
 - `internal/workspace` worktrees and branches · `internal/install` settings.json edits, launchd/systemd
-- `testdata/fakeclaude/` scripted `claude -p` stand-in (`#fake:` directives in the message body) · `testdata/fakeherdr/` herdr stand-in (`SMIF_HERDR=<path>`, `""` = no herdr)
+- `testdata/fakeclaude/` scripted `claude -p` stand-in (`#fake:` directives in the message body), also `claude agents` (`agents.json` in `$SMIF_FAKE_LOG`) · `testdata/fakeherdr/` herdr stand-in (`SMIF_HERDR=<path>`, `""` = no herdr)
 - `e2e/` acceptance scenarios A1–A15, M1 kill -9, chaos; each test gets its own `/tmp/mr-*` root
 
 ## Rules
@@ -65,12 +66,17 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   Codex, Qwen Code and Droid have no state field: a tool call with no result is `unknown`, because a file cannot tell it from an approval prompt. OpenCode and Copilot do the same for an open tool; Copilot's `permission.requested` gives `waiting`. Codex, OpenCode and Droid match by `ps` and folder (`harness.MatchProcs`), a machine with no such files runs no `ps`. OpenCode reads SQLite with `mode=ro`, never `immutable=1`, and never opens `service.json` (it holds a password): `ps` shows the server.
   Levels herdr and listed: `internal/daemon/scan.go` (`liveSessions` = `fullSessions` + the scan; the watchers read only `fullSessions`). `Presence.Level` "" is full; a scanned row has no presence row, steps or fork. `SMIF_NO_AGENT_SCAN=1` turns the scan off (e2e does, so the host's agents stay out of a test).
   Answers: `readTranscript` keeps only the text after the last tool call; the UI draws it in `internal/ui/answer.go`.
+  Facts (ADR-0021): `harness.Factser`, `internal/harness/claude/facts.go` reads only appended bytes (`factCursor`); `Dirty` runs git in the background (`internal/daemon/facts.go`), because the status line also goes through `sessionView`. `factsLine`, `contextMark` in `internal/ui/live.go`. `go test -run TestSessionFacts ./e2e/`.
   What a session does now: `Provider.Read` → `SessionView.Activity` (steps, pending call); state cells, counts, `tab` in `internal/ui/live.go`;
   notifications, the status line's session names and the watchdogs in `internal/daemon/session_watch.go` (ADR-0014, 0015);
-  saved prompts (`p`, `@name`) and new sessions (`n`, `session.new`, `terminal.Open`) in `internal/ui/quick.go` (ADR-0015).
+  saved prompts (`p`, `@name`) and new sessions (`n`, `session.new`, `terminal.Open`) in `internal/ui/quick.go` (ADR-0015). `b` groups SESSIONS by harness (`sessionSection`, `live.go`). `[harnesses.<name>]` in the config feeds the Listed level (`Config.ListedProcesses`, `harness.ListedProcessWith`) and `session.new`: the daemon builds argv in `newArgv` from `Config.HarnessCommand`, never from the call; `session.harnesses` lists what `n` offers (ADR-0021). `go test -run TestCustomHarness ./e2e/`.
 - No config = defaults, no agents; `smif`/`sessions` start the daemon (`autostart.go`, off with `SMIF_NO_AUTOSTART=1`,
   which the e2e harness sets). `daemon.lock` allows one daemon per data dir. README media: `docs/img/{hero,chat}.gif` from `site/media` (ffmpeg, `site/README.md`), `flow.gif` from the site; logo `docs/brand/make.py`; macOS notification icon `docs/brand/icns.sh` → `internal/notify/smif.icns` (`Smif.app`, `internal/notify/app.go`).
   Busy sessions: `session.send` / an ask to a session's name → a fork worker (`session_ask.go`, ADR-0013); `go test -run TestSessionAsk ./e2e/`.
+  Send when idle (ADR-0021): `internal/daemon/session_queue.go` (`queueLoop`, its own goroutine: typing can take 11 s; it reads `liveSessions` only with items queued), `internal/store/session_queue.go` (`QueueMove` audits each state change), `internal/ui/queue.go` (`ctrl+q`, `ctrl+f`, `x`). `session.list` fills `SessionView.Queue`, `sessionView` does not (the status line stays cheap). `cleanParts` keeps files a queued line names. `go test -run TestSessionQueue ./e2e/`.
+- Background sessions (ADR-0021): `internal/harness/claude/background.go` runs `claude agents --json --all`, at most once in 5 s, in one goroutine, so `Discover` never waits. `Session.AttachID` is the mark, `Presence.AttachID` and `SessionView.Background` carry it. The list beats the hooks. A done row's time is its last answer, never the file's time. `session.attach` (`sessions.go`) takes the id from the list. `testDaemon` sets `Command` nil, so no unit test reaches the real claude. `go test -run Background ./internal/harness/claude ./internal/daemon ./internal/ui` · `go test -run TestBackgroundSessions ./e2e/`.
+- History and restart (ADR-0021): `harness.Historian`, `internal/harness/claude/history.go` (head 1 MB + tail 256 KB, an index in memory by size and time; search reads whole files through `eachLine`). `internal/daemon/restore.go`: `session.history`, `.search`, `.resume`, `.closed`, `.reopen`, and `trackOpen` from `watchSessions`, which writes `open-sessions.json`. `internal/ui/history.go` is the `R` screen. `resumeSession` is the one place that builds `--resume` argv, from the index and the config. `go test -run 'History|Search' ./internal/harness/claude` · `go test -run TestHistoryRestart ./e2e/`.
+- Phone ping (ADR-0021): `internal/notify/ping.go`. `Daemon.pinger` takes each event in `notify` and `notifySession`, the URL from the config each time. `Send` never waits. The body comes from `title(e)`, never `Summary`. No error or log line may name the URL: `pingError` drops the net/http text, `notifyURLProblem` the url.Parse text. `go test -run Ping ./internal/notify ./internal/daemon` · `go test -run TestPhonePing ./e2e/`.
 - macOS Unix socket paths max 104 bytes: tests use `/tmp/mr-*` and `SMIF_SOCKET`.
 - Hooks must print nothing and exit 0 fast; the status line must stay under ~300 ms.
 - `--resume` only finds a session from the same cwd: sessions are kept per workspace dir (ADR-0005).

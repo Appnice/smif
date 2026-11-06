@@ -220,6 +220,9 @@ type Presence struct {
 	// support level of a scanned session: herdr or listed (ADR-0019; not
 	// stored, so a scanned session never gets a presence row).
 	Level string
+	// AttachID is the id for `claude attach`, set only on a background
+	// session, which has no tab (ADR-0021; from discovery, not stored).
+	AttachID string
 }
 
 // PresenceUpdate is one hook or status-line report. Empty fields keep the

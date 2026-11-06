@@ -2,8 +2,11 @@
 
 - **Your session.** No inbound message enters a session that a human drives. The only text that smif types
   into a session is your own prompt. It types only into an idle session, and only when claude is in the foreground
-  of its tab. A busy session, or an ask to a session's name, gets a read-only fork instead; the session is not
-  touched. The session view reads Claude Code's session files and transcripts, which are not a documented
+  of its tab. A prompt you queue for a busy session goes through the same checks, and it can go in when you are
+  away. An agent cannot queue, and inbound mail never reaches the queue. `ctrl+f`, or an ask to a session's name,
+  gets a read-only fork; the session is not touched. A background session (`claude --bg`) has no tab, so smif only
+  reads it: `o` opens `claude attach` in a new tab, with an id from `claude agents`. `R` reopens a past session with
+  `claude --resume`, with an id from smif's index of your transcripts. Only you can read that history: an agent token gets no history, search or resume. The session view reads Claude Code's session files and transcripts, which are not a documented
   interface: `smif doctor` checks their shape. Hooks print nothing. The status line
   shows counts only, for example `mail: shop 1 running · 1 needs you`.
 - **Workers.** Claude Code flags lock each worker, not a prompt. `--tools` gives only the tools of the profile, so
@@ -14,6 +17,15 @@
 - **Data.** SQLite with `synchronous=FULL`. Each state change writes an audit row in the same transaction.
 - **Access.** A Unix socket with mode 0600, a peer uid check and one token for each agent. Agents cannot read
   the mail of other agents or the stats. There is no server, no cloud and no telemetry.
+- **What leaves the machine.** Nothing, unless you set `daemon.notify_url`. With that key, each notification also
+  sends one POST to that URL. The POST holds a name and what happened, for example `shop waits for you`, and the
+  headers `Title: smif` and `Tags: bell`. smif adds no prompt, answer, command, file path or message text.
+- **What a name tells.** The name is the session's name, else the agent, else the folder. The agent can make that
+  title itself: Claude Code does for a background session, and Droid and Copilot keep a title or a summary of the
+  session. Such a title can repeat words of a prompt, so the POST can too. Anyone who knows a public ntfy topic reads
+  these names: use a long random topic or your own server.
+- **The URL.** A topic in a URL works as a password, so smif keeps the URL out of logs, errors and `smif doctor`.
+  `smif doctor` shows only that the ping is on. Nothing comes back: a phone cannot reply, approve or send a prompt.
 
 ## Questions
 

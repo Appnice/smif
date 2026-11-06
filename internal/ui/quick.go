@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -11,26 +12,29 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/harness"
 )
 
 // Saved prompts and new sessions (ADR-0015). p on a session opens the
 // saved prompts ([prompts] in the config); enter sends the chosen one the
-// way s would (typed in when idle, else a fork answers). n opens a new
-// terminal tab that runs claude in the selected session's folder.
+// way s would (typed in when idle, else queued). n opens a new
+// terminal tab that runs claude, or another harness (ADR-0021), in the
+// selected session's folder.
 
 // SessionOpener opens a new session in a terminal tab (session.new).
 type SessionOpener interface {
-	NewSession(ctx context.Context, dir, name, term string) error
+	NewSession(ctx context.Context, dir, name, term, harness string) error
 }
 
-// NewSession opens a new terminal tab that runs claude in dir.
-func (s *DaemonSource) NewSession(ctx context.Context, dir, name, term string) error {
-	return s.callT(ctx, "session.new", api.SessionNewParams{Dir: dir, Name: name, Term: term}, nil, 20*time.Second)
+// NewSession opens a new terminal tab that runs a harness in dir ("" =
+// claude). The daemon builds the command from the harness's name.
+func (s *DaemonSource) NewSession(ctx context.Context, dir, name, term, harness string) error {
+	return s.callT(ctx, "session.new", api.SessionNewParams{Dir: dir, Name: name, Term: term, Harness: harness}, nil, 20*time.Second)
 }
 
 type openedMsg struct {
-	name, dir string
-	err       error
+	name, dir, harness string
+	err                error
 }
 
 // prompts are the saved prompts from the last snapshot.
@@ -99,8 +103,31 @@ func (m *Model) pickLines(sv *api.SessionView, w int) []string {
 	return append(out, stDim.Render(ansi.Truncate(writeHint(sv), w, "…")))
 }
 
-// newOpen is n: ask for the new session's name. It opens in the selected
-// session's folder and terminal, else in the UI's own folder.
+// harnessChoices are the agents n can start. With one or none, n asks
+// nothing about the harness.
+func (m *Model) harnessChoices() []string {
+	if m.snap == nil {
+		return nil
+	}
+	return m.snap.Harnesses
+}
+
+// newIsClaude reports that the new session runs Claude Code, the only
+// harness that takes --name.
+func (m *Model) newIsClaude() bool {
+	return m.home.newHarness == "" || m.home.newHarness == harness.ClaudeName
+}
+
+// newCycle moves the harness of the new session, round the list.
+func (m *Model) newCycle(step int) {
+	hs := m.harnessChoices()
+	i := max(0, slices.Index(hs, m.home.newHarness))
+	m.home.newHarness = hs[(i+step+len(hs))%len(hs)]
+}
+
+// newOpen is n: ask for the harness when there is a choice, and for the new
+// session's name. It opens in the selected session's folder and terminal,
+// else in the UI's own folder.
 func (m *Model) newOpen() {
 	if _, ok := m.src.(SessionOpener); !ok {
 		m.setStatus("This UI cannot open sessions.", true)
@@ -117,44 +144,75 @@ func (m *Model) newOpen() {
 		dir, _ = os.Getwd()
 	}
 	m.home.newing, m.home.newDir, m.home.newTerm, m.home.newName = true, dir, term, lineInput{}
+	m.home.newHarness = ""
+	if hs := m.harnessChoices(); len(hs) > 1 {
+		m.home.newHarness = hs[0]
+	}
 }
 
-// newKey handles a key while the new session's name is asked.
+// newKey handles a key while the new session is asked for. With a choice
+// of harness, left and right change it (ctrl+b and ctrl+f still move the
+// text cursor). Only claude takes a name.
 func (m *Model) newKey(msg tea.KeyPressMsg) tea.Cmd {
-	switch msg.String() {
+	switch k := msg.String(); k {
 	case "esc":
 		m.home.newing = false
 		return nil
+	case "left", "right":
+		if len(m.harnessChoices()) > 1 {
+			step := 1
+			if k == "left" {
+				step = -1
+			}
+			m.newCycle(step)
+			return nil
+		}
 	case "enter":
 		m.home.newing = false
 		op, ok := m.src.(SessionOpener)
 		if !ok {
 			return nil
 		}
-		dir, name, term := m.home.newDir, strings.TrimSpace(m.home.newName.Value()), m.home.newTerm
+		dir, name, term, h := m.home.newDir, strings.TrimSpace(m.home.newName.Value()), m.home.newTerm, m.home.newHarness
+		if !m.newIsClaude() {
+			name = ""
+		}
 		m.setStatus("Opening a new session in "+shortHome(dir)+"…", false)
 		return func() tea.Msg {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			return openedMsg{name: name, dir: dir, err: op.NewSession(ctx, dir, name, term)}
+			return openedMsg{name: name, dir: dir, harness: h, err: op.NewSession(ctx, dir, name, term, h)}
 		}
 	}
-	m.home.newName.edit(msg)
+	if m.newIsClaude() {
+		m.home.newName.edit(msg)
+	}
 	return nil
 }
 
 func (m *Model) onOpened(msg openedMsg) {
+	agent := msg.harness
+	if agent == "" {
+		agent = harness.ClaudeName
+	}
 	switch {
 	case msg.err != nil:
 		m.setStatus("Not opened: "+oneLine(rpcMessage(msg.err)), true)
 	case msg.name != "":
-		m.setStatus("Opened "+msg.name+" in "+shortHome(msg.dir)+". It shows here once claude starts.", false)
+		m.setStatus("Opened "+msg.name+" in "+shortHome(msg.dir)+". It shows here once "+agent+" starts.", false)
 	default:
-		m.setStatus("Opened a new session in "+shortHome(msg.dir)+". It shows here once claude starts.", false)
+		m.setStatus("Opened a new session in "+shortHome(msg.dir)+". It shows here once "+agent+" starts.", false)
 	}
 }
 
-// newLine is the footer while the name is asked.
+// newLine is the footer while the new session is asked for.
 func (m *Model) newLine() string {
-	return "new session in " + shortHome(m.home.newDir) + " · name: " + m.home.newName.view(30) + " · enter opens it · esc cancels"
+	parts := []string{"new session in " + shortHome(m.home.newDir)}
+	if m.home.newHarness != "" {
+		parts = append(parts, "← "+m.home.newHarness+" →")
+	}
+	if m.newIsClaude() {
+		parts = append(parts, "name: "+m.home.newName.view(30))
+	}
+	return strings.Join(append(parts, "enter opens it", "esc cancels"), " · ")
 }

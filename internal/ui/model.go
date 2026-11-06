@@ -80,6 +80,7 @@ type Model struct {
 	digest    *digestScreen          // open digest list, or nil
 	item      *itemScreen            // open thread screen (over the inbox), or nil
 	run       *runScreen             // open run screen (over the thread), or nil
+	history   *historyScreen         // open history screen (R), or nil
 	confirm   *confirmation          // open yes/no question
 	busy      string                 // the action in flight ("" when none)
 	cancels   map[string]*cancelWait // accepted cancels, by message id, until the item leaves running
@@ -192,6 +193,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onOpened(msg)
 	case sentMsg:
 		return m, m.onSent(msg)
+	case queueRemovedMsg:
+		return m, m.onQueueRemoved(msg)
 	case transcriptMsg:
 		m.onTranscript(msg)
 	case diffMsg:
@@ -202,6 +205,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onDigest(msg)
 	case digestMarkMsg:
 		return m, m.onDigestMark(msg)
+	case historyMsg:
+		m.onHistory(msg)
+	case searchMsg:
+		m.onSearch(msg)
+	case reopenMsg:
+		m.onReopen(msg)
 	case tea.KeyPressMsg:
 		return m, m.keyMsg(msg)
 	case tea.PasteMsg:
@@ -211,6 +220,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case m.confirm != nil:
 		case m.prompt != nil:
 			m.prompt.in.insert([]rune(strings.ReplaceAll(msg.Content, "\n", " ")))
+		case m.history != nil && m.history.filtering:
+			m.history.filter.insert([]rune(strings.ReplaceAll(msg.Content, "\n", " ")))
 		case m.item != nil && m.item.typing:
 			m.item.draft.insert([]rune(msg.Content))
 		case m.homeActive() && m.home.typing:
@@ -248,6 +259,8 @@ func (m *Model) keyMsg(msg tea.KeyPressMsg) tea.Cmd {
 		return m.key(k)
 	}
 	switch {
+	case m.history != nil:
+		return m.historyKey(msg)
 	case m.run != nil:
 		return m.runKey(k)
 	case m.item != nil && m.item.typing:
@@ -447,6 +460,8 @@ func (m *Model) Render() string {
 		} else {
 			lines = append(lines, "", "  loading…")
 		}
+	} else if m.history != nil {
+		lines = append(lines, m.historyLines(w, body)...)
 	} else if m.run != nil {
 		lines = append(lines, m.runLines(w, body)...)
 	} else if m.item != nil {

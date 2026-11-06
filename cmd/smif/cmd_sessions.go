@@ -55,11 +55,18 @@ func cmdSessions() *cobra.Command {
 				if name == "" {
 					name = "-"
 				}
+				state := s.Turn
+				if n := len(s.Queue); n > 0 {
+					state += fmt.Sprintf(" (%d queued)", n)
+				}
 				level := s.Level
 				if s.Unverified {
 					level += " unverified"
 				}
-				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", agent, s.Harness, level, api.ShortSession(s.SessionID), name, s.Turn, since,
+				if s.Background {
+					level += " background"
+				}
+				fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", agent, s.Harness, level, api.ShortSession(s.SessionID), name, state, since,
 					strings.TrimSpace(s.Term+" "+s.TTY), pr)
 			}
 			return tw.Flush()
@@ -69,6 +76,7 @@ func cmdSessions() *cobra.Command {
 
 func cmdPrompt() *cobra.Command {
 	var session string
+	var whenIdle bool
 	c := &cobra.Command{
 		Use:   "prompt (<session name> | --session <prefix>) <text…>",
 		Short: "Write to a session: typed in when idle (Terminal.app, iTerm2, tmux, herdr), else a worker with its context answers",
@@ -76,7 +84,8 @@ func cmdPrompt() *cobra.Command {
 			"name with spaces). With --session an id prefix picks the session and every word is prompt text:\n" +
 			"no session name goes before the text. An idle session gets one line typed in and\n" +
 			"Enter (Terminal.app, iTerm2, tmux or herdr; claude in the foreground of its tab). A busy session is not touched: a worker resumes\n" +
-			"a fork of it (read only) and answers (ADR-0013).",
+			"a fork of it (read only) and answers (ADR-0013). With --when-idle the text waits in a queue and\n" +
+			"is typed when the session is idle, one item per idle, for at most 24 h (ADR-0021).",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var p api.SessionSendParams
@@ -102,6 +111,16 @@ func cmdPrompt() *cobra.Command {
 				}
 				target = api.ShortSession(p.SessionID)
 			}
+			if whenIdle {
+				var q api.SessionQueueResult
+				err := call("session.queue", api.SessionQueueParams{SessionID: p.SessionID, Name: p.Name, Text: p.Text}, &q, 10*time.Second)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("queued for %s (session %s, item %d): it goes in when the session is idle\n",
+					nonEmptyStr(q.Agent, target), api.ShortSession(q.SessionID), q.ID)
+				return nil
+			}
 			var r api.SessionSendResult
 			if err := call("session.send", p, &r, 30*time.Second); err != nil {
 				return err
@@ -116,6 +135,7 @@ func cmdPrompt() *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&session, "session", "", "session id prefix, instead of a session name; every word is then prompt text")
+	c.Flags().BoolVar(&whenIdle, "when-idle", false, "wait in the queue and type it when the session is idle, instead of asking a fork")
 	return c
 }
 

@@ -75,7 +75,7 @@ smif never answers a permission prompt for you.
 `enter` opens a chat with the selected session.
 
 - **Idle:** smif types your prompt into its tab. This works in Terminal.app, iTerm2, tmux and herdr.
-- **Busy:** a read-only fork of the session answers, and the session is left alone. This needs `smif init`.
+- **Busy or waiting:** the text waits in a queue and goes in when the session is idle. `ctrl+f` asks a read-only fork instead, which needs `smif init`.
 
 A long paste stays whole, `ctrl+v` attaches an image, and smif warns you before it sends something that looks like a
 secret.
@@ -130,6 +130,7 @@ Only Claude Code is checked against a real agent. The rest come from reading the
 | Claude Code | Everything |
 | Codex, Qwen Code, OpenCode, GitHub Copilot CLI, Factory Droid | Read only, not verified |
 | 21 more, in a [herdr](https://herdr.dev) pane | Name, folder and state, not verified |
+| Any other agent, with `[harnesses.<name>]` in the config | Name and folder, see [docs/agents.md](docs/agents.md#add-an-agent) |
 
 Messages and forks work with Claude Code only. See [docs/agents.md](docs/agents.md).
 
@@ -140,7 +141,9 @@ Messages and forks work with Claude Code only. See [docs/agents.md](docs/agents.
 </p>
 
 smif reads the files Claude Code already writes, and one local daemon keeps the state. Nothing leaves your machine:
-no server, no cloud, no telemetry.
+no server, no cloud, no telemetry. The one exception is a phone ping that you turn on with `daemon.notify_url`: it
+sends a session name and what happened. smif adds no prompt or answer, but a title that the agent made can repeat
+words of a prompt ([docs/safety.md](docs/safety.md)).
 
 ## Uninstall
 

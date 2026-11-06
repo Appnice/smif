@@ -1,8 +1,9 @@
 // Package harness is the layer between the daemon and each coding agent's
 // own files (ADR-0019). A Provider in internal/harness/<name> holds what is
 // specific to one agent. Required: Info, Discover and Read. Optional, each
-// a small interface of its own: Stater, Hooker, Forker, plus Stamper and
-// Checker. The daemon knows only this package and asks the Registry.
+// a small interface of its own: Stater, Hooker, Forker, plus Stamper,
+// Checker, BackgroundChecker, Factser and Historian. The daemon knows only
+// this package and asks the Registry.
 package harness
 
 import (
@@ -24,6 +25,9 @@ type Info struct {
 	Verified bool
 }
 
+// ClaudeName is Claude Code's harness name: the default harness.
+const ClaudeName = "claude"
+
 // Support levels of a session (ADR-0019). A session at the herdr or listed
 // level has no provider behind it: only a scan of herdr or of the process
 // table found it.
@@ -43,6 +47,12 @@ type Session struct {
 	StartedAt int64     // process start, ms: with PID it names one process
 	Status    string    // the agent's own word for its state, for Stater
 	StatusAt  time.Time // when the agent wrote Status
+	// AttachID marks a background session (ADR-0021): the id `claude attach`
+	// takes. A background session has no tab, so Smif never types into it.
+	AttachID string
+	// EndedAt is set when a background session finished: its last answer,
+	// else its start. LastAnswerAt is zero when it never answered.
+	EndedAt, LastAnswerAt time.Time
 }
 
 // Reading is what a provider read of one session.
@@ -57,7 +67,9 @@ type Reading struct {
 // runs on every UI refresh, so give a slow provider a Stamper.
 type Provider interface {
 	Info() Info
-	// Discover returns the interactive sessions whose process lives.
+	// Discover returns the live sessions: the interactive ones whose
+	// process lives, and a provider's background sessions. The daemon calls
+	// it under the status line, so it must not wait for a slow command.
 	Discover() []Session
 	// Read reads the last limit turns of a session. An unknown session
 	// gives a Reading with OK false.
@@ -97,6 +109,13 @@ type Stamper interface {
 // shape it reads (smif doctor). State is ok, none or changed.
 type Checker interface {
 	Check() (state, detail string)
+}
+
+// BackgroundChecker is a provider with a list of background sessions. The
+// list is not a documented interface, so its state is news, never a failure
+// (smif doctor). State is ok, none or changed.
+type BackgroundChecker interface {
+	CheckBackground() (state, detail string)
 }
 
 // ReadOnly says why smif must neither type into nor fork a session of this

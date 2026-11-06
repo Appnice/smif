@@ -265,6 +265,12 @@ func (d *Daemon) registerMethods() {
 		}
 		return d.savedPrompts(), nil
 	})
+	s.Handle("session.harnesses", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		return d.harnessOptions(), nil
+	})
 	s.Handle("session.new", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
 		if err := humanOnly(c); err != nil {
 			return nil, err
@@ -285,6 +291,26 @@ func (d *Daemon) registerMethods() {
 		}
 		return d.sessionSend(ctx, c, p)
 	})
+	s.Handle("session.queue", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		var p api.SessionQueueParams
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		return d.sessionQueue(p)
+	})
+	s.Handle("session.queue.cancel", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		var p api.SessionQueueCancelParams
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		return nil, d.sessionQueueCancel(p)
+	})
 	s.Handle("session.focus", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
 		if err := humanOnly(c); err != nil {
 			return nil, err
@@ -294,6 +320,64 @@ func (d *Daemon) registerMethods() {
 			return nil, err
 		}
 		return d.sessionFocus(ctx, p)
+	})
+	s.Handle("session.attach", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		var p api.SessionAttachParams
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		return d.sessionAttach(ctx, p)
+	})
+	s.Handle("session.history", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		return d.sessionHistory()
+	})
+	s.Handle("session.search", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		var p api.SessionSearchParams
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		return d.sessionSearch(ctx, p)
+	})
+	s.Handle("session.resume", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		var p api.SessionResumeParams
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		if err := checkOpenTerm(p.Term); err != nil {
+			return nil, err
+		}
+		if err := d.resumeSession(ctx, p.SessionID, p.Term); err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true}, nil
+	})
+	s.Handle("session.closed", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		return d.closedList(), nil
+	})
+	s.Handle("session.reopen", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
+		if err := humanOnly(c); err != nil {
+			return nil, err
+		}
+		var p api.SessionReopenParams
+		if err := decode(raw, &p); err != nil {
+			return nil, err
+		}
+		return d.sessionReopen(p)
 	})
 	s.Handle("session.tail", func(ctx context.Context, c api.Caller, raw json.RawMessage) (any, error) {
 		if err := humanOnly(c); err != nil {
@@ -827,6 +911,7 @@ func (d *Daemon) health() api.HealthView {
 		StartedAt: d.startedAt, PID: os.Getpid(), ClaudeOK: ok, DB: "ok"}
 	h.Sessions, h.SessionsDetail = d.sessionsCanary()
 	h.Providers = d.providerChecks()
+	h.Background = d.backgroundChecks()
 	var n int
 	if err := d.store.DB().QueryRow(`PRAGMA quick_check`).Scan(new(string)); err != nil {
 		h.DB, h.OK = "error: "+err.Error(), false

@@ -23,6 +23,11 @@
 //	#fake:noresume                      pretend --resume is unknown (exit 1)
 //
 // The prompt the runner sends for a compaction turn contains SMIF_COMPACT.
+//
+// `agents --json --all` prints $SMIF_FAKE_LOG/agents.json, or [] with no such
+// file, and appends the time to agents.calls. It writes no invocation
+// record. A file agents.fail makes it exit 3, and agents.sleep holds the
+// seconds to sleep first.
 package main
 
 import (
@@ -65,6 +70,10 @@ func main() {
 	}
 	if len(args) > 0 && args[0] == "mcp" {
 		fakeMCP(args[1:])
+		return
+	}
+	if len(args) > 0 && args[0] == "agents" {
+		fakeAgents()
 		return
 	}
 	flags := parseFlags(args)
@@ -294,6 +303,33 @@ func parseFlags(args []string) map[string]string {
 }
 
 func logDir() string { return os.Getenv("SMIF_FAKE_LOG") }
+
+// fakeAgents stands in for `claude agents --json --all`.
+func fakeAgents() {
+	dir := logDir()
+	if dir == "" {
+		fmt.Println("[]")
+		return
+	}
+	if f, err := os.OpenFile(filepath.Join(dir, "agents.calls"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
+		fmt.Fprintln(f, time.Now().UnixMilli())
+		f.Close()
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "agents.sleep")); err == nil {
+		s, _ := strconv.ParseFloat(strings.TrimSpace(string(b)), 64)
+		time.Sleep(time.Duration(s * float64(time.Second)))
+	}
+	if _, err := os.Stat(filepath.Join(dir, "agents.fail")); err == nil {
+		fmt.Fprintln(os.Stderr, "agents failed")
+		os.Exit(3)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "agents.json"))
+	if err != nil {
+		fmt.Println("[]")
+		return
+	}
+	os.Stdout.Write(b)
+}
 
 func record(v map[string]any) {
 	dir := logDir()

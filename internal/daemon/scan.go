@@ -120,7 +120,8 @@ func (d *Daemon) runScan(ctx context.Context) []scanRow {
 	}
 	procs := list(ctx)
 	rows := d.scan.herdrRows(ctx, procs)
-	return append(rows, d.scan.listedRows(ctx, procs, rows, func(pid int) string { return d.procs.get(pid, 0).term })...)
+	extra := d.Config().ListedProcesses()
+	return append(rows, d.scan.listedRows(ctx, procs, rows, extra, func(pid int) string { return d.procs.get(pid, 0).term })...)
 }
 
 // addScanned adds the scanned rows that no earlier row owns: a pid or a
@@ -213,16 +214,17 @@ func (s *agentScan) herdrRows(ctx context.Context, procs []proc) []scanRow {
 }
 
 // listedRows are the processes on a terminal that the table of agent names
-// knows, one for each agent and terminal (a wrapper and its child are one).
-// A process with no terminal is a server or a daemon, no session.
-func (s *agentScan) listedRows(ctx context.Context, procs []proc, herdr []scanRow, termOf func(int) string) []scanRow {
+// or the config (extra, ADR-0021) knows, one for each agent and terminal (a
+// wrapper and its child are one). A process with no terminal is a server or
+// a daemon, no session.
+func (s *agentScan) listedRows(ctx context.Context, procs []proc, herdr []scanRow, extra map[string]string, termOf func(int) string) []scanRow {
 	var out []scanRow
 	seen, cwds := map[string]bool{}, map[string]string{}
 	for _, r := range herdr {
 		seen[r.tty] = true
 	}
 	for _, p := range procs {
-		name := harness.ListedProcess(p.argv)
+		name := harness.ListedProcessWith(p.argv, extra)
 		key := name + "/" + p.tty
 		if name == "" || p.tty == "" || seen[p.tty] || seen[key] {
 			continue

@@ -1,6 +1,6 @@
 # ADR-0015: Watchdogs, saved prompts and new sessions
 
-**Status:** accepted, 2026-11-03.
+**Status:** accepted, 2026-11-03. `p` on a busy session follows `s`, so it queues since ADR-0021 section 3.
 
 **Context.** ADR-0014 tells the human once when a session starts to wait or answers. Three gaps were left:
 

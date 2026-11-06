@@ -19,10 +19,11 @@ import (
 // the human's own, so no inbound mail reaches a session (D4).
 
 type promptedMsg struct {
-	agent string
-	res   *api.SessionPromptResult
-	sent  *api.SessionSendResult
-	err   error
+	agent  string
+	res    *api.SessionPromptResult
+	sent   *api.SessionSendResult
+	queued *api.SessionQueueResult
+	err    error
 }
 
 // sessionRow turns a session into a home row.
@@ -52,16 +53,25 @@ func (m *Model) sessionPromptOpen(r *homeRow) tea.Cmd {
 }
 
 // sendPrompt sends the box's text to the selected session: typed in when it
-// is idle, else to a worker with its context (session.send, ADR-0013).
+// is idle, else into the queue (ADR-0021).
 func (m *Model) sendPrompt(r *homeRow, text string) tea.Cmd {
 	if !canWrite(r.sess) {
 		m.setStatus(writeHint(r.sess), true)
 		return nil
 	}
-	return m.sendLine(r, strings.Join(strings.Fields(text), " ")) // one line, as typed in the session
+	return m.routeLine(r, strings.Join(strings.Fields(text), " ")) // one line, as typed in the session
 }
 
-// sendLine sends one finished line.
+// routeLine sends one finished line the way enter does.
+func (m *Model) routeLine(r *homeRow, line string) tea.Cmd {
+	if r.sess.CanPrompt {
+		return m.sendLine(r, line)
+	}
+	return m.queueLine(r, line)
+}
+
+// sendLine sends one finished line through session.send: typed in when the
+// session is idle, else to a worker with its context (ADR-0013).
 func (m *Model) sendLine(r *homeRow, text string) tea.Cmd {
 	name, id := sessionName(r.sess), r.sess.SessionID
 	if snd, ok := m.src.(SessionSender); ok {
@@ -96,6 +106,8 @@ func (m *Model) onPrompted(msg promptedMsg) tea.Cmd {
 	m.home.part = partState{cleaned: m.home.part.cleaned}
 	m.home.fullScroll = 0
 	switch {
+	case msg.queued != nil:
+		m.setStatus(fmt.Sprintf("Queued for %s: it goes in when the session is idle.", msg.agent), false)
 	case msg.sent != nil && msg.sent.Mode == "worker":
 		m.setStatus(msg.agent+" is busy, so a fork of it answers here.", false)
 	case msg.sent != nil:

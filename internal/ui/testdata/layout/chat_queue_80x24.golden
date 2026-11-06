@@ -1,0 +1,24 @@
+ smif   1 working  1 quiet  ⚑ 1 asks you  … ● live · ≈ $1.75 at API prices today
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ esc back  ▶ WORKING 3m00s  web  /r/web · ttys004                             │
+│                                                                              │
+│                                                                              │
+│ › you → fork 13:09                                                           │
+│   which test was it?                                                         │
+│                                                                              │
+│ ◇ fork ──────────────────────────────── a copy of this session · 13:09 · 30s │
+│                                                                              │
+│   TestCheckout in cart_test.go.                                              │
+│                                                                              │
+│ ▶ working 3m00s · now Bash  go test -run TestCheckout -count 20 ./cart/ · 3… │
+│                                                                              │
+│ ⧖ 2 queued · one goes in per idle                                            │
+│   3m · run the tests and report                                              │
+│ ▶ 1m · then update the changelog                                             │
+│     not typed yet: process 42 is gone                                        │
+│                                                                              │
+│ to web · it works, so enter queues it for when it is idle                    │
+│ ›                                                                            │
+│ It is busy: enter queues for idle, ctrl+f asks a fork.                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+↑↓ choose a queued prompt · x remove · esc back to the text

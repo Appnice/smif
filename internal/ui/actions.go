@@ -81,6 +81,27 @@ func (s *DaemonSource) SendSession(ctx context.Context, sessionID, text string) 
 	return &res, nil
 }
 
+// SessionQueuer keeps a prompt until its session is idle (session.queue,
+// session.queue.cancel, ADR-0021). DaemonSource implements it.
+type SessionQueuer interface {
+	QueueSession(ctx context.Context, sessionID, text string) (*api.SessionQueueResult, error)
+	CancelQueued(ctx context.Context, id int64) error
+}
+
+// QueueSession puts text in the session's queue.
+func (s *DaemonSource) QueueSession(ctx context.Context, sessionID, text string) (*api.SessionQueueResult, error) {
+	var res api.SessionQueueResult
+	if err := s.callT(ctx, "session.queue", api.SessionQueueParams{SessionID: sessionID, Text: text}, &res, 10*time.Second); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// CancelQueued removes one queued item.
+func (s *DaemonSource) CancelQueued(ctx context.Context, id int64) error {
+	return s.callT(ctx, "session.queue.cancel", api.SessionQueueCancelParams{ID: id}, nil, 10*time.Second)
+}
+
 // SessionTailer reads a session's conversation (session.tail).
 // DaemonSource implements it.
 type SessionTailer interface {

@@ -1,5 +1,6 @@
 // Package claude is the Claude Code provider (ADR-0019): session files,
-// transcripts, the file status, the fork route and the process name.
+// transcripts, the file status, the fork route, the process name and the
+// history of past sessions (history.go, ADR-0021).
 //
 // Claude Code keeps one file for each running session in
 // $CLAUDE_CONFIG_DIR/sessions/<pid>.json (default ~/.claude): its session
@@ -7,7 +8,8 @@
 // runs). Smif reads these files, so every open session shows up at once,
 // also one that had no hook since Smif was installed. The files are not a
 // documented interface: a missing or changed file only means the hooks
-// alone decide (docs/compat.md, ADR-0012).
+// alone decide (docs/compat.md, ADR-0012). Background sessions come from
+// `claude agents` (background.go, ADR-0021).
 package claude
 
 import (
@@ -17,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/appnice/smif/internal/harness"
@@ -25,14 +28,27 @@ import (
 
 // Name is the harness name of Claude Code sessions. Rows from before the
 // harness column carry it too (migration 005).
-const Name = "claude"
+const Name = harness.ClaudeName
 
 // Provider reads one Claude Code config folder.
 type Provider struct {
 	dir string // the config folder
 
+	// Command is the claude program for `claude agents`, from the config.
+	// Nil lists no background sessions. Set it before the first Discover.
+	Command func() string
+	bg      bgList
+
 	mu    sync.Mutex
 	paths map[string]pathEntry // session id → its transcript, for Stamp
+
+	factsMu sync.Mutex
+	cursors map[string]*factCursor // session id → what Facts read so far
+	parsed  int64                  // transcript bytes Facts parsed, all sessions
+
+	histMu   sync.Mutex
+	hist     map[string]histEntry // transcript path → its row (history.go)
+	histRead atomic.Int64         // transcript bytes the index read
 }
 
 var (
@@ -42,10 +58,17 @@ var (
 	_ harness.Forker   = (*Provider)(nil)
 	_ harness.Stamper  = (*Provider)(nil)
 	_ harness.Checker  = (*Provider)(nil)
+	_ harness.Factser  = (*Provider)(nil)
+
+	_ harness.Historian         = (*Provider)(nil)
+	_ harness.BackgroundChecker = (*Provider)(nil)
 )
 
 // New returns the provider for a config folder ("" reads nothing).
-func New(dir string) *Provider { return &Provider{dir: dir, paths: map[string]pathEntry{}} }
+func New(dir string) *Provider {
+	return &Provider{dir: dir, paths: map[string]pathEntry{}, cursors: map[string]*factCursor{},
+		bg: bgList{every: bgEvery, timeout: bgTimeout}}
+}
 
 // Info names the provider. A real session checks every Claude Code version
 // (docs/compat.md).
@@ -73,13 +96,22 @@ type claudeSession struct {
 	StatusUpdatedAt int64  `json:"statusUpdatedAt"`
 }
 
-// Discover returns the interactive sessions whose process lives.
+// Discover returns the interactive sessions whose process lives, then the
+// background sessions. A session with an interactive row keeps that row:
+// it has a tab.
 func (p *Provider) Discover() []harness.Session {
 	found := readClaudeSessions(p.sessionsDir())
 	out := make([]harness.Session, 0, len(found))
+	own := map[string]bool{}
 	for _, s := range found {
+		own[s.SessionID] = true
 		out = append(out, harness.Session{PID: s.PID, SessionID: s.SessionID, Cwd: s.Cwd, Name: s.Name,
 			StartedAt: s.StartedAt, Status: s.Status, StatusAt: time.UnixMilli(s.StatusUpdatedAt)})
+	}
+	for _, s := range p.backgroundRows() {
+		if !own[s.SessionID] {
+			out = append(out, s)
+		}
 	}
 	return out
 }
@@ -114,8 +146,12 @@ func readClaudeSessions(dir string) []claudeSession {
 	return out
 }
 
-// State maps a session file's status to a turn.
+// State maps a session file's status, or a background row's state, to a
+// turn.
 func (p *Provider) State(s harness.Session) (string, time.Time) {
+	if s.AttachID != "" {
+		return backgroundTurn(s.Status), s.StatusAt
+	}
 	return fileTurn(s.Status), s.StatusAt
 }
 
