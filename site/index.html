@@ -29,6 +29,7 @@
       <a href="#why">Why</a>
       <a href="#how">How it works</a>
       <a href="#features">Features</a>
+      <a href="#machines">Machines</a>
       <a href="#keys">Keys</a>
       <a href="#install">Install</a>
     </nav>
@@ -262,8 +263,69 @@
   </div>
 </section>
 
+<!-- ============ MACHINES ============ -->
+<section class="section section--alt" id="machines" data-write="off">
+  <div class="wrap">
+    <p class="eyebrow reveal">Other machines</p>
+    <h2 class="h2 reveal">Two machines. One list.</h2>
+    <p class="lede reveal">Press <kbd>m</kbd>, pick the machine, type its password once. ssh is the only wire, and no server sits in the middle.</p>
+
+    <div class="mx reveal" role="img" aria-label="Your laptop shows one list of sessions. Three of them run on another device in another room, and reach the laptop over ssh.">
+      <figure class="mx__device">
+        <div class="mx__lid">
+          <div class="mx__screen mx__list">
+            <div class="mx__row"><span class="wait">!</span><b>storefront</b><em>this laptop</em></div>
+            <div class="mx__row"><span class="work">▶</span><b>payments</b><em>this laptop</em></div>
+            <div class="mx__row is-there"><span class="work">▶</span><b>firmware</b><em>office</em></div>
+            <div class="mx__row is-there"><span class="wait">!</span><b>infra</b><em>office</em></div>
+            <div class="mx__row is-there"><span class="new">●</span><b>docs</b><em>office</em></div>
+          </div>
+        </div>
+        <div class="mx__base"></div>
+        <figcaption>your laptop</figcaption>
+      </figure>
+
+      <div class="mx__wire" aria-hidden="true">
+        <span class="mx__label">ssh</span>
+        <i></i><i></i><i></i>
+      </div>
+
+      <figure class="mx__device mx__device--small">
+        <div class="mx__lid">
+          <div class="mx__screen mx__lights">
+            <div><span class="led led--work"></span>firmware</div>
+            <div><span class="led led--wait"></span>infra</div>
+            <div><span class="led led--new"></span>docs</div>
+          </div>
+        </div>
+        <div class="mx__base"></div>
+        <figcaption>another device, in another room</figcaption>
+      </figure>
+    </div>
+
+    <div class="rights reveal">
+      <div class="rights__head">
+        <h3>It reads by default. It writes when you say so.</h3>
+        <div class="switch" role="group" aria-label="Writing to office">
+          <span>Writing</span>
+          <button type="button" data-write="off" aria-pressed="true">off</button>
+          <button type="button" data-write="on" aria-pressed="false">on</button>
+        </div>
+      </div>
+      <p class="rights__note">The line on <code>office</code> that decides. Nothing your laptop sends can change it.</p>
+      <code class="keyline"><span>restrict</span>,command="smif remote-read<b data-flag></b>" ssh-ed25519 AAAA… smif-daemon</code>
+      <div class="rights__grid">
+        <article><p class="can yes">yes</p><h4>Read sessions</h4><p>Rows, conversations, and a ping when one starts to wait.</p></article>
+        <article data-needs-write><p class="can">no</p><h4>Type a prompt</h4><p>Into an idle session. Busy ones queue, and that machine checks each line.</p></article>
+        <article data-needs-write><p class="can">no</p><h4>Start a session</h4><p><kbd>n</kbd> opens claude there, in tmux, in the same folder.</p></article>
+        <article><p class="can never">never</p><h4>Answer a prompt</h4><p>No permission prompt gets answered, on or off.</p></article>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ KEYS ============ -->
-<section class="section section--alt" id="keys">
+<section class="section" id="keys">
   <div class="wrap">
     <p class="eyebrow reveal">Keys</p>
     <h2 class="h2 reveal">Ten keys you will use.<br><span class="dim">Press one.</span></h2>
@@ -286,7 +348,7 @@
 </section>
 
 <!-- ============ PRINCIPLES ============ -->
-<section class="section" id="principles">
+<section class="section section--alt" id="principles">
   <div class="wrap">
     <p class="eyebrow reveal">Principles</p>
     <h2 class="h2 reveal">It stays out of the way.</h2>
@@ -300,7 +362,7 @@
 </section>
 
 <!-- ============ INSTALL ============ -->
-<section class="section section--alt" id="install">
+<section class="section" id="install">
   <div class="wrap wrap--narrow">
     <p class="eyebrow reveal">Install</p>
     <h2 class="h2 reveal">One binary. Two commands.</h2>
@@ -329,7 +391,7 @@
 </section>
 
 <!-- ============ FAQ ============ -->
-<section class="section" id="faq">
+<section class="section section--alt" id="faq">
   <div class="wrap wrap--narrow">
     <p class="eyebrow reveal">Questions</p>
     <h2 class="h2 reveal">Fair questions.</h2>

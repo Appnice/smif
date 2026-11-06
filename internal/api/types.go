@@ -340,7 +340,9 @@ type SavedPrompt struct {
 // default).
 type SessionNewParams struct {
 	// Host starts it on another machine you may write to, in tmux there.
-	Host    string `json:"host,omitempty"`
+	Host string `json:"host,omitempty"`
+	// Show also opens a window on that machine's desktop, when it has one.
+	Show    bool   `json:"show,omitempty"`
 	Dir     string `json:"dir"`
 	Name    string `json:"name,omitempty"`
 	Term    string `json:"term,omitempty"`

@@ -280,6 +280,9 @@ func (d *Daemon) sessionNew(ctx context.Context, p api.SessionNewParams) (any, e
 	if err := d.terminal.Open(ctx, p.Term, dir, name, argv); err != nil {
 		return nil, api.Errf(api.CodeUnavailable, "%v", err)
 	}
+	if p.Show {
+		showTmux(ctx, name)
+	}
 	_ = d.store.Update(func(tx *store.Tx) error {
 		return tx.Audit("session.new", agentForRepo(d.Config(), gitRoot(dir)), "", "", "", map[string]any{"dir": dir, "name": name, "term": p.Term, "harness": nonEmpty(p.Harness, harness.ClaudeName)})
 	})

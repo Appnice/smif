@@ -95,6 +95,10 @@ secret.
 
 ## Other machines
 
+<p align="center">
+  <img alt="Two laptops joined by ssh. Sessions on the other device join the list on your laptop. One starts to wait and your laptop tells you. If you allowed writing, a line goes back over ssh. A permission prompt stays yours." src="docs/img/machines.gif" width="100%">
+</p>
+
 Press `m` in smif, or run `smif remote add`. Pick a machine from your network, `~/.ssh/config` or Tailscale, or type an
 address, and smif sets it up. You type the password once.
 

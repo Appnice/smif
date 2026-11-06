@@ -20,6 +20,21 @@
     io.observe(el);
   });
 
+  /* ---------- writing to another machine ---------- */
+  const rights = $("#machines");
+  if (rights) {
+    const set = (on) => {
+      rights.dataset.write = on ? "on" : "off";
+      $("[data-flag]", rights).textContent = on ? " --write" : "";
+      $$(".switch button", rights).forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.write === "on") === on)));
+      $$("[data-needs-write] .can", rights).forEach((p) => {
+        p.textContent = on ? "yes" : "no";
+        p.classList.toggle("yes", on);
+      });
+    };
+    $$(".switch button", rights).forEach((b) => b.addEventListener("click", () => set(b.dataset.write === "on")));
+  }
+
   /* ---------- nav ---------- */
   const nav = $(".nav");
   const onScroll = () => nav.classList.toggle("is-scrolled", scrollY > 8);

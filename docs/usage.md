@@ -76,7 +76,8 @@ What facts cannot see:
   You can read those conversations here. Writing is off by default: `w` on a machine allows it, after a warning and a
   login there, and `smif remote write me@host on` does the same. Enter in a session then types there, or queues if it is
   busy, through that machine's own checks. It needs a session in tmux, herdr, or on a Mac Terminal.app or iTerm2. `n` on a
-  session there starts a new one in the same folder, in tmux. Files stay here, and no prompt gets answered. Without it,
+  session there starts a new one in the same folder, in tmux, and opens a window on that machine's desktop if it has
+  GNOME. Files stay here, and no prompt gets answered. Without it,
   ssh there to answer:
   `y` copies the command. After an update, enter on an added machine sets it up again. smif runs `smif sessions --json` there every
   15 s over one shared connection. A machine that is away leaves the list after a minute, and `smif doctor` says why.

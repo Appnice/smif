@@ -129,7 +129,7 @@ func remoteWrite(op string, args []string) error {
 		}
 		// Only the folder and the name come from the other side.
 		var r map[string]any
-		return call("session.new", api.SessionNewParams{Dir: p.Dir, Name: p.Name, Term: "tmux"}, &r, 20*time.Second)
+		return call("session.new", api.SessionNewParams{Dir: p.Dir, Name: p.Name, Term: "tmux", Show: true}, &r, 20*time.Second)
 	}
 	if len(args) != 1 {
 		return errors.New("bad request")

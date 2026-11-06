@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- The #machines section of the page, alone. Plain: a preview. ?t=<ms>: one frame of docs/img/machines.gif. -->
+<html lang="en">
+<meta charset="utf-8">
+<title>smif machines</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  .reveal { opacity: 1 !important; transform: none !important; }
+  body::before { display: none; }
+  body.clip { width: 1280px; height: 560px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 30px; padding: 0 84px; box-sizing: border-box; }
+  body.clip .mx { margin: 0; }
+  body.clip .mx__wire i { animation-duration: 1.6s; }
+  body.clip .mx__wire i:nth-of-type(2) { animation-delay: .533s; }
+  body.clip .mx__wire i:nth-of-type(3) { animation-delay: 1.067s; }
+  body.clip.back .mx__wire i { animation-direction: reverse; background: var(--orange); box-shadow: 0 0 12px var(--orange); }
+  .cap { text-align: center; font: 600 26px/1.2 var(--display); letter-spacing: -.01em; color: var(--fg-hi); }
+  .toast2 { position: absolute; left: 10px; right: 10px; bottom: 9px; padding: 3px 10px; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 6px; color: var(--fg-hi); line-height: 1.6; }
+  .mx__screen { position: relative; }
+</style>
+<body>
+<script>
+const SCENES = [
+  { cap: "Sessions on your other device join this list." },
+  { cap: "One starts to wait, and your laptop tells you.", wait: true, toast: "infra waits for you on office" },
+  { cap: "If you allowed writing, a line goes back over ssh.", back: true, toast: "Sent to infra on office" },
+  { cap: "A permission prompt stays yours.", wait: true, toast: "smif never answers it" },
+];
+const SCENE_MS = 3200;
+(async () => {
+  const doc = new DOMParser().parseFromString(await (await fetch("../index.html")).text(), "text/html");
+  const q = new URLSearchParams(location.search);
+  const section = doc.querySelector("#machines");
+  if (!q.has("t")) {
+    document.body.append(section);
+    document.title = "ready";
+    return;
+  }
+  const t = Number(q.get("t"));
+  const s = SCENES[Math.floor(t / SCENE_MS) % SCENES.length];
+  document.body.classList.add("clip");
+  document.body.classList.toggle("back", !!s.back);
+  const mx = section.querySelector(".mx");
+  document.body.append(mx);
+  const cap = document.createElement("div");
+  cap.className = "cap";
+  cap.textContent = s.cap;
+  document.body.append(cap);
+  if (s.wait) {
+    const row = mx.querySelectorAll(".mx__row")[3];
+    row.style.background = "rgba(254, 128, 25, .18)";
+  }
+  if (s.toast) {
+    const toast = document.createElement("div");
+    toast.className = "toast2";
+    toast.textContent = s.toast;
+    mx.querySelector(".mx__list").append(toast);
+  }
+  await document.fonts.ready;
+  for (const a of document.getAnimations()) {
+    a.pause();
+    a.currentTime = 25600 + t;
+  }
+  document.title = "ready";
+})();
+</script>

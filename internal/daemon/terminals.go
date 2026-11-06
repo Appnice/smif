@@ -301,6 +301,40 @@ func (autoTerminal) Open(ctx context.Context, term, dir, label string, argv []st
 	return fmt.Errorf("new sessions open in Terminal.app, iTerm2, tmux or herdr, not %s", term)
 }
 
+// showTmux opens a terminal window on this machine's desktop, attached to tmux,
+// so a session started from another machine shows here too. It is a courtesy:
+// a machine with no desktop session, or with no gnome-terminal, just has the
+// session in tmux. gnome-terminal asks its server over the session bus, which
+// is why this works from ssh, on X11 and on Wayland.
+func showTmux(ctx context.Context, name string) {
+	bus := filepath.Join("/run/user", strconv.Itoa(os.Getuid()), "bus")
+	terminal, err := exec.LookPath("gnome-terminal")
+	if err != nil || runtime.GOOS != "linux" || tmuxPath() == "" {
+		return
+	}
+	if _, err := os.Stat(bus); err != nil {
+		return
+	}
+	session := tmuxSessionName(name)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	known := exec.CommandContext(ctx, tmuxPath(), "has-session", "-t", "="+session).Run() == nil
+	argv := showArgv(terminal, tmuxPath(), session, known)
+	c := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	c.Env = append(os.Environ(), "DBUS_SESSION_BUS_ADDRESS=unix:path="+bus, "XDG_RUNTIME_DIR="+filepath.Dir(bus))
+	_ = c.Run()
+}
+
+// showArgv attaches to the session by name, or to the newest one when the new
+// window went into a tmux that already ran.
+func showArgv(terminal, tmux, session string, known bool) []string {
+	argv := []string{terminal, "--", tmux, "attach"}
+	if known {
+		argv = append(argv, "-t", "="+session)
+	}
+	return argv
+}
+
 // tmuxSessionName is a name tmux takes: it treats dots and colons as separators.
 func tmuxSessionName(label string) string {
 	name := strings.NewReplacer(".", "-", ":", "-", " ", "-").Replace(label)

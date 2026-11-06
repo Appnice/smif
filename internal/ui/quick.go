@@ -44,6 +44,7 @@ func (s *DaemonSource) NewSession(ctx context.Context, dir, name, term, harness 
 
 type openedMsg struct {
 	name, dir, harness string
+	on                 string // the other machine it started on
 	err                error
 }
 
@@ -204,11 +205,12 @@ func (m *Model) newKey(msg tea.KeyPressMsg) tea.Cmd {
 				m.setStatus("This UI cannot open sessions on another machine.", true)
 				return nil
 			}
-			m.setStatus("Starting it on "+m.home.newLabel+", in tmux…", false)
+			label := m.home.newLabel
+			m.setStatus("Starting it on "+label+", in tmux…", false)
 			return func() tea.Msg {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
-				return openedMsg{name: name, dir: dir, err: r.NewRemoteSession(ctx, host, dir, name)}
+				return openedMsg{name: name, dir: dir, on: label, err: r.NewRemoteSession(ctx, host, dir, name)}
 			}
 		}
 		m.setStatus("Opening a new session in "+shortHome(dir)+"…", false)
@@ -232,6 +234,8 @@ func (m *Model) onOpened(msg openedMsg) {
 	switch {
 	case msg.err != nil:
 		m.setStatus("Not opened: "+oneLine(rpcMessage(msg.err)), true)
+	case msg.on != "":
+		m.setStatus("Started on "+msg.on+". A window opens there if it has a desktop, or run tmux attach there.", false)
 	case msg.name != "":
 		m.setStatus("Opened "+msg.name+" in "+shortHome(msg.dir)+". It shows here once "+agent+" starts.", false)
 	default:
