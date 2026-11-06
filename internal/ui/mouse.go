@@ -46,6 +46,12 @@ func (m *Model) mouseKey(msg tea.Msg) tea.Cmd {
 	case tea.MouseClickMsg:
 		e := msg.Mouse()
 		m.sel = nil
+		if m.machinesOpen() && m.confirm == nil && m.prompt == nil && !m.help {
+			if e.Button == tea.MouseLeft {
+				return m.machinesClick(e.X, e.Y)
+			}
+			return nil
+		}
 		if e.Button == tea.MouseLeft {
 			left, right := m.pane(e.X)
 			x := min(max(e.X, left), right-1)

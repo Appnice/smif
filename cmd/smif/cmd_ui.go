@@ -46,13 +46,18 @@ func cmdUI() *cobra.Command {
 func isTTY() bool { return term.IsTerminal(os.Stdin.Fd()) && term.IsTerminal(os.Stdout.Fd()) }
 
 // runUI runs the full-screen UI until q.
-func runUI(interval time.Duration) error {
+func runUI(interval time.Duration) error { return startUI(interval, false) }
+
+// runMachines opens the Machines screen.
+func runMachines() error { return startUI(time.Second, true) }
+
+func startUI(interval time.Duration, machines bool) error {
 	// NO_COLOR (https://no-color.org) turns colours off; bold and reverse
 	// stay for the selection and the focused frame.
 	ui.SetupColor(os.Getenv)
 	ensureDaemon()
 	src := &ui.DaemonSource{Dial: func() (ui.Caller, error) { return humanClient(2 * time.Second) }}
 	defer src.Close()
-	_, err := tea.NewProgram(ui.New(src, ui.Options{Interval: interval, SeenFile: filepath.Join(paths.DataDir(), "ui-seen.json"), PartsDir: paths.PartsDir()})).Run()
+	_, err := tea.NewProgram(ui.New(src, ui.Options{Interval: interval, SeenFile: filepath.Join(paths.DataDir(), "ui-seen.json"), PartsDir: paths.PartsDir(), Machines: machines, MachineDaemon: machineDaemon{}})).Run()
 	return err
 }

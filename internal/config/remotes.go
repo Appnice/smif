@@ -54,6 +54,36 @@ func AddRemote(file, host string) (bool, error) {
 	return true, replaceFile(file, text)
 }
 
+// RemoveRemote takes host out of daemon.remotes. It reports false when the
+// host was not there.
+func RemoveRemote(file, host string) (bool, error) {
+	if file == "" {
+		file = paths.ConfigFile()
+	}
+	b, err := os.ReadFile(file)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	c, err := Parse(b)
+	if err != nil {
+		return false, fmt.Errorf("%s: %w", file, err)
+	}
+	i := slices.Index(c.Daemon.Remotes, host)
+	if i < 0 {
+		return false, nil
+	}
+	want := slices.Delete(slices.Clone(c.Daemon.Remotes), i, i+1)
+	text := withRemotes(string(b), want)
+	after, err := Parse([]byte(text))
+	if err != nil || !slices.Equal(after.Daemon.Remotes, want) {
+		return false, fmt.Errorf("cannot edit %s: remove %q from daemon.remotes by hand", file, host)
+	}
+	return true, replaceFile(file, text)
+}
+
 // withRemotes writes the list into the [daemon] table of a config text.
 func withRemotes(text string, hosts []string) string {
 	quoted := make([]string, len(hosts))

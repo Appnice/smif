@@ -87,6 +87,7 @@ secret.
 | `o` | Go to the session's tab |
 | `p` | Send a saved prompt |
 | `n` | New session in the same folder |
+| `m` | Machines |
 | `y` | Copy the newest code block |
 | `Y` | Copy the newest answer |
 | mouse drag | Select inside one pane and copy |
@@ -94,12 +95,11 @@ secret.
 
 ## Other machines
 
-```sh
-smif remote add me@mini.local
-```
+Press `m` in smif, or run `smif remote add`. Pick a machine from your network, `~/.ssh/config` or Tailscale, or type an
+address, and smif sets it up. You type the password once.
 
-Sessions on that machine join your list, read only, and a session that starts to wait notifies you here. The command
-sets up your ssh key and smif over there. See [docs/usage.md](docs/usage.md).
+Its sessions join your list, read only, and a session that starts to wait notifies you here. See
+[docs/usage.md](docs/usage.md).
 
 ## Stop watching the screen
 
@@ -154,7 +154,7 @@ Mail also works between Claude Code and Codex, so one can ask the other to revie
 </p>
 
 smif reads the files Claude Code already writes, and one local daemon keeps the state. Nothing leaves your machine:
-no server, no cloud, no telemetry. The exceptions are the ssh hosts you list in `daemon.remotes` and a phone ping that you turn on with `daemon.notify_url`: it
+no server, no cloud, no telemetry. The exceptions are the machines you add and a phone ping that you turn on with `daemon.notify_url`: it
 sends the agent or folder name and what happened, with no prompt or answer ([docs/safety.md](docs/safety.md)).
 
 ## Uninstall

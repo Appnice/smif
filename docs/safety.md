@@ -43,3 +43,9 @@ tries their messages again. Hooks and the status line fail open: they print noth
 
 **How do I remove it?** Run `smif uninstall`. Your settings come back byte for byte. The data stays in
 `~/Library/Application Support/smif` (or `~/.local/share/smif`) until you delete it.
+
+## Other machines
+
+The daemon reaches another machine with `~/.ssh/smif_ed25519`, a key with no passphrase that can only run the session list
+there, with no shell, port forward or terminal. Your password goes to `ssh` and `sudo` once, and smif does not store it. An
+unknown host key is accepted once, and a changed one stops the setup. See [ADR-0024](adr/0024-machines-screen.md).

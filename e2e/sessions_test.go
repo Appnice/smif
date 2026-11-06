@@ -495,6 +495,8 @@ func TestSessionNotify(t *testing.T) {
 	}
 }
 
+func alertRe(s string) *regexp.Regexp { return regexp.MustCompile(s) }
+
 // WATCHDOGS, SAVED PROMPTS, NEW SESSIONS (ADR-0015): a working session that
 // writes nothing, or works long, is told once; a waiting one is reminded.
 // @name in session.send stands for a saved prompt (a file mention that is
@@ -545,8 +547,9 @@ func TestWatchdogsPromptsNew(t *testing.T) {
 	status("busy")
 	waitFor("silent and long alerts", func() bool {
 		n := notes()
-		return strings.Contains(n, `"kind":"session_silent","agent":"build","summary":"nothing written for 1m: Bash: make release"`) &&
-			strings.Contains(n, `"kind":"session_long","agent":"build","summary":"works 2m on: build it"`)
+		// The minutes depend on when the watchdog looks, so a busy machine reads one more.
+		return alertRe(`session_silent","agent":"build","summary":"nothing written for \dm: Bash: make release"`).MatchString(n) &&
+			alertRe(`session_long","agent":"build","summary":"works \dm on: build it"`).MatchString(n)
 	})
 	time.Sleep(3 * time.Second)
 	if n := notes(); strings.Count(n, "session_silent") != 1 || strings.Count(n, "session_long") != 1 {

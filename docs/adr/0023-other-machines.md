@@ -12,10 +12,7 @@ shared ssh connection, and adds the rows to `session.list`.
 - A host that fails keeps its rows for one minute, then they leave. `smif doctor` shows a warning, never a failure.
 - A host name starts with a letter or digit, so it can never read as an ssh option. `--` ends the options as well.
 - The command is a constant. Nothing from a config value but the host, and nothing from a session, reaches ssh.
-- `smif remote add <host>` does the setup: `ssh-copy-id` when the login is refused, the install script after a yes when
-  smif is missing, the host in the config with the rest of the file untouched, and a wait for the daemon's own answer.
-  That last step matters: a service may not have the ssh agent your shell has. The other side needs no `smif install`,
-  because `smif sessions` starts its daemon.
+- ADR-0024 replaces the setup: `smif remote add` and the Machines screen.
 
 ## Why not more
 

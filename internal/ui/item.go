@@ -536,6 +536,8 @@ func (m *Model) footerKeys() string {
 	switch {
 	case m.confirm != nil:
 		return "y yes · any other key no · ctrl+c quit"
+	case m.machinesOpen() && !m.help:
+		return m.machinesKeys()
 	case m.help:
 		return "↑/↓ scroll · any other key closes the help · q quit"
 	case m.history != nil:

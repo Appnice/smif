@@ -41,6 +41,10 @@ type Options struct {
 	// Dashboard starts on the six-panel overview instead of the home
 	// screen (`v` switches between them).
 	Dashboard bool
+	// Machines starts on the Machines screen (`smif remote add`).
+	Machines bool
+	// MachineDaemon is what that screen uses; nil turns it off.
+	MachineDaemon MachineDaemon
 	// SeenFile keeps which session answers the human has seen, across
 	// restarts ("" = in memory only, as in tests).
 	SeenFile string
@@ -74,20 +78,23 @@ type Model struct {
 	help          bool
 	helpScroll    int // first help line shown
 
-	act       Actions                // nil: read-only (the source cannot act)
-	insp      Inspector              // nil: no inbox, run or apply screens
-	digr      Digester               // nil: no digest screen
-	inbox     *inboxScreen           // open inbox list, or nil
-	digest    *digestScreen          // open digest list, or nil
-	item      *itemScreen            // open thread screen (over the inbox), or nil
-	run       *runScreen             // open run screen (over the thread), or nil
-	history   *historyScreen         // open history screen (R), or nil
-	confirm   *confirmation          // open yes/no question
-	busy      string                 // the action in flight ("" when none)
-	cancels   map[string]*cancelWait // accepted cancels, by message id, until the item leaves running
-	status    string                 // result of the last action
-	statusBad bool
-	statusAt  time.Time
+	act           Actions                // nil: read-only (the source cannot act)
+	insp          Inspector              // nil: no inbox, run or apply screens
+	digr          Digester               // nil: no digest screen
+	inbox         *inboxScreen           // open inbox list, or nil
+	digest        *digestScreen          // open digest list, or nil
+	item          *itemScreen            // open thread screen (over the inbox), or nil
+	run           *runScreen             // open run screen (over the thread), or nil
+	history       *historyScreen         // open history screen (R), or nil
+	mach          machinesScreen         // the Machines screen (m)
+	machDaemon    MachineDaemon          // nil: no Machines screen
+	startMachines bool                   // open it on the first frame
+	confirm       *confirmation          // open yes/no question
+	busy          string                 // the action in flight ("" when none)
+	cancels       map[string]*cancelWait // accepted cancels, by message id, until the item leaves running
+	status        string                 // result of the last action
+	statusBad     bool
+	statusAt      time.Time
 }
 
 // SnapshotMsg delivers a poll result.
@@ -108,6 +115,7 @@ func New(src Source, o Options) *Model {
 	if m.partsDir == "" {
 		m.partsDir = filepath.Join(os.TempDir(), "smif-parts")
 	}
+	m.machDaemon, m.startMachines = o.MachineDaemon, o.Machines
 	m.home.seenFile = o.SeenFile
 	m.home.seen = loadSeen(o.SeenFile)
 	if a, ok := src.(Actions); ok {
@@ -163,7 +171,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.keepEventCursor(sel)
 			m.clamp()
 		}
-		return m, tea.Batch(m.tick(), m.reloadTop(), m.checkCancels())
+		var machCmd tea.Cmd
+		if m.startMachines {
+			m.startMachines = false
+			machCmd = m.openMachines()
+		} else if m.mach.open {
+			machCmd = m.loadRemotes()
+		}
+		return m, tea.Batch(m.tick(), m.reloadTop(), m.checkCancels(), machCmd)
 	case threadMsg:
 		m.onThread(msg)
 	case actionMsg:
@@ -212,6 +227,27 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onSearch(msg)
 	case reopenMsg:
 		m.onReopen(msg)
+	case machinesFoundMsg:
+		m.onMachinesFound(msg)
+	case machineHealthMsg:
+		m.onMachineHealth(msg)
+	case machineEventMsg:
+		m.mach.listening = false
+		m.onMachineEvent(msg)
+		return m, m.listenMachines()
+	case machineClosedMsg:
+		m.mach.listening = false
+		if r := m.mach.row(msg.name); r != nil {
+			r.closed = true
+		}
+		return m, m.listenMachines()
+	case machineAskMsg:
+		m.mach.listening = false
+		m.onMachineAsk(msg)
+		return m, m.listenMachines()
+	case machineDoneMsg:
+		m.mach.listening = false
+		return m, tea.Batch(m.onMachineDone(msg), m.listenMachines())
 	case tea.KeyPressMsg:
 		return m, m.keyMsg(msg)
 	case tea.MouseClickMsg, tea.MouseMotionMsg, tea.MouseReleaseMsg, tea.MouseWheelMsg:
@@ -221,6 +257,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// so pasted words never act as key bindings.
 		switch {
 		case m.confirm != nil:
+		case m.machinesOpen():
+			m.machinesPaste(msg.Content)
 		case m.prompt != nil:
 			m.prompt.in.insert([]rune(strings.ReplaceAll(msg.Content, "\n", " ")))
 		case m.history != nil && m.history.filtering:
@@ -262,6 +300,8 @@ func (m *Model) keyMsg(msg tea.KeyPressMsg) tea.Cmd {
 		return m.key(k)
 	}
 	switch {
+	case m.machinesOpen():
+		return m.machinesKey(msg)
 	case m.history != nil:
 		return m.historyKey(msg)
 	case m.run != nil:
@@ -430,7 +470,9 @@ func (m *Model) Render() string {
 		h = 24
 	}
 	var lines []string
-	if m.homeActive() {
+	if m.machinesOpen() {
+		lines = append(lines, m.machinesTop(w))
+	} else if m.homeActive() {
 		lines = append(lines, m.homeTop(w))
 	} else {
 		lines = append(lines, m.header()...)
@@ -451,6 +493,8 @@ func (m *Model) Render() string {
 	body := h - len(lines) - len(footer)
 	if m.help {
 		lines = append(lines, m.helpView(w, body)...)
+	} else if m.machinesOpen() {
+		lines = append(lines, m.machinesLines(w, body, len(lines))...)
 	} else if m.snap == nil {
 		if m.lastErr != nil {
 			lines = append(lines, "")

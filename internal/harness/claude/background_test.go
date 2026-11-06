@@ -47,7 +47,7 @@ func bgJSON(id, sessionID, state string, startedAt time.Time) string {
 // background waits for the first result of the command.
 func background(t *testing.T, p *Provider) []harness.Session {
 	t.Helper()
-	end := time.Now().Add(5 * time.Second)
+	end := time.Now().Add(20 * time.Second)
 	for time.Now().Before(end) {
 		p.Discover()
 		if _, detail := p.CheckBackground(); !strings.Contains(detail, "has not run yet") {

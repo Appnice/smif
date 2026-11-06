@@ -1,7 +1,7 @@
 smif  daemon v0.1.0 pid 4242 up 2h03m · schema 4 · claude 2.1.316 ok · updated 13:10:05
 queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p50 1.2s, p95 3.0s
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  HELP · lines 1-45 of 138 · ↑/↓ scroll · q quit · any other key closes
+  HELP · lines 1-45 of 139 · ↑/↓ scroll · q quit · any other key closes
 
   KEYS: HOME (the start screen: what asks you, sessions with their state, then workers; empty groups hide)
   ↑/k, ↓/j              move through the list; the preview on the right follows
@@ -32,6 +32,7 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p5
   p                     on a session: the saved prompts ([prompts] in the config); enter or 1-9 sends one the way s would. In a prompt, @name stands for it
   n                     open a new terminal tab that runs claude in the selected session's folder (asks for its name). With another harness on the PATH, ← →
                         pick it; only claude takes a name
+  m                     machines: this one, the ones you added, and the ones smif finds on your network. Enter adds one, and the mouse works there
   R                     history: past Claude Code sessions, the closed ones first (the top line then says 12 sessions closed · R reopens)
   v                     dashboard: the six-panel overview (agents, events); v or esc there comes back
   i, d, r, ?, q         inbox, digest, refresh, this help, quit
@@ -46,5 +47,4 @@ queue 2 · running 1 · needs you 1 · dead letters 1 · 24h: 5 runs, 80% ok, p5
   r, esc                refresh; esc leaves a search, clears the filter, then goes back
 
   KEYS: PROMPT BOX OF A SESSION (s, or the chat)
-  paste                 a text with several lines, or a very long one, becomes a part: [1] in your text, its first and last lines under it, its size, and
 ↑/↓ scroll · any other key closes the help · q quit

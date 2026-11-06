@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/appnice/smif/internal/api"
+	"github.com/appnice/smif/internal/paths"
 )
 
 // Other machines (ADR-0023): a remote is an ssh host that runs smif too. The
@@ -35,18 +37,32 @@ type remoteState struct {
 	hosts map[string]remote
 }
 
-func sshCommand() string {
+// SSHCommand is the ssh binary.
+func SSHCommand() string {
 	if p, ok := os.LookupEnv("SMIF_SSH"); ok {
 		return p
 	}
 	return "ssh"
 }
 
+// RemoteKey is the daemon's own key in ~/.ssh (ADR-0024). The other machine
+// lets it run the session list and nothing else.
+const RemoteKey = "smif_ed25519"
+
 // RemoteArgv is the ssh call. The host passed config validation, and -- ends
 // the options. A shared connection keeps a poll cheap.
 func RemoteArgv(host, command string) []string {
-	return []string{sshCommand(), "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "ControlMaster=auto",
-		"-o", "ControlPath=~/.ssh/smif-%C", "-o", "ControlPersist=60", "--", host, command}
+	argv := []string{SSHCommand(), "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "ControlMaster=auto",
+		"-o", "ControlPath=~/.ssh/smif-%C", "-o", "ControlPersist=60"}
+	if key := filepath.Join(paths.Home(), ".ssh", RemoteKey); fileExists(key) {
+		argv = append(argv, "-i", key)
+	}
+	return append(argv, "--", host, command)
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // fetchRemote asks one host for its sessions.

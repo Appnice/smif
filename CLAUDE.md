@@ -43,7 +43,7 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   transcripts, file status, fork folder, process name). Mail, workers and `smif_ask` stay on `internal/runner/claude`.
   `internal/harness/{qwen,opencode,copilot,droid}/` read-only providers from a source reading (unverified, `docs/compat.md`), `codex/` the same but verified on 0.166.0, so it types when idle; their `testdata/report-*` are hand-built from that reading. `read.go` holds the shared transcript helpers (`ScanTail`, `TurnLog`, `FileCache`); `proc.go` the process list and `MatchProcs`, for agents with no file that links a pid to a session
 - `internal/runner/codex` the read-only `codex exec` worker, `harness = "codex"` in a profile (ADR-0022)
-- `internal/daemon/remotes.go` `daemon.remotes`, read-only rows over ssh (ADR-0023), `cmd/smif/cmd_remote.go` `smif remote add` · `keep_awake.go` caffeinate
+- `internal/daemon/remotes.go` `daemon.remotes`, read-only rows over ssh (ADR-0023), `internal/machines` the add-a-machine setup and discovery (ADR-0024), `internal/ui/machines.go` its screen · `keep_awake.go` caffeinate
 - `internal/workspace` worktrees and branches · `internal/install` settings.json edits, launchd/systemd
 - `testdata/fakeclaude/` scripted `claude -p` stand-in (`#fake:` directives in the message body), also `claude agents` (`agents.json` in `$SMIF_FAKE_LOG`) · `testdata/fakeherdr/` herdr stand-in (`SMIF_HERDR=<path>`, `""` = no herdr)
 - `e2e/` acceptance scenarios A1–A15, M1 kill -9, chaos; each test gets its own `/tmp/mr-*` root

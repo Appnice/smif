@@ -48,6 +48,7 @@ var helpText = []helpEntry{
 	{"p", "on a session: the saved prompts ([prompts] in the config); enter or 1-9 sends one the way s would. In a prompt, @name stands for it"},
 	{"n", "open a new terminal tab that runs claude in the selected session's folder (asks for its name). " +
 		"With another harness on the PATH, ← → pick it; only claude takes a name"},
+	{"m", "machines: this one, the ones you added, and the ones smif finds on your network. Enter adds one, and the mouse works there"},
 	{"R", "history: past Claude Code sessions, the closed ones first (the top line then says 12 sessions closed · R reopens)"},
 	{"v", "dashboard: the six-panel overview (agents, events); v or esc there comes back"},
 	{"i, d, r, ?, q", "inbox, digest, refresh, this help, quit"},

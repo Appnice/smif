@@ -101,7 +101,7 @@ type previewMsg struct {
 
 // homeActive reports whether the home screen is the screen on top.
 func (m *Model) homeActive() bool {
-	return !m.dashboard && m.history == nil && m.run == nil && m.item == nil && m.digest == nil && m.inbox == nil && !m.help
+	return !m.mach.open && !m.dashboard && m.history == nil && m.run == nil && m.item == nil && m.digest == nil && m.inbox == nil && !m.help
 }
 
 // homeRows builds the list from the last snapshot: filtered by the agent
@@ -494,6 +494,8 @@ func (m *Model) homeKey(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	case "n":
 		m.newOpen()
+	case "m":
+		return m.openMachines()
 	case "R":
 		return m.openHistory()
 	case "x":

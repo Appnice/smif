@@ -18,6 +18,7 @@ import (
 	"github.com/appnice/smif/internal/auth"
 	"github.com/appnice/smif/internal/config"
 	"github.com/appnice/smif/internal/daemon"
+	"github.com/appnice/smif/internal/machines"
 	"github.com/appnice/smif/internal/paths"
 	"github.com/appnice/smif/internal/ui"
 )
@@ -28,6 +29,9 @@ var (
 )
 
 func main() {
+	if sock := os.Getenv(machines.AskpassEnv); sock != "" {
+		os.Exit(machines.Askpass(sock)) // ssh asks for a password (ADR-0024)
+	}
 	root := &cobra.Command{
 		Use:           "smif",
 		Short:         "Event-driven, hard-isolated messaging between Claude Code sessions",

@@ -2,170 +2,170 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
+	"os/signal"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
 	"github.com/appnice/smif/internal/api"
 	"github.com/appnice/smif/internal/config"
-	"github.com/appnice/smif/internal/daemon"
-)
-
-const (
-	remoteInstall = `curl -fsSL https://smif.dev/install.sh | sh`
-	remoteAwait   = 30 * time.Second // a poll comes every 15 s and may take 12
+	"github.com/appnice/smif/internal/machines"
 )
 
 func cmdRemote() *cobra.Command {
 	c := &cobra.Command{Use: "remote", Short: "Add another machine to your session list"}
 	c.AddCommand(&cobra.Command{
-		Use:   "add <ssh-host>",
-		Short: "Set up ssh and smif on a machine, then show its sessions here",
+		Use:   "add [ssh-host]",
+		Short: "Add a machine. With no host, the Machines screen opens",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				if !isTTY() {
+					return errors.New("name a host: smif remote add me@host")
+				}
+				return runMachines()
+			}
+			return remoteAdd(args[0])
+		},
+	}, &cobra.Command{
+		Use:   "rm <ssh-host>",
+		Short: "Take a machine out of your list",
 		Args:  cobra.ExactArgs(1),
-		RunE:  func(cmd *cobra.Command, args []string) error { return remoteAdd(args[0]) },
+		RunE:  func(cmd *cobra.Command, args []string) error { return remoteRemove(args[0]) },
 	})
 	return c
 }
 
-// remoteAdd does the whole setup (ADR-0023): the ssh key, smif on the other
-// side, the config, and a look at what the daemon itself can reach.
 func remoteAdd(host string) error {
 	if !config.ValidRemote(host) {
 		return fmt.Errorf("%q is not an ssh host name", host)
 	}
-	if err := remoteLogin(host); err != nil {
-		return err
-	}
-	n, err := remoteSessions(host)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s answers, with %d sessions.\n", host, n)
-	added, err := config.AddRemote("", host)
-	if err != nil {
-		return err
-	}
-	if !added {
-		fmt.Printf("%s is already in daemon.remotes.\n", host)
-	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 	ensureDaemon()
+	s := &machines.Setup{Host: host, Ask: newTerminalAsk(), Daemon: machineDaemon{}, Report: printStep}
+	if err := s.Run(ctx); err != nil {
+		if errors.Is(err, machines.ErrStopped) {
+			return errors.New("stopped, nothing was added")
+		}
+		return err
+	}
+	fmt.Printf("Done: the sessions of %s are in your list, read only.\n", s.Host)
+	return nil
+}
+
+func remoteRemove(host string) error {
+	removed, err := config.RemoveRemote("", host)
+	if err != nil {
+		return err
+	}
+	if !removed {
+		return fmt.Errorf("%s is not in daemon.remotes", host)
+	}
 	var r map[string]any
 	if err := call("admin.reload", nil, &r, 30*time.Second); err != nil {
 		return notRunning(err)
 	}
-	fmt.Println("Waiting for the daemon to reach it...")
-	return awaitRemote(host)
-}
-
-// remoteLogin leaves a login that asks for nothing, which is what the daemon
-// needs. Only a refused key or an unknown host key can be fixed from here.
-func remoteLogin(host string) error {
-	out, err := remoteRun(host, "true")
-	if err == nil {
-		return nil
-	}
-	if !strings.Contains(out, "Permission denied") && !strings.Contains(out, "Host key verification failed") {
-		return fmt.Errorf("cannot reach %s: %s\nOn a Mac, turn on System Settings > General > Sharing > Remote Login. On Linux, start sshd", host, lastLine(out, err))
-	}
-	fmt.Printf("%s needs your ssh key. Log in once, and it will not ask again.\n", host)
-	c := exec.Command(copyIDCommand(), host)
-	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := c.Run(); err != nil {
-		return fmt.Errorf("ssh-copy-id: %v\nWith no ssh key yet, run `ssh-keygen -t ed25519` and try again", err)
-	}
-	if out, err := remoteRun(host, "true"); err != nil {
-		return fmt.Errorf("%s still asks for a login: %s", host, lastLine(out, err))
-	}
+	fmt.Printf("%s left your list. Its key stays there and can only list sessions: remove the smif-daemon line from ~/.ssh/authorized_keys.\n", host)
 	return nil
 }
 
-// remoteSessions counts the sessions of a host, and installs smif there when
-// it is missing and you say yes.
-func remoteSessions(host string) (int, error) {
-	stdout, stderr, err := remoteOutput(host, daemon.RemoteCommand)
-	var exit *exec.ExitError
-	if errors.As(err, &exit) && exit.ExitCode() == 127 {
-		fmt.Printf("%s has no smif. Install the latest release there, in ~/.local/bin? [Y/n] ", host)
-		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		if a := strings.ToLower(strings.TrimSpace(line)); line == "" || (a != "" && a != "y" && a != "yes") {
-			return 0, fmt.Errorf("nothing changed. To install it yourself, run this on %s: %s", host, remoteInstall)
+func printStep(e machines.Event) {
+	label := ""
+	for _, s := range machines.Steps {
+		if s.ID == e.Step {
+			label = s.Label
 		}
-		argv := daemon.RemoteArgv(host, remoteInstall)
-		c := exec.Command(argv[0], argv[1:]...)
-		c.Stdout, c.Stderr = os.Stdout, os.Stderr
-		if err := c.Run(); err != nil {
-			return 0, fmt.Errorf("install on %s: %v", host, err)
-		}
-		stdout, stderr, err = remoteOutput(host, daemon.RemoteCommand)
 	}
+	switch e.State {
+	case machines.Done:
+		fmt.Printf("✓ %s: %s\n", label, e.Detail)
+	case machines.Skipped:
+		fmt.Printf("! %s: %s\n", label, e.Detail)
+	case machines.Failed:
+		fmt.Printf("✗ %s\n", label)
+	}
+}
+
+// terminalAsk asks on this terminal.
+type terminalAsk struct{ in *bufio.Reader }
+
+func newTerminalAsk() *terminalAsk { return &terminalAsk{bufio.NewReader(os.Stdin)} }
+
+func (a *terminalAsk) Closed(name string) {
+	fmt.Printf("ssh does not answer on %s, or the machine is off. Run this once on it, and smif goes on by itself:\n", name)
+	fmt.Printf("  Linux: %s\n  macOS: %s\n", machines.CommandLinux, machines.CommandMac)
+}
+
+func (a *terminalAsk) secret(prompt string) (string, bool) {
+	fmt.Print(prompt)
+	if term.IsTerminal(os.Stdin.Fd()) {
+		b, err := term.ReadPassword(os.Stdin.Fd())
+		fmt.Println()
+		return string(b), err == nil && len(b) > 0
+	}
+	line, err := a.in.ReadString('\n')
+	line = strings.TrimSpace(line)
+	return line, err == nil && line != ""
+}
+
+func (a *terminalAsk) Login(user, problem string) (string, string, bool) {
+	if problem != "" {
+		fmt.Println(problem)
+	}
+	pass, ok := a.secret("Password, used once and not stored: ")
+	return user, pass, ok
+}
+
+func (a *terminalAsk) Sudo(problem string) (string, bool) {
+	if problem != "" {
+		fmt.Println(problem)
+	}
+	return a.secret("Linux stops smif when nobody is logged in. sudo password to keep it running (enter skips): ")
+}
+
+func (a *terminalAsk) Install() bool {
+	fmt.Print("That machine has no smif. Install the latest release there, in ~/.local/bin? [Y/n] ")
+	line, err := a.in.ReadString('\n')
+	if err != nil && line == "" {
+		return false
+	}
+	ans := strings.ToLower(strings.TrimSpace(line))
+	return ans == "" || ans == "y" || ans == "yes"
+}
+
+// machineDaemon is the running daemon.
+type machineDaemon struct{}
+
+func (machineDaemon) Reload() error {
+	var r map[string]any
+	return notRunning(call("admin.reload", nil, &r, 30*time.Second))
+}
+
+// Remotes is the daemon's last look at each host.
+func (machineDaemon) Remotes() ([]api.ProviderCheck, error) {
+	var h api.HealthView
+	if err := call("admin.health", nil, &h, 10*time.Second); err != nil {
+		return nil, notRunning(err)
+	}
+	return h.Remotes, nil
+}
+
+func (d machineDaemon) Reached(host string) (bool, string, error) {
+	rows, err := d.Remotes()
 	if err != nil {
-		return 0, fmt.Errorf("smif on %s: %s", host, lastLine(stderr, err))
+		return false, "", err
 	}
-	var rows []json.RawMessage
-	if err := json.Unmarshal(stdout, &rows); err != nil {
-		return 0, fmt.Errorf("smif on %s gave no session list: %v", host, err)
-	}
-	return len(rows), nil
-}
-
-// awaitRemote asks the daemon, because it runs as a service and may not have
-// what this shell has, like an ssh agent.
-func awaitRemote(host string) error {
-	last := "no answer yet"
-	for deadline := time.Now().Add(remoteAwait); time.Now().Before(deadline); time.Sleep(time.Second) {
-		var h api.HealthView
-		if err := call("admin.health", nil, &h, 10*time.Second); err != nil {
-			return notRunning(err)
-		}
-		for _, p := range h.Remotes {
-			if p.Name != host {
-				continue
-			}
-			if p.State == "ok" {
-				fmt.Printf("Done: the sessions of %s are in your list, read only.\n", host)
-				return nil
-			}
-			last = p.Detail
+	for _, p := range rows {
+		if p.Name == host {
+			return p.State == "ok", p.Detail, nil
 		}
 	}
-	return fmt.Errorf("%s works from this shell, but the daemon cannot reach it: %s\nA key with a passphrase needs one the daemon can use, or use a key with none. `smif doctor` shows the state", host, last)
-}
-
-func remoteRun(host, command string) (string, error) {
-	stdout, stderr, err := remoteOutput(host, command)
-	return string(stdout) + string(stderr), err
-}
-
-func remoteOutput(host, command string) ([]byte, string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	argv := daemon.RemoteArgv(host, command)
-	var stdout, stderr bytes.Buffer
-	c := exec.CommandContext(ctx, argv[0], argv[1:]...)
-	c.Stdout, c.Stderr = &stdout, &stderr
-	err := c.Run()
-	return stdout.Bytes(), stderr.String(), err
-}
-
-func copyIDCommand() string {
-	if p, ok := os.LookupEnv("SMIF_SSH_COPY_ID"); ok {
-		return p
-	}
-	return "ssh-copy-id"
-}
-
-func lastLine(out string, err error) string {
-	out = strings.TrimSpace(out)
-	if out == "" {
-		return err.Error()
-	}
-	return out[strings.LastIndex(out, "\n")+1:]
+	return false, "", nil
 }

@@ -59,12 +59,19 @@ What facts cannot see:
 - **Watchdogs.** A reminder while a session still waits (`daemon.remind_waiting`, default every 10 min, at most
   3 times), and one alert when a working session writes nothing for `daemon.alert_silent` (default 10 min) or works
   longer than `daemon.alert_long_turn` (off by default).
-- **Other machines.** Run `smif remote add me@mini.local`, and the sessions of that ssh host join your list, with the host
-  in the folder name. A session that starts to wait notifies here too. On a Mac, first turn on System Settings > General >
-  Sharing > Remote Login. The command installs your ssh key with `ssh-copy-id`, offers to install smif there, adds the host
-  to `daemon.remotes` and checks that the daemon reaches it. smif runs `smif sessions --json` there every 15 s over one
-  shared connection. These rows are read only: to answer, ssh there. A host that is away leaves the list after a minute,
-  and `smif doctor` says why. To remove a host, delete it from `daemon.remotes` and run `smif reload`.
+- **Other machines.** Press `m`, or run `smif remote add`. The Machines screen lists this machine, the ones you added, and
+  the ones it finds in `~/.ssh/config`, Tailscale and your local network. A Linux machine shows up on the local network only
+  with `avahi-daemon`, so `a` takes a typed address. Enter adds the selected machine, and the setup runs in its row, so you
+  can add another meanwhile. The mouse works on this screen.
+  - The machine needs ssh. If it does not answer, the screen shows the command to run there, and goes on by itself when ssh
+    opens. smif cannot turn ssh on from outside.
+  - It asks for your password once, unless your ssh login already works, and on Linux for sudo to keep smif running after
+    logout. Skip that, and the machine can drop out of the list when nobody is logged in there.
+  - It installs smif there if it is missing, and adds a key of its own, `~/.ssh/smif_ed25519`, that can only list sessions.
+  - `smif remote add me@host` does the same in the terminal, and `smif remote rm me@host` takes a machine out.
+
+  These rows are read only: to answer, ssh there, and `y` copies the command. smif runs `smif sessions --json` there every
+  15 s over one shared connection. A machine that is away leaves the list after a minute, and `smif doctor` says why.
 - **Keep awake.** With `keep_awake = true` under `[daemon]`, a Mac does not sleep from idling while a session works. A
   session that writes nothing for 30 min no longer counts, and a closed lid still sleeps. macOS only.
 - **Phone ping.** Set `daemon.notify_url`, and each notification above also goes to that URL as one POST. See below.
