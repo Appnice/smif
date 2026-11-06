@@ -20,10 +20,9 @@
 - **What leaves the machine.** Nothing, unless you set `daemon.notify_url`. With that key, each notification also
   sends one POST to that URL. The POST holds a name and what happened, for example `shop waits for you`, and the
   headers `Title: smif` and `Tags: bell`. smif adds no prompt, answer, command, file path or message text.
-- **What a name tells.** The name is the session's name, else the agent, else the folder. The agent can make that
-  title itself: Claude Code does for a background session, and Droid and Copilot keep a title or a summary of the
-  session. Such a title can repeat words of a prompt, so the POST can too. Anyone who knows a public ntfy topic reads
-  these names: use a long random topic or your own server.
+- **What a name tells.** The name is the smif agent, else the folder, never a session title, because an agent can
+  make a title from a prompt. Anyone who knows a public ntfy topic reads these names: use a long random topic or your
+  own server.
 - **The URL.** A topic in a URL works as a password, so smif keeps the URL out of logs, errors and `smif doctor`.
   `smif doctor` shows only that the ping is on. Nothing comes back: a phone cannot reply, approve or send a prompt.
 

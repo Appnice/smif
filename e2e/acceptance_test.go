@@ -830,17 +830,22 @@ func TestChaosKill9(t *testing.T) {
 	})
 	terminal := map[string]int{}
 	succeeded := map[string]int{}
-	for _, a := range e.Audit() {
-		if a["event"] == "message.transition" {
-			d, _ := a["detail"].(map[string]any)
-			switch d["to_state"] {
-			case "done", "rejected", "expired":
-				terminal[a["message_id"].(string)]++
-			}
-		}
-		if a["event"] == "run.finished" {
-			if d, _ := a["detail"].(map[string]any); d["state"] == "succeeded" {
-				succeeded[a["message_id"].(string)]++
+	// The database, not the JSONL mirror: a kill between the commit and the
+	// append loses a mirror line, never a state.
+	for page := (api.AuditPage{More: true}); page.More; {
+		after := page.Cursor
+		e.Call("audit.since", api.AuditParams{After: after, Limit: 1000}, &page)
+		for _, a := range page.Events {
+			switch a.Event {
+			case "message.transition":
+				switch a.Detail["to_state"] {
+				case "done", "rejected", "expired":
+					terminal[a.MessageID]++
+				}
+			case "run.finished":
+				if a.Detail["state"] == "succeeded" {
+					succeeded[a.MessageID]++
+				}
 			}
 		}
 	}

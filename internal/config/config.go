@@ -954,10 +954,18 @@ func (c *Config) Accepts(to *Agent, from string) bool {
 // AgentForPath returns the agent whose repo contains dir (longest match).
 // Symlinks are resolved on both sides, so a symlinked checkout matches.
 func (c *Config) AgentForPath(dir string) *Agent {
-	dirs := []string{paths.Expand(dir)}
-	if r, err := filepath.EvalSymlinks(dirs[0]); err == nil && r != dirs[0] {
-		dirs = append(dirs, r)
+	d := paths.Expand(dir)
+	// The real path first: a link's own folder must not tie with its target.
+	if r, err := filepath.EvalSymlinks(d); err == nil && r != d {
+		if a := c.agentAt(r); a != nil {
+			return a
+		}
 	}
+	return c.agentAt(d)
+}
+
+// agentAt is the agent with the deepest repo that holds dir.
+func (c *Config) agentAt(d string) *Agent {
 	var best *Agent
 	bestLen := -1
 	for _, a := range c.Agents {
@@ -965,11 +973,9 @@ func (c *Config) AgentForPath(dir string) *Agent {
 		if r, err := filepath.EvalSymlinks(repos[0]); err == nil && r != repos[0] {
 			repos = append(repos, r)
 		}
-		for _, d := range dirs {
-			for _, r := range repos {
-				if (d == r || strings.HasPrefix(d, r+"/")) && len(r) > bestLen {
-					best, bestLen = a, len(r)
-				}
+		for _, r := range repos {
+			if (d == r || strings.HasPrefix(d, r+"/")) && len(r) > bestLen {
+				best, bestLen = a, len(r)
 			}
 		}
 	}

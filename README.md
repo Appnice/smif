@@ -142,8 +142,7 @@ Messages and forks work with Claude Code only. See [docs/agents.md](docs/agents.
 
 smif reads the files Claude Code already writes, and one local daemon keeps the state. Nothing leaves your machine:
 no server, no cloud, no telemetry. The one exception is a phone ping that you turn on with `daemon.notify_url`: it
-sends a session name and what happened. smif adds no prompt or answer, but a title that the agent made can repeat
-words of a prompt ([docs/safety.md](docs/safety.md)).
+sends the agent or folder name and what happened, with no prompt or answer ([docs/safety.md](docs/safety.md)).
 
 ## Uninstall
 

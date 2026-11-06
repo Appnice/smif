@@ -86,15 +86,15 @@ func TestPhonePing(t *testing.T) {
 	status("busy")
 	time.Sleep(5 * time.Second) // the watcher sees it busy first
 	status("waiting")
-	e.WaitFor("waiting ping", 15*time.Second, func() bool { return seen("shop waits for you") == 1 })
-	e.WaitFor("reminder ping", 15*time.Second, func() bool { return seen("shop still waits for you") >= 1 })
+	e.WaitFor("waiting ping", 15*time.Second, func() bool { return seen("app waits for you") == 1 })
+	e.WaitFor("reminder ping", 15*time.Second, func() bool { return seen("app still waits for you") >= 1 })
 	status("busy")
 	time.Sleep(3 * time.Second)
 	transcript(append(lines,
 		`{"type":"user","timestamp":"`+at+`","message":{"content":[{"type":"tool_result","tool_use_id":"p1","content":"ok"}]}}`,
 		`{"type":"assistant","timestamp":"`+time.Now().UTC().Format(time.RFC3339)+`","message":{"content":[{"type":"text","text":"`+answer+`"}]}}`)...)
 	status("idle")
-	e.WaitFor("answered ping", 15*time.Second, func() bool { return seen("shop answered") == 1 })
+	e.WaitFor("answered ping", 15*time.Second, func() bool { return seen("app answered") == 1 })
 
 	// The OS route got the text, so the markers were there to leak.
 	notes, _ := os.ReadFile(filepath.Join(e.Root, "notify.jsonl"))

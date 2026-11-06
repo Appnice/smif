@@ -51,6 +51,16 @@ func bgView(t *testing.T, d *Daemon, id string) *api.SessionView {
 	return nil
 }
 
+// A background process that runs must not get a second one on its transcript.
+func TestRunningBackgroundIsLive(t *testing.T) {
+	running, stopped := bgRow(bgSession, "busy", t.TempDir()), bgRow(histA, "idle", t.TempDir())
+	running.PID = os.Getpid()
+	live := bgDaemon(t, running, stopped).liveClaude()
+	if !live[bgSession] || live[histA] {
+		t.Errorf("live %v", live)
+	}
+}
+
 func TestBackgroundView(t *testing.T) {
 	dir := t.TempDir()
 	for turn, want := range map[string]string{"waiting": "waiting", "busy": "busy", "idle": "idle", "": "unknown"} {

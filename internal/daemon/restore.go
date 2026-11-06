@@ -225,12 +225,13 @@ func (d *Daemon) historian() (harness.Historian, error) {
 	return h, nil
 }
 
-// liveClaude is the Claude Code sessions with a running process.
+// liveClaude is the Claude Code sessions with a running process. A stopped
+// background session has no pid, and it can reopen.
 func (d *Daemon) liveClaude() map[string]bool {
 	live := map[string]bool{}
 	if p := d.harnesses.Get(harness.ClaudeName); p != nil {
 		for _, s := range p.Discover() {
-			if s.AttachID == "" {
+			if s.AttachID == "" || s.PID > 0 {
 				live[s.SessionID] = true
 			}
 		}

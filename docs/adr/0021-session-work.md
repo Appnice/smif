@@ -150,7 +150,7 @@ Built 2026-11-05. The choices this section left open:
 ## 6. Phone ping
 
 `daemon.notify_url` (empty by default) gets a POST for the same events as an OS notification, reminders included.
-The body is the session name and what happened, `shop waits for you`, with no prompt, answer or command text, so
+The body is the agent or folder name and what happened, `shop waits for you`, with no prompt, answer or command text, so
 a public ntfy topic leaks only names. Headers `Title: smif`, `Tags: bell`. 5 s timeout, no retry. Only `https`, or
 `http` to localhost. Never log the URL. `smif notify test` sends one. No reply and no approval goes back.
 
@@ -158,9 +158,8 @@ Built 2026-11-05. The choices this section left open:
 
 - The body is the title of the OS notification with no `Smif: ` in front, so it covers every kind, mail kinds too. It
   comes from the kind and the name, and never reads the summary.
-- `name` is the session's title when it has one, and the agent can make that title. Such a title can repeat words of
-  a prompt: the hand-built Droid fixture has title `Fix the test` for prompt `fix the test`. So "no prompt text" above
-  covers what smif adds, not what a title holds. Open: keep provider-made titles out of the body.
+- For a session, `name` is the smif agent, else the folder, and never a title: an agent can make a title from a
+  prompt (the hand-built Droid fixture has title `Fix the test` for prompt `fix the test`).
 - `daemon.notify = "none"` does not turn the ping off, so a person can have only the phone. `daemon.session_notify`
   and the watchdog keys choose the events, as for the OS.
 - `Pinger.Send` starts one goroutine per ping and returns at once. At most 16 run; a further ping is lost with a log

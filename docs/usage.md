@@ -75,8 +75,8 @@ Run `smif reload`, then `smif notify test`. The phone shows `smif test ping`. An
 - **Events.** The same as the OS notifications, reminders and mail events included. `daemon.session_notify` and the
   watchdog keys choose them. `daemon.notify = "none"` turns off the OS notifications only, so the phone still gets them.
 - **What it sends.** The body is a name and what happened: `shop waits for you`, `shop answered`, `shop still waits
-  for you`. The headers are `Title: smif` and `Tags: bell`. smif adds no prompt, answer or command, but a title that
-  the agent made can repeat words of a prompt ([safety.md](safety.md)).
+  for you`. The headers are `Title: smif` and `Tags: bell`. The name is the agent or the folder, and it holds no prompt,
+  answer or command ([safety.md](safety.md)).
 - **The URL.** `https`, or `http` to localhost. Anything else fails `smif config validate`, and a redirect is not followed.
 - **Failures.** One POST has 5 s, with no retry: a ping that fails is lost, and the daemon log says why, without the
   URL. A slow server does not delay smif. At most 16 POSTs run at once, and further pings are lost while they run.

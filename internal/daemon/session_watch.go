@@ -227,7 +227,9 @@ func shortDur(d time.Duration) string {
 // keeps only the kind and the session, never the text.
 func (d *Daemon) notifySession(kind, name string, v api.SessionView, text string) {
 	ev := notify.Event{Kind: kind, Agent: name, Summary: notify.Clip(text, 280), At: time.Now()}
-	d.pinger.Send(d.Config().Daemon.NotifyURL, ev)
+	ping := ev
+	ping.Agent = nonEmpty(v.Agent, filepath.Base(v.Repo)) // a title can repeat a prompt
+	d.pinger.Send(d.Config().Daemon.NotifyURL, ping)
 	if err := d.notifier.Notify(ev); err != nil {
 		d.log.Warn("notification failed", "error", err.Error(), "session", v.SessionID)
 	}
