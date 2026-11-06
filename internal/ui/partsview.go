@@ -325,6 +325,10 @@ func (m *Model) trySendParts(r *homeRow) tea.Cmd {
 		m.setStatus(writeHint(r.sess), true)
 		return nil
 	}
+	if r.sess.Host != "" {
+		m.setStatus("Files stay on this machine, so they cannot go to "+r.sess.HostLabel()+".", true)
+		return nil
+	}
 	if gone := partsGone(h.parts); gone != "" {
 		m.setStatus(gone+" is gone from the disk. Remove it with ctrl+p and attach it again.", true)
 		return nil

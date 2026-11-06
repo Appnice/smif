@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -66,6 +67,18 @@ func (d *Daemon) sessionQueue(p api.SessionQueueParams) (*api.SessionQueueResult
 	if err != nil {
 		return nil, err
 	}
+	if host, id, ok := d.remoteSession(p.SessionID); ok && harness.ValidID(id) {
+		out, err := d.remoteWrite(host, "queue "+id, text)
+		if err != nil {
+			return nil, err
+		}
+		res := &api.SessionQueueResult{}
+		if err := json.Unmarshal(out, res); err != nil {
+			return nil, api.Errf(api.CodeUnavailable, "%s has an older setup. Press enter on it under Machines (m)", host)
+		}
+		res.SessionID = p.SessionID
+		return res, nil
+	}
 	target, err := d.writeTarget(p.SessionID, p.Name)
 	if err != nil {
 		return nil, err
@@ -88,6 +101,10 @@ func (d *Daemon) sessionQueue(p api.SessionQueueParams) (*api.SessionQueueResult
 
 // sessionQueueCancel is session.queue.cancel (human only).
 func (d *Daemon) sessionQueueCancel(p api.SessionQueueCancelParams) error {
+	if host, _, ok := d.remoteSession(p.SessionID); ok {
+		_, err := d.remoteWrite(host, fmt.Sprintf("cancel %d", p.ID), "")
+		return err
+	}
 	it, err := d.store.QueueItem(p.ID)
 	if err != nil {
 		return err

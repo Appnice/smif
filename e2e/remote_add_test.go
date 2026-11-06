@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/appnice/smif/internal/api"
 )
 
 // remoteStub is an ssh that behaves like a machine with no smif, a password
@@ -20,7 +22,8 @@ func remoteStub(t *testing.T) (ssh, dir string) {
 d=` + dir + `
 for last; do :; done
 case " $* " in
-  *" -O exit "*) rm -f $d/master; exit 0 ;;
+  *smif-setup-*" -O exit "*) rm -f $d/master; exit 0 ;;
+  *" -O exit "*) touch $d/dropped; exit 0 ;;
 esac
 [ -e $d/down ] && { echo 'ssh: connect to host mini port 22: Connection refused' >&2; exit 255; }
 case " $* " in
@@ -35,14 +38,22 @@ case " $* " in
   *" ControlMaster=no "*) [ -e $d/master ] || { echo 'no master' >&2; exit 255; } ;;
   *) grep -q 'restrict,command=' $d/authorized 2>/dev/null && case " $* " in *" -i "*) ;; *) false ;; esac || {
        echo 'me@mini: Permission denied (publickey).' >&2; exit 255; }
-     echo '[{"session_id":"abc","repo":"/srv/shop"}]'; exit 0 ;;
+     case "$last" in
+       *'remote-read send'*|*'remote-read queue'*)
+         grep -q 'remote-read --write' $d/authorized || { echo 'smif: writing is off for this machine' >&2; exit 1; }
+         cat > $d/typed; echo '{"mode":"typed","agent":"shop","session_id":"x"}' ;;
+       *'remote-read tail'*) echo '{"session_id":"x","turns":[{"role":"claude","text":"answer from there","at":"2026-11-06T10:00:00Z"}]}' ;;
+       *) echo '[{"session_id":"11111111-2222-4333-8444-555555555555","repo":"/srv/shop","can_prompt":true,"turn":"idle"}]' ;;
+     esac
+     exit 0 ;;
 esac
 case "$last" in
   uname*) printf 'Linux\nx86_64\nUbuntu 24.04\n' ;;
+  *'remote-read check') [ -e $d/installed ] ;;
   *'command -v smif'*) [ -e $d/installed ] && echo /home/me/.local/bin/smif; true ;;
   curl*) touch $d/installed; echo installed ;;
   *'sessions --json') echo '[{"session_id":"abc","repo":"/srv/shop"}]' ;;
-  *'k=$(cat)'*) cat >> $d/authorized ;;
+  *'k=$(cat)'*) cat > $d/authorized ;;
   *'sudo -S'*) [ "$(cat)" = rootpw ] && touch $d/lingered ;;
   *loginctl*) if [ -e $d/lingered ]; then echo yes; else echo no; fi ;;
   *) echo "unknown command: $last" >&2; exit 9 ;;
@@ -88,7 +99,7 @@ func TestRemoteAdd(t *testing.T) {
 		t.Fatalf("config:\n%s", config())
 	}
 	line, _ := os.ReadFile(filepath.Join(dir, "authorized"))
-	if !strings.HasPrefix(string(line), `restrict,command="PATH=/home/me/.local/bin:$PATH /home/me/.local/bin/smif sessions --json" ssh-ed25519 `) ||
+	if !strings.HasPrefix(string(line), `restrict,command="PATH=/home/me/.local/bin:$PATH /home/me/.local/bin/smif remote-read" ssh-ed25519 `) ||
 		!strings.HasSuffix(strings.TrimSpace(string(line)), "smif-daemon") {
 		t.Fatalf("authorized:\n%s", line)
 	}
@@ -99,9 +110,49 @@ func TestRemoteAdd(t *testing.T) {
 	if !strings.Contains(doctor, "remote me@mini") {
 		t.Fatalf("doctor:\n%s", doctor)
 	}
+	var tail api.SessionTail
+	e.Call("session.tail", api.SessionTailParams{SessionID: "me@mini/11111111-2222-4333-8444-555555555555"}, &tail)
+	if len(tail.Turns) != 1 || tail.Turns[0].Text != "answer from there" {
+		t.Fatalf("tail %+v", tail)
+	}
+
+	id := "me@mini/11111111-2222-4333-8444-555555555555"
+	send := func() error {
+		c, err := e.Client()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer c.Close()
+		return c.Call("session.send", api.SessionSendParams{SessionID: id, Text: "go on", Async: true}, &api.SessionSendResult{}, 10*time.Second)
+	}
+	if err := send(); err == nil || !strings.Contains(err.Error(), "read only") {
+		t.Fatalf("read only machine: %v", err)
+	}
+	os.WriteFile(filepath.Join(dir, "keyed"), nil, 0o600)
+	if out, err := e.CLI("", "remote", "write", "me@mini", "on"); err != nil {
+		t.Fatalf("write on: %v\n%s", err, out)
+	}
+	if line, _ = os.ReadFile(filepath.Join(dir, "authorized")); !strings.Contains(string(line), "remote-read --write") {
+		t.Fatalf("authorized:\n%s", line)
+	}
+	// sshd reads a key's line at login, so the daemon's open link must go.
+	if _, err := os.Stat(filepath.Join(dir, "dropped")); err != nil {
+		t.Fatal("the daemon's connection stayed open across a change of rights")
+	}
+	if err := send(); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "typed")); string(b) != "go on" {
+		t.Fatalf("typed %q", b)
+	}
+	if out, err := e.CLI("", "remote", "write", "me@mini", "off"); err != nil || strings.Contains(config(), "remote_write = [\"me@mini\"]") {
+		t.Fatalf("write off: %v\n%s\n%s", err, out, config())
+	}
+	if err := send(); err == nil {
+		t.Fatal("wrote to a read-only machine")
+	}
 
 	saved := config()
-	os.WriteFile(filepath.Join(dir, "keyed"), nil, 0o600)
 	out, err = e.CLI("", "remote", "add", "me@mini")
 	if err != nil || !strings.Contains(out, "already there") || config() != saved {
 		t.Fatalf("second add: %v\n%s", err, out)

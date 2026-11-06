@@ -85,7 +85,6 @@ func withName(text, host, name string) string {
 var (
 	daemonHeader = regexp.MustCompile(`(?m)^[ \t]*\[daemon\][ \t]*(#.*)?$`)
 	nextTable    = regexp.MustCompile(`(?m)^[ \t]*\[`)
-	remotesKey   = regexp.MustCompile(`(?ms)^[ \t]*remotes[ \t]*=[ \t]*\[.*?\]`)
 )
 
 // AddRemote puts host in daemon.remotes in the config file and keeps the rest
@@ -111,12 +110,40 @@ func AddRemote(file, host string) (bool, error) {
 		return false, nil
 	}
 	want := append(slices.Clone(c.Daemon.Remotes), host)
-	text := withRemotes(string(b), want)
+	text := withList(string(b), "remotes", want)
 	after, err := Parse([]byte(text))
 	if err != nil || !slices.Equal(after.Daemon.Remotes, want) {
 		return false, fmt.Errorf("cannot edit %s: add %q to daemon.remotes by hand", file, host)
 	}
 	return true, replaceFile(file, text)
+}
+
+// SetRemoteWrite says whether you can type into that machine's sessions.
+func SetRemoteWrite(file, host string, on bool) error {
+	if file == "" {
+		file = paths.ConfigFile()
+	}
+	b, err := os.ReadFile(file)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	c, err := Parse(b)
+	if err != nil {
+		return fmt.Errorf("%s: %w", file, err)
+	}
+	want := slices.DeleteFunc(slices.Clone(c.Daemon.RemoteWrite), func(h string) bool { return h == host })
+	if on {
+		want = append(want, host)
+	}
+	if slices.Equal(want, c.Daemon.RemoteWrite) {
+		return nil
+	}
+	text := withList(string(b), "remote_write", want)
+	after, err := Parse([]byte(text))
+	if err != nil || !slices.Equal(after.Daemon.RemoteWrite, want) {
+		return fmt.Errorf("cannot edit %s: set daemon.remote_write by hand", file)
+	}
+	return replaceFile(file, text)
 }
 
 // RemoveRemote takes host out of daemon.remotes. It reports false when the
@@ -141,7 +168,11 @@ func RemoveRemote(file, host string) (bool, error) {
 		return false, nil
 	}
 	want := slices.Delete(slices.Clone(c.Daemon.Remotes), i, i+1)
-	text := withName(withRemotes(string(b), want), host, "")
+	writers := slices.DeleteFunc(slices.Clone(c.Daemon.RemoteWrite), func(h string) bool { return h == host })
+	text := withName(withList(string(b), "remotes", want), host, "")
+	if len(writers) != len(c.Daemon.RemoteWrite) {
+		text = withList(text, "remote_write", writers)
+	}
 	after, err := Parse([]byte(text))
 	if err != nil || !slices.Equal(after.Daemon.Remotes, want) {
 		return false, fmt.Errorf("cannot edit %s: remove %q from daemon.remotes by hand", file, host)
@@ -149,13 +180,13 @@ func RemoveRemote(file, host string) (bool, error) {
 	return true, replaceFile(file, text)
 }
 
-// withRemotes writes the list into the [daemon] table of a config text.
-func withRemotes(text string, hosts []string) string {
+// withList writes a list of hosts into the [daemon] table of a config text.
+func withList(text, key string, hosts []string) string {
 	quoted := make([]string, len(hosts))
 	for i, h := range hosts {
 		quoted[i] = strconv.Quote(h)
 	}
-	line := "remotes = [" + strings.Join(quoted, ", ") + "]"
+	line := key + " = [" + strings.Join(quoted, ", ") + "]"
 	head := daemonHeader.FindStringIndex(text)
 	if head == nil {
 		if text != "" {
@@ -168,8 +199,9 @@ func withRemotes(text string, hosts []string) string {
 		end = start + next[0]
 	}
 	body := text[start:end]
-	if key := remotesKey.FindStringIndex(body); key != nil {
-		body = body[:key[0]] + line + body[key[1]:]
+	found := regexp.MustCompile(`(?ms)^[ \t]*` + key + `[ \t]*=[ \t]*\[.*?\]`)
+	if at := found.FindStringIndex(body); at != nil {
+		body = body[:at[0]] + line + body[at[1]:]
 	} else {
 		body = "\n" + line + body
 	}

@@ -350,14 +350,22 @@ func (d *Daemon) sessionFocus(ctx context.Context, p api.SessionFocusParams) (an
 // sessionTail reads the last turns of one session from its provider
 // (session.tail, human only). Nothing from it goes into any session.
 func (d *Daemon) sessionTail(p api.SessionTailParams) (*api.SessionTail, error) {
-	if !harness.ValidID(p.SessionID) {
-		return nil, api.Errf(api.CodeParams, "bad session_id")
-	}
 	limit := p.Limit
 	if limit <= 0 {
 		limit = 20
 	}
 	limit = min(limit, 100)
+	if host, id, ok := d.remoteSession(p.SessionID); ok && harness.ValidID(id) {
+		tail, err := remoteTail(d.ctx, host, id, limit)
+		if err != nil {
+			return nil, api.Errf(api.CodeUnavailable, "%v", err)
+		}
+		tail.SessionID = p.SessionID
+		return tail, nil
+	}
+	if !harness.ValidID(p.SessionID) {
+		return nil, api.Errf(api.CodeParams, "bad session_id")
+	}
 	out := &api.SessionTail{SessionID: p.SessionID, Turns: []api.SessionTurn{}}
 	var turns []api.SessionTurn
 	for _, t := range d.harnesses.Read(p.SessionID, limit).Turns {

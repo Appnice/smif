@@ -93,6 +93,8 @@ type Daemon struct {
 	// Remotes are ssh hosts that run smif too (ADR-0023): their sessions show
 	// here, read only.
 	Remotes []string `toml:"remotes"`
+	// RemoteWrite are the hosts you allowed yourself to type into (ADR-0024).
+	RemoteWrite []string `toml:"remote_write"`
 	// RemoteNames are the names you gave them, by host.
 	RemoteNames map[string]string `toml:"remote_names"`
 	// KeepAwake stops idle sleep on macOS while a session works.

@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -152,6 +153,18 @@ func (d *Daemon) sessionSend(ctx context.Context, c auth.Principal, p api.Sessio
 	text, err := checkPrompt(d.expandPrompt(p.Text))
 	if err != nil {
 		return nil, err
+	}
+	if host, id, ok := d.remoteSession(p.SessionID); ok && harness.ValidID(id) {
+		out, err := d.remoteWrite(host, "send "+id, text)
+		if err != nil {
+			return nil, err
+		}
+		res := &api.SessionSendResult{}
+		if err := json.Unmarshal(out, res); err != nil {
+			return nil, api.Errf(api.CodeUnavailable, "%s has an older setup. Press enter on it under Machines (m)", host)
+		}
+		res.SessionID = p.SessionID
+		return res, nil
 	}
 	target, err := d.writeTarget(p.SessionID, p.Name)
 	if err != nil {

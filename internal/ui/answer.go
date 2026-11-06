@@ -840,13 +840,13 @@ func canFocus(term string) bool {
 // canQueue reports whether a prompt can wait for this session to be idle
 // (ADR-0021): it works now, and Smif may type into it.
 func canQueue(sv *api.SessionView) bool {
-	return (sv.Turn == "busy" || sv.Turn == "waiting") && !sv.Unverified && sv.Level != "listed" && !sv.Background && sv.Host == ""
+	return (sv.Turn == "busy" || sv.Turn == "waiting") && !sv.Unverified && sv.Level != "listed" && !sv.Background && (sv.Host == "" || sv.Writable)
 }
 
 // canFork reports whether a read-only fork can answer for the session now:
 // it needs an agent that owns the session's folder and the full level.
 func canFork(sv *api.SessionView) bool {
-	return canQueue(sv) && fullLevel(sv) && sv.Agent != ""
+	return canQueue(sv) && fullLevel(sv) && sv.Agent != "" && sv.Host == ""
 }
 
 // canWrite reports whether the human can write to the session now: typed
@@ -895,7 +895,7 @@ func (m *Model) sessionPreview(r homeRow, w, h int) []string {
 		bottom = append([]string{""}, m.home.draft.boxLines(stAccent.Render("› "), w, 6)...)
 		bottom = append(bottom, m.partBoxLines(w, h)...)
 		bottom = append(bottom, stDim.Render(ansi.Truncate(writeHint(sv)+" esc cancels.", w, "…")))
-	case sv.Host != "":
+	case sv.Host != "" && !sv.Writable:
 		bottom = []string{"", stDim.Render(ansi.Truncate("Runs on "+sv.HostLabel()+": ssh there to answer it. Smif only shows it here.", w, "…"))}
 	case sv.Background:
 		bottom = []string{"", stAccent.Render("o") + " " + stDim.Render("open claude attach in a new tab"),

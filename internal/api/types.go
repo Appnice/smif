@@ -253,6 +253,7 @@ type SessionView struct {
 	// Host is the ssh host of a session on another machine (ADR-0023).
 	Host     string `json:"host,omitempty"`
 	HostName string `json:"host_name,omitempty"` // the name you gave that machine
+	Writable bool   `json:"writable,omitempty"`  // you allowed typing into that machine
 	// Facts is what the transcript and git show from the newest human
 	// prompt on (ADR-0021; nil when unknown).
 	Facts *SessionFacts `json:"facts,omitempty"`
@@ -485,6 +486,8 @@ type SessionQueueResult struct {
 // SessionQueueCancelParams is session.queue.cancel: remove one queued item.
 type SessionQueueCancelParams struct {
 	ID int64 `json:"id"`
+	// SessionID is set for an item on another machine.
+	SessionID string `json:"session_id,omitempty"`
 }
 
 // SessionTail is the conversation of one interactive session, for the
@@ -648,6 +651,7 @@ type HealthView struct {
 type ProviderCheck struct {
 	Name     string `json:"name"`
 	Title    string `json:"title,omitempty"` // a remote's name
+	Write    bool   `json:"write,omitempty"` // you can type into that remote
 	Verified bool   `json:"verified"`
 	State    string `json:"state"`
 	Detail   string `json:"detail,omitempty"`

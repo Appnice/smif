@@ -58,6 +58,7 @@ type machineRow struct {
 	askUser string      // the user the login proposes
 	problem string
 	skipped bool // linger stayed off
+	write   bool // you can type into its sessions
 }
 
 // machineAsk is a question from the setup. reply gets one answer.
@@ -344,6 +345,7 @@ func (m *Model) onMachineHealth(msg machineHealthMsg) {
 			continue
 		}
 		r.target, r.kind, r.detail, r.bad = p.Name, mAdded, p.Detail, ""
+		r.write = p.Write
 		r.name = machineName(p.Name)
 		if p.Title != "" {
 			r.name = p.Title
@@ -454,12 +456,31 @@ func (m *Model) onMachineDone(msg machineDoneMsg) tea.Cmd {
 
 // begin starts the setup of a row.
 func (m *Model) beginMachine(r *machineRow) tea.Cmd {
+	return m.beginSetup(r, r.write)
+}
+
+// askWrite turns typing into that machine on or off, which takes a login there,
+// because the right sits in the key's line on that machine.
+func (m *Model) askWrite(r *machineRow) {
+	if r.write {
+		m.confirm = &confirmation{what: "make " + r.name + " read only", lines: []string{"Stop typing from here into " + r.name + "? It asks for its password."},
+			yes: func() tea.Cmd { return m.beginSetup(r, false) }}
+		return
+	}
+	m.confirm = &confirmation{what: "allow writing to " + r.name, lines: []string{
+		"Allow typing from here into sessions on " + r.name + "?",
+		"Anyone with this Mac's smif key could then type into them too, so they can run commands there.",
+		"smif still types only into an idle session, and it never answers a permission prompt.",
+	}, yes: func() tea.Cmd { return m.beginSetup(r, true) }}
+}
+
+func (m *Model) beginSetup(r *machineRow, write bool) tea.Cmd {
 	s := &m.mach
 	ctx, cancel := context.WithCancel(context.Background())
 	r.kind, r.bad, r.closed, r.ask, r.problem, r.skipped = mRun, "", false, nil, "", false
 	r.cancel, r.checks = cancel, map[machines.Step]machineCheck{}
 	name, events, start, daemon := r.name, s.events, s.start, m.machDaemon
-	setup := &machines.Setup{Host: r.target, Ask: &uiAsk{name, ctx, events}, Daemon: daemon, Report: func(e machines.Event) {
+	setup := &machines.Setup{Host: r.target, Write: write, Ask: &uiAsk{name, ctx, events}, Daemon: daemon, Report: func(e machines.Event) {
 		select {
 		case events <- machineEventMsg{name, e}:
 		case <-ctx.Done():
@@ -639,7 +660,7 @@ func (m *Model) removeMachine(r *machineRow) {
 				return nil
 			}
 		}
-		m.setStatus(target+" left your list. Its key stays there, and can only list sessions.", false)
+		m.setStatus(target+" left your list. Its key stays there, and can only read sessions.", false)
 		return m.loadRemotes()
 	}}
 }
@@ -670,7 +691,7 @@ func (m *Model) enterMachine() tea.Cmd {
 			return nil
 		}
 		m.answerAsk(r, machineAnswer{user: s.user.Value(), pass: pass, ok: true})
-	case r.kind == mFound || r.kind == mClosed || r.kind == mFailed:
+	case r.kind == mFound || r.kind == mClosed || r.kind == mFailed || r.kind == mAdded:
 		return m.beginMachine(r)
 	}
 	return nil
@@ -762,6 +783,10 @@ func (m *Model) machinesKey(msg tea.KeyPressMsg) tea.Cmd {
 		if r != nil && r.kind == mAdded {
 			m.startRename(r)
 		}
+	case "w":
+		if r != nil && r.kind == mAdded {
+			m.askWrite(r)
+		}
 	case "r":
 		return tea.Batch(m.scanMachines(), m.loadRemotes())
 	case "x":
@@ -848,7 +873,7 @@ func (m *Model) machinesKeys() string {
 		case mFailed:
 			ks = append(ks, "enter try again", "x remove")
 		case mAdded:
-			ks = append(ks, "n name", "x remove", "y copy ssh")
+			ks = append(ks, "w writing", "n name", "enter set up again", "x remove", "y copy ssh")
 		case mRun:
 			ks = append(ks, "x stop")
 		}
@@ -1076,7 +1101,7 @@ func (m *Model) machineDetail(w int) ([]string, []lineHit) {
 		text(dim, "smif will do this, and asks only when it has to:")
 		out = append(out, "")
 		for i, l := range []string{"Ask for the password once, if your ssh login does not work", "Detect the system", "Install smif there, in ~/.local/bin, if it is missing",
-			"Add a key that can only list sessions", "On Linux, keep smif running after logout", "Add it to your list"} {
+			"Add a key that can only read sessions there", "On Linux, keep smif running after logout", "Add it to your list"} {
 			out = append(out, dim(fmt.Sprintf("%d  ", i+1))+l)
 		}
 		button("Add this machine", m.beginRow(r))
@@ -1131,8 +1156,17 @@ func (m *Model) machineDetail(w int) ([]string, []lineHit) {
 		for _, v := range m.machineSessions(r) {
 			out = append(out, machineSessionLine(v))
 		}
-		out = append(out, "", dim("Read only. To answer, ssh there: y copies the command."))
+		if r.write {
+			out = append(out, "", stWarn.Render("Writing is on. ")+dim("Enter in a session here types there."))
+		} else {
+			out = append(out, "", dim("Read only. To answer, ssh there: y copies the command."))
+		}
 		out = append(out, "", dim(r.target))
+		writeLabel := "Allow writing"
+		if r.write {
+			writeLabel = "Make it read only"
+		}
+		button(writeLabel, func() tea.Cmd { m.askWrite(r); return nil })
 		if s.field == fieldName {
 			out = append(out, "", machineField2("Name", s.rename.view(max(10, w-12)), true))
 		} else {

@@ -16,10 +16,9 @@ shared ssh connection, and adds the rows to `session.list`.
 
 ## Why not more
 
-- **No typing over ssh.** The gates for typing (the foreground check, the terminal) work on the machine where the
-  session runs. A remote `smif prompt` would need a second gate and text in a remote command line.
+- **No typing over ssh.** ADR-0024 changes this, as a choice for each machine.
 - **No tunnel of the socket.** It would hand the other machine a human token.
-- **No transcript view.** The row has the last answer and the steps. To read more, ssh there.
+- **No transcript view.** ADR-0024 changes this: the screen reads a conversation over the same key.
 - **No new daemon on the other side.** The list comes from the smif that already runs there.
 
 ## Checked

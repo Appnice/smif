@@ -421,6 +421,50 @@ func TestMachinesName(t *testing.T) {
 	}
 }
 
+// w asks first, and the setup carries the choice.
+func TestMachinesWrite(t *testing.T) {
+	m, _ := machinesModel(t)
+	got := make(chan bool, 1)
+	m.mach.start = func(ctx context.Context, s *machines.Setup) error {
+		got <- s.Write
+		return nil
+	}
+	for i, r := range m.mach.rows {
+		if r.name == "mini.local" {
+			m.mach.cursor = i
+		}
+	}
+	if s := screen(m); !strings.Contains(s, "Allow writing") || !strings.Contains(s, "Read only") {
+		t.Fatalf("no choice:\n%s", s)
+	}
+	press(m, "w")
+	if s := screen(m); !strings.Contains(s, "can run commands there") {
+		t.Fatalf("no warning:\n%s", s)
+	}
+	press(m, "n") // any other key is a no
+	if m.mach.selected().kind != mAdded {
+		t.Fatal("a no started the setup")
+	}
+	press(m, "w")
+	press(m, "y")
+	if !<-got {
+		t.Fatal("the setup did not carry the yes")
+	}
+	m.Update(<-m.mach.events)
+}
+
+// A session on a machine you allowed takes a line; files never go there.
+func TestWritableRemoteRow(t *testing.T) {
+	v := api.SessionView{Host: "h", Writable: true, Turn: "busy", Level: "full"}
+	if !canQueue(&v) || canFork(&v) {
+		t.Fatalf("queue %v fork %v", canQueue(&v), canFork(&v))
+	}
+	v.Writable = false
+	if canQueue(&v) {
+		t.Fatal("queued for a read-only machine")
+	}
+}
+
 func TestMachinesNarrow(t *testing.T) {
 	m, _ := machinesModel(t)
 	m.width, m.height = 80, 24

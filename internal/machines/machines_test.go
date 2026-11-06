@@ -135,8 +135,11 @@ func TestIsThisMachine(t *testing.T) {
 }
 
 func TestKeyLine(t *testing.T) {
-	got := keyLine("/home/me/.local/bin/smif", "ssh-ed25519 AAAA smif-daemon")
-	want := `restrict,command="PATH=/home/me/.local/bin:$PATH /home/me/.local/bin/smif sessions --json" ssh-ed25519 AAAA smif-daemon`
+	if got := keyLine("/x/smif", "k", true); got != `restrict,command="PATH=/x:$PATH /x/smif remote-read --write" k` {
+		t.Fatalf("write: %s", got)
+	}
+	got := keyLine("/home/me/.local/bin/smif", "ssh-ed25519 AAAA smif-daemon", false)
+	want := `restrict,command="PATH=/home/me/.local/bin:$PATH /home/me/.local/bin/smif remote-read" ssh-ed25519 AAAA smif-daemon`
 	if got != want {
 		t.Fatalf("got %s", got)
 	}

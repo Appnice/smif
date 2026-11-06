@@ -424,6 +424,7 @@ notify_url = ""            # phone ping: https, or http to localhost; empty is o
 keep_awake = false         # macOS: caffeinate -i while a session works and wrote in the last 30 min
 remotes = []               # ssh hosts that run smif: their sessions show here, read only (ADR-0023)
                            # names for them go in [daemon.remote_names], "me@host" = "tower"
+remote_write = []          # of those, the hosts you allowed yourself to type into (ADR-0024)
 remind_waiting = "10m"     # watchdogs (ADR-0015): a duration or "off"
 alert_silent = "10m"
 alert_long_turn = "off"

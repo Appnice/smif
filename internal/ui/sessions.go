@@ -146,6 +146,9 @@ type tailMsg struct {
 
 // loadSessionTail reads the selected session's conversation when the cache
 // is older than one poll interval (force: always), so it follows live.
+// remoteTailEvery is how often the screen reads a session on another machine.
+const remoteTailEvery = 5 * time.Second
+
 func (m *Model) loadSessionTail(r *homeRow, force bool) tea.Cmd {
 	tl, ok := m.src.(SessionTailer)
 	if !ok {
@@ -156,7 +159,11 @@ func (m *Model) loadSessionTail(r *homeRow, force bool) tea.Cmd {
 	}
 	id := r.sess.SessionID
 	e := m.home.tails[id]
-	if e != nil && (e.loading || (!force && m.now().Sub(e.at) < m.interval)) {
+	gap := m.interval
+	if r.sess.Host != "" {
+		gap = remoteTailEvery // a look over ssh is not free
+	}
+	if e != nil && (e.loading || (!force && m.now().Sub(e.at) < gap)) {
 		return nil
 	}
 	if e == nil {

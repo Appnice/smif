@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 
 	"github.com/appnice/smif/internal/api"
 	"github.com/appnice/smif/internal/config"
+	"github.com/appnice/smif/internal/harness"
 	"github.com/appnice/smif/internal/machines"
 )
 
@@ -46,25 +49,138 @@ func cmdRemote() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return remoteName(args[0], strings.Join(args[1:], ""))
 		},
+	}, &cobra.Command{
+		Use:   "write <ssh-host> <on|off>",
+		Short: "Allow or stop typing from here into that machine's sessions",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if args[1] != "on" && args[1] != "off" {
+				return errors.New("say on or off")
+			}
+			return remoteSetup(args[0], args[1] == "on")
+		},
 	})
 	return c
 }
 
+// cmdRemoteRead is what the daemon's key may run on a machine (ADR-0024). ssh
+// puts what the other side asked for in SSH_ORIGINAL_COMMAND, and this reads
+// only a few requests from it, or else gives the session list. --write comes
+// from the key's line in authorized_keys, never from the request.
+func cmdRemoteRead() *cobra.Command {
+	var write bool
+	c := &cobra.Command{
+		Use: "remote-read", Hidden: true, Short: "Answer another machine's smif",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if orig := os.Getenv("SSH_ORIGINAL_COMMAND"); orig != "" {
+				_, after, ok := strings.Cut(orig, "remote-read ")
+				args = nil
+				if ok {
+					args = strings.Fields(after)
+				}
+			}
+			ensureDaemon()
+			op := ""
+			if len(args) > 0 {
+				op = args[0]
+			}
+			switch op {
+			case "check":
+				return nil
+			case "tail":
+				if len(args) != 3 || !harness.ValidID(args[1]) {
+					return errors.New("bad request")
+				}
+				limit, err := strconv.Atoi(args[2])
+				if err != nil {
+					return err
+				}
+				var t api.SessionTail
+				if err := call("session.tail", api.SessionTailParams{SessionID: args[1], Limit: limit}, &t, 10*time.Second); err != nil {
+					return err
+				}
+				printJSON(t)
+				return nil
+			case "send", "queue", "cancel":
+				if !write {
+					return errors.New("writing is off for this machine")
+				}
+				return remoteWrite(op, args[1:])
+			}
+			var rows []api.SessionView
+			if err := call("session.list", nil, &rows, 10*time.Second); err != nil {
+				return err
+			}
+			printJSON(rows)
+			return nil
+		},
+	}
+	c.Flags().BoolVar(&write, "write", false, "")
+	return c
+}
+
+// remoteWrite takes one line from stdin to this machine's daemon.
+func remoteWrite(op string, args []string) error {
+	if len(args) != 1 {
+		return errors.New("bad request")
+	}
+	if op == "cancel" {
+		id, err := strconv.ParseInt(args[0], 10, 64)
+		if err != nil {
+			return err
+		}
+		return call("session.queue.cancel", api.SessionQueueCancelParams{ID: id}, nil, 10*time.Second)
+	}
+	if !harness.ValidID(args[0]) {
+		return errors.New("bad request")
+	}
+	b, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
+	if err != nil {
+		return err
+	}
+	if op == "queue" {
+		var r api.SessionQueueResult
+		if err := call("session.queue", api.SessionQueueParams{SessionID: args[0], Text: string(b)}, &r, 10*time.Second); err != nil {
+			return err
+		}
+		printJSON(r)
+		return nil
+	}
+	var r api.SessionSendResult
+	if err := call("session.send", api.SessionSendParams{SessionID: args[0], Text: string(b), Async: true}, &r, 15*time.Second); err != nil {
+		return err
+	}
+	printJSON(r)
+	return nil
+}
+
 func remoteAdd(host string) error {
+	c, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	return remoteSetup(host, slices.Contains(c.Daemon.RemoteWrite, host))
+}
+
+func remoteSetup(host string, write bool) error {
 	if !config.ValidRemote(host) {
 		return fmt.Errorf("%q is not an ssh host name", host)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	ensureDaemon()
-	s := &machines.Setup{Host: host, Ask: newTerminalAsk(), Daemon: machineDaemon{}, Report: printStep}
+	s := &machines.Setup{Host: host, Write: write, Ask: newTerminalAsk(), Daemon: machineDaemon{}, Report: printStep}
 	if err := s.Run(ctx); err != nil {
 		if errors.Is(err, machines.ErrStopped) {
 			return errors.New("stopped, nothing was added")
 		}
 		return err
 	}
-	fmt.Printf("Done: the sessions of %s are in your list, read only.\n", s.Host)
+	how := "read only"
+	if write {
+		how = "and you can write to them"
+	}
+	fmt.Printf("Done: the sessions of %s are in your list, %s.\n", s.Host, how)
 	return nil
 }
 
@@ -80,7 +196,7 @@ func remoteRemove(host string) error {
 	if err := call("admin.reload", nil, &r, 30*time.Second); err != nil {
 		return notRunning(err)
 	}
-	fmt.Printf("%s left your list. Its key stays there and can only list sessions: remove the smif-daemon line from ~/.ssh/authorized_keys.\n", host)
+	fmt.Printf("%s left your list. Its key stays there and can only read sessions: remove the smif-daemon line from ~/.ssh/authorized_keys.\n", host)
 	return nil
 }
 

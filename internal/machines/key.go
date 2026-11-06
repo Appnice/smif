@@ -38,9 +38,17 @@ func ensureKey(ctx context.Context) (string, error) {
 }
 
 // keyLine is the authorized_keys line. Whatever a holder of the key asks for,
-// that machine runs the session list, with no shell, port forward or terminal.
-func keyLine(smif, pub string) string {
-	return fmt.Sprintf(`restrict,command="PATH=%s:$PATH %s sessions --json" %s`, filepath.Dir(smif), smif, pub)
+// that machine runs smif remote-read: the session list, or one conversation.
+// There is no shell, port forward or terminal, and no way to type.
+//
+// write adds a line to a session you may type into. It sits in this line, on
+// the other machine, so nothing the holder of the key sends can turn it on.
+func keyLine(smif, pub string, write bool) string {
+	flag := ""
+	if write {
+		flag = " --write"
+	}
+	return fmt.Sprintf(`restrict,command="PATH=%s:$PATH %s remote-read%s" %s`, filepath.Dir(smif), smif, flag, pub)
 }
 
 // servePassword hands the password to the askpass helper over a socket only

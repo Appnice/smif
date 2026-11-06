@@ -104,7 +104,7 @@ func (m *Model) queueKey(r *homeRow, k string) (tea.Cmd, bool) {
 		case "down", "j":
 			m.home.queueSel = min(len(q)-1, m.home.queueSel+1)
 		case "x":
-			return m.removeQueued(q[m.home.queueSel].ID), true
+			return m.removeQueued(r.sess, q[m.home.queueSel].ID), true
 		case "esc", "ctrl+q":
 			m.home.queuePick = false
 		}
@@ -130,16 +130,20 @@ func (m *Model) queueKey(r *homeRow, k string) (tea.Cmd, bool) {
 type queueRemovedMsg struct{ err error }
 
 // removeQueued cancels one item. Its part files stay for the 24 h cleanup.
-func (m *Model) removeQueued(id int64) tea.Cmd {
+func (m *Model) removeQueued(sv *api.SessionView, id int64) tea.Cmd {
 	q, ok := m.src.(SessionQueuer)
 	if !ok {
 		m.setStatus("This UI cannot queue prompts.", true)
 		return nil
 	}
+	session := ""
+	if sv != nil && sv.Host != "" {
+		session = sv.SessionID // the id belongs to that machine's queue
+	}
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		return queueRemovedMsg{err: q.CancelQueued(ctx, id)}
+		return queueRemovedMsg{err: q.CancelQueued(ctx, session, id)}
 	}
 }
 

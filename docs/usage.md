@@ -67,13 +67,16 @@ What facts cannot see:
     opens. smif cannot turn ssh on from outside.
   - It asks for your password once, unless your ssh login already works, and on Linux for sudo to keep smif running after
     logout. Skip that, and the machine can drop out of the list when nobody is logged in there.
-  - It installs smif there if it is missing, and adds a key of its own, `~/.ssh/smif_ed25519`, that can only list sessions.
+  - It installs smif there if it is missing, and adds a key of its own, `~/.ssh/smif_ed25519`, that can only read sessions.
   - `x` takes any machine off the list. An added one leaves `daemon.remotes`. A found one stays hidden until you type its
     address. `smif remote add me@host` does the setup in the terminal, and `smif remote rm me@host` takes a machine out.
   - `n` names an added machine, and the name replaces its address in the lists and notifications. `smif remote name
     me@host tower` does the same. The names live under `[daemon.remote_names]`.
 
-  These rows are read only: to answer, ssh there, and `y` copies the command. smif runs `smif sessions --json` there every
+  You can read those conversations here. Writing is off by default: `w` on a machine allows it, after a warning and a
+  login there, and `smif remote write me@host on` does the same. Enter in a session then types there, or queues if it is
+  busy, through that machine's own checks. Files stay here, and no prompt gets answered. Without it, ssh there to answer:
+  `y` copies the command. After an update, enter on an added machine sets it up again. smif runs `smif sessions --json` there every
   15 s over one shared connection. A machine that is away leaves the list after a minute, and `smif doctor` says why.
 - **Keep awake.** With `keep_awake = true` under `[daemon]`, a Mac does not sleep from idling while a session works. A
   session that writes nothing for 30 min no longer counts, and a closed lid still sleeps. macOS only.

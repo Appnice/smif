@@ -98,8 +98,8 @@ secret.
 Press `m` in smif, or run `smif remote add`. Pick a machine from your network, `~/.ssh/config` or Tailscale, or type an
 address, and smif sets it up. You type the password once.
 
-Its sessions join your list, read only, and a session that starts to wait notifies you here. See
-[docs/usage.md](docs/usage.md).
+You can read its sessions here, and a session that starts to wait notifies you. Writing to them is off until you turn it
+on for that machine with `w`. See [docs/usage.md](docs/usage.md).
 
 ## Stop watching the screen
 

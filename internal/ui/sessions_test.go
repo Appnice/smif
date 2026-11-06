@@ -40,7 +40,7 @@ func (f *fakePrompter) QueueSession(ctx context.Context, id, text string) (*api.
 	return &api.SessionQueueResult{ID: 1, Agent: "cafe", SessionID: id}, nil
 }
 
-func (f *fakePrompter) CancelQueued(ctx context.Context, id int64) error {
+func (f *fakePrompter) CancelQueued(ctx context.Context, sessionID string, id int64) error {
 	f.prompts = append(f.prompts, fmt.Sprintf("cancel %d", id))
 	return nil
 }

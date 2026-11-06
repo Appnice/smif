@@ -3,7 +3,7 @@
 // Machines screen use.
 //
 // The password goes to ssh and sudo and nowhere else. The daemon never uses
-// your own key: smif makes one that can only run `smif sessions --json` there.
+// your own key: smif makes one that can only read sessions there.
 package machines
 
 import (
@@ -46,7 +46,7 @@ var Steps = []struct {
 	{StepLogin, "Log in"},
 	{StepSystem, "Detect the system"},
 	{StepSmif, "Install smif"},
-	{StepKey, "Add a key that can only list sessions"},
+	{StepKey, "Add a key that can only read sessions"},
 	{StepLinger, "Keep smif running after logout"},
 	{StepConfig, "Add it to your list"},
 	{StepDaemon, "Wait for your daemon to connect"},
@@ -93,6 +93,7 @@ type Daemon interface {
 // Setup adds one machine. Set Host, Ask, Report and Daemon.
 type Setup struct {
 	Host   string // an ssh alias or user@host
+	Write  bool   // you may type into that machine's sessions
 	Ask    Asker
 	Report func(Event)
 	Daemon Daemon
@@ -116,8 +117,10 @@ const (
 	remoteLinger  = `if command -v loginctl >/dev/null; then loginctl show-user "$USER" -p Linger --value 2>/dev/null || echo unknown; else echo none; fi`
 	remoteEnable  = `loginctl --no-ask-password enable-linger "$USER" 2>/dev/null; loginctl show-user "$USER" -p Linger --value 2>/dev/null`
 	remoteSudo    = `sudo -S -p "" loginctl enable-linger "$USER"`
-	// remoteKey reads the line on stdin, so a key never shows in a process list.
-	remoteKey = `k=$(cat); umask 077; mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && { grep -qxF "$k" ~/.ssh/authorized_keys || printf '%s\n' "$k" >> ~/.ssh/authorized_keys; }`
+	remoteCheck   = `PATH="$HOME/.local/bin:$PATH" smif remote-read check`
+	// remoteKey reads the line on stdin, so a key never shows in a process
+	// list. It replaces an older line of the same key and no other.
+	remoteKey = `k=$(cat); b=$(printf '%s' "$k" | sed 's/.*ssh-ed25519 /ssh-ed25519 /'); f=~/.ssh/authorized_keys; umask 077; mkdir -p ~/.ssh && touch $f && { grep -vF "$b" $f > $f.smif; printf '%s\n' "$k" >> $f.smif; mv $f.smif $f; }`
 )
 
 // The command to run on a machine with ssh off. smif cannot do this from here.
@@ -390,7 +393,11 @@ func (s *Setup) smif(ctx context.Context) (string, error) {
 	}
 	path := lookup()
 	detail := "already there"
-	if path == "" {
+	current := func() bool {
+		_, err := s.run(ctx, "", remoteCheck)
+		return err == nil
+	}
+	if path == "" || !current() {
 		if !s.Ask.Install() {
 			s.emit(StepSmif, Failed, "not installed")
 			return "", ErrStopped
@@ -401,6 +408,9 @@ func (s *Setup) smif(ctx context.Context) (string, error) {
 		}
 		if path = lookup(); path == "" {
 			return "", s.fail(StepSmif, errors.New("the install ran, but smif is not there"))
+		}
+		if !current() {
+			return "", s.fail(StepSmif, errors.New("smif there is too old, and the install did not change that"))
 		}
 		detail = "installed"
 	}
@@ -425,10 +435,15 @@ func (s *Setup) key(ctx context.Context, path string) error {
 	if err != nil {
 		return s.fail(StepKey, err)
 	}
-	if _, err := s.run(ctx, keyLine(path, pub)+"\n", remoteKey); err != nil {
+	if _, err := s.run(ctx, keyLine(path, pub, s.Write)+"\n", remoteKey); err != nil {
 		return s.fail(StepKey, err)
 	}
-	s.emit(StepKey, Done, "~/.ssh/"+keyName)
+	daemon.RemoteDisconnect(s.Host)
+	detail := "read only"
+	if s.Write {
+		detail = "and type into them"
+	}
+	s.emit(StepKey, Done, detail)
 	return nil
 }
 
@@ -474,6 +489,9 @@ func (s *Setup) finish() error {
 	s.emit(StepConfig, Running, "")
 	added, err := config.AddRemote("", s.Host)
 	if err != nil {
+		return s.fail(StepConfig, err)
+	}
+	if err := config.SetRemoteWrite("", s.Host, s.Write); err != nil {
 		return s.fail(StepConfig, err)
 	}
 	detail := "daemon.remotes"

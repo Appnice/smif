@@ -46,6 +46,8 @@ tries their messages again. Hooks and the status line fail open: they print noth
 
 ## Other machines
 
-The daemon reaches another machine with `~/.ssh/smif_ed25519`, a key with no passphrase that can only run the session list
-there, with no shell, port forward or terminal. Your password goes to `ssh` and `sudo` once, and smif does not store it. An
+The daemon reaches another machine with `~/.ssh/smif_ed25519`, a key with no passphrase that can only read the session list
+and conversations there, with no shell, port forward or terminal. Writing is off unless you turn it on for that machine.
+Then the key can also type into its sessions, so a stolen key could run commands there through Claude. The other
+machine's daemon still types only into an idle session and never answers a permission prompt. Your password goes to `ssh` and `sudo` once, and smif does not store it. An
 unknown host key is accepted once, and a changed one stops the setup. See [ADR-0024](adr/0024-machines-screen.md).
