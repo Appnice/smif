@@ -326,3 +326,16 @@ func TestNotifyURL(t *testing.T) {
 		}
 	}
 }
+
+// A Codex worker reads only, and no other harness runs a worker.
+func TestWorkerHarnessValidate(t *testing.T) {
+	base := "[agents.a]\nrepo = \"/tmp\"\n[[agents.a.rules]]\nmatch = {}\nhandler = \"digest\"\n"
+	if _, err := Parse([]byte(base + "[profiles.r]\nharness = \"codex\"\n")); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{"harness = \"codex\"\nwrite_scope = \"worktree\"\n", "harness = \"codex\"\nonward_mcp = true\n", "harness = \"qwen\"\n"} {
+		if _, err := Parse([]byte(base + "[profiles.r]\n" + bad)); err == nil {
+			t.Errorf("accepted %q", bad)
+		}
+	}
+}

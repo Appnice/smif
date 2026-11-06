@@ -385,6 +385,10 @@ func (d *Daemon) execute(ctx context.Context, ar *activeRun, a *config.Agent, m 
 			outcome = d.claude.Run(ctx, req)
 		}
 	}
+	// A Codex worker keeps no session or memory, and it reads only (ADR-0022).
+	if outcome == nil && m.Handler == "worker" && prof.Harness == "codex" {
+		outcome = d.codex.Run(ctx, req)
+	}
 	if outcome == nil && m.Handler == "worker" {
 		sessions = d.loadSessions(a.ID)
 		wsess = sessions.Sessions[ws.Dir]

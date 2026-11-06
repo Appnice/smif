@@ -42,13 +42,14 @@ Go daemon + CLI + MCP server: messaging between Claude Code sessions with hard i
   `Forker`, `Stamper`, `Checker`, `Factser`; `ReadOnly` is the typing gate; `listed.go` the process names of the Listed level; `herdr.go` the agents whose herdr idle counts (others read `unknown`, no typing; an agent with no provider stays read only until `herdrChecked` in `internal/daemon/herdr.go` names it). `internal/harness/claude/` the Claude Code provider (session files,
   transcripts, file status, fork folder, process name). Mail, workers and `smif_ask` stay on `internal/runner/claude`.
   `internal/harness/{qwen,opencode,copilot,droid}/` read-only providers from a source reading (unverified, `docs/compat.md`), `codex/` the same but verified on 0.166.0, so it types when idle; their `testdata/report-*` are hand-built from that reading. `read.go` holds the shared transcript helpers (`ScanTail`, `TurnLog`, `FileCache`); `proc.go` the process list and `MatchProcs`, for agents with no file that links a pid to a session
+- `internal/runner/codex` the read-only `codex exec` worker, `harness = "codex"` in a profile (ADR-0022)
 - `internal/workspace` worktrees and branches · `internal/install` settings.json edits, launchd/systemd
 - `testdata/fakeclaude/` scripted `claude -p` stand-in (`#fake:` directives in the message body), also `claude agents` (`agents.json` in `$SMIF_FAKE_LOG`) · `testdata/fakeherdr/` herdr stand-in (`SMIF_HERDR=<path>`, `""` = no herdr)
 - `e2e/` acceptance scenarios A1–A15, M1 kill -9, chaos; each test gets its own `/tmp/mr-*` root
 
 ## Rules
 
-- Never call the real `claude` in automated tests; use the fake. Real calls only behind `SMIF_E2E_REAL=1`.
+- Never call the real `claude` or `codex` in automated tests; use a fake. Real calls only behind `SMIF_E2E_REAL=1`.
 - Nothing from a message may reach argv: the runner builds argv from validated config only (R-ISO-3).
 - No MCP tool may read inbound mail (D4); `internal/mcpserver` test asserts the exact tool list.
 - No experimental Claude Code features (channels, `--dangerously-*`, SendMessage, Monitor): A14 greps for them.

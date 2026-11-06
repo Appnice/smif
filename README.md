@@ -133,7 +133,8 @@ Claude Code and Codex are checked against a real agent. The rest come from readi
 | 21 more, in a [herdr](https://herdr.dev) pane | Name, folder and state, not verified |
 | Any other agent, with `[harnesses.<name>]` in the config | Name and folder, see [docs/agents.md](docs/agents.md#add-an-agent) |
 
-Messages and forks work with Claude Code only. See [docs/agents.md](docs/agents.md).
+Mail also works between Claude Code and Codex, so one can ask the other to review a diff
+([docs/messages.md](docs/messages.md#codex)). Forks work with Claude Code only. See [docs/agents.md](docs/agents.md).
 
 ## How it works
 

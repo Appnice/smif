@@ -9,6 +9,8 @@
   `claude --resume`, with an id from smif's index of your transcripts. Only you can read that history: an agent token gets no history, search or resume. The session view reads Claude Code's session files and transcripts, which are not a documented
   interface: `smif doctor` checks their shape. Hooks print nothing. The status line
   shows counts only, for example `mail: shop 1 running · 1 needs you`.
+- **Codex workers.** `codex exec --sandbox read-only` runs each one, with your config and rules ignored and the
+  message on stdin, never in argv ([ADR-0022](adr/0022-mail-between-harnesses.md)).
 - **Workers.** Claude Code flags lock each worker, not a prompt. `--tools` gives only the tools of the profile, so
   other tools do not exist. Hooks are off. No MCP server loads. Deny rules block the smif files. A worker
   that can write gets its own git worktree, and you merge its branch. These flags are tested against the

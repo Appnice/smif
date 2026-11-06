@@ -150,6 +150,9 @@ type Profile struct {
 	Minimal    bool     `toml:"minimal"`
 	MaxCostUSD float64  `toml:"max_cost_usd"`
 	ExtraArgs  []string `toml:"extra_args"`
+	// Harness runs the worker on another coding agent: "" is Claude Code,
+	// "codex" is `codex exec`, read only (ADR-0022).
+	Harness string `toml:"harness"`
 }
 
 // Agent is one project role.
@@ -566,7 +569,7 @@ func (c *Config) applyDefaults() {
 }
 
 func fillProfile(p Profile) Profile {
-	if p.Model == "" {
+	if p.Model == "" && p.Harness == "" {
 		p.Model = "sonnet"
 	}
 	if p.PermissionMode == "" {
@@ -720,6 +723,18 @@ func (c *Config) Validate() error {
 		}
 		if !contains(WriteScopes, p.WriteScope) {
 			add("%s.write_scope %q: must be one of %v", where, p.WriteScope, WriteScopes)
+		}
+		switch p.Harness {
+		case "":
+		case "codex":
+			if p.WriteScope != "none" {
+				add("%s: a codex worker is read only, so write_scope must be \"none\"", where)
+			}
+			if p.OnwardMCP {
+				add("%s: a codex worker has no onward_mcp", where)
+			}
+		default:
+			add("%s.harness %q: must be \"codex\" or empty", where, p.Harness)
 		}
 		if p.Effort != "" && !contains(Efforts, p.Effort) {
 			add("%s.effort %q: must be one of %v", where, p.Effort, Efforts)

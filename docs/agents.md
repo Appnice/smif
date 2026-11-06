@@ -5,7 +5,8 @@ owner has no access to them. For every other agent, the file formats, process na
 reading its source and docs. The tests use fake processes and fixtures built from that reading, so a green test
 proves only smif's parser, not the real file format. Expect faults.
 
-This covers the session view. Messages, workers, forks and `smif_ask` stay on Claude Code.
+This covers the session view. Forks stay on Claude Code. Mail works on Claude Code and Codex, see
+[messages.md](messages.md#codex).
 
 | Level | Needs | You get |
 |---|---|---|
@@ -17,7 +18,7 @@ This covers the session view. Messages, workers, forks and `smif_ask` stay on Cl
 Claude Code (versions 2.1.316 to 2.1.318) and Codex (0.166.0) were checked against a real agent, and smif types into
 both. Every other agent is read only and shows as `unverified`.
 
-Codex has one limit: its files do not tell a running command from an approval prompt. A Codex that waits for your
+Codex also joins the mail, see [messages.md](messages.md#codex). Codex has one limit: its files do not tell a running command from an approval prompt. A Codex that waits for your
 approval reads `busy` or `unknown`, so it does not get `needs you` or a notification. smif refuses to type into it
 then, so a prompt can never answer that approval.
 

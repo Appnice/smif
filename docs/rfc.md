@@ -274,6 +274,8 @@ A profile is a named, validated set of runtime settings. Agents reference profil
 | `hooks` | `false` | If false, the user's and the repo's Claude Code hooks do not run in the worker **(ADR-0002)** |
 | `minimal` | `false` | Run without CLAUDE.md, skills, plugins and hooks if the CLI offers such a mode (10.2) |
 
+`harness = "codex"` runs the worker on a read-only `codex exec`: `write_scope` must be `none`, and no `onward_mcp` (ADR-0022).
+
 Built-in profiles: `triage` (read-only tools, `write_scope = none`), `fix` (`acceptEdits`, `write_scope = worktree`), `answer` (read-only, short `max_turns = 8`), `release` (`acceptEdits`, `write_scope = direct`, for agents that must act on the main checkout, such as appnice.dev publishing).
 ### 6.3 Worker invocation
 The runner builds argv only from validated config. Nothing from the message can reach argv.
