@@ -355,11 +355,11 @@ func TestUnverifiedProviderAtHerdrLevel(t *testing.T) {
 func TestDoctorUncheckedProviders(t *testing.T) {
 	d, _ := testDaemon(t)
 	h := d.health()
-	if len(h.Providers) != 6 || h.Providers[0].Name != "claude" || !h.Providers[0].Verified || h.Providers[0].State != "none" {
+	if len(h.Providers) != 7 || h.Providers[0].Name != "claude" || !h.Providers[0].Verified || h.Providers[0].State != "none" {
 		t.Fatalf("providers: %+v", h.Providers)
 	}
 	for _, p := range h.Providers[1:] {
-		if verified := p.Name == "codex" || p.Name == "opencode"; p.Verified != verified || !verified && p.State != "unchecked" {
+		if verified := p.Name == "codex" || p.Name == "opencode" || p.Name == "hermes"; p.Verified != verified || !verified && p.State != "unchecked" {
 			t.Fatalf("no files: %+v", p)
 		}
 	}

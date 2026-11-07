@@ -130,6 +130,15 @@ func OpenCodeDB() string {
 	return filepath.Join(dir, "opencode", "opencode.db")
 }
 
+// HermesDB is Hermes's database: under HERMES_HOME, else ~/.hermes.
+func HermesDB() string {
+	dir := os.Getenv("HERMES_HOME")
+	if dir == "" {
+		dir = filepath.Join(Home(), ".hermes")
+	}
+	return filepath.Join(dir, "state.db")
+}
+
 // CopilotDir is ~/.copilot unless COPILOT_HOME is set.
 func CopilotDir() string {
 	if v := os.Getenv("COPILOT_HOME"); v != "" {

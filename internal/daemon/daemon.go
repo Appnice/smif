@@ -26,6 +26,7 @@ import (
 	codexharness "github.com/appnice/smif/internal/harness/codex"
 	copilotharness "github.com/appnice/smif/internal/harness/copilot"
 	droidharness "github.com/appnice/smif/internal/harness/droid"
+	hermesharness "github.com/appnice/smif/internal/harness/hermes"
 	opencodeharness "github.com/appnice/smif/internal/harness/opencode"
 	qwenharness "github.com/appnice/smif/internal/harness/qwen"
 	"github.com/appnice/smif/internal/notify"
@@ -188,7 +189,7 @@ func New(o Options) (*Daemon, error) {
 	d.harnesses = harness.NewRegistry(claudeSessions,
 		qwenharness.New(paths.QwenDir(), paths.QwenRuntimeDir()), codexharness.New(paths.CodexDir()),
 		opencodeharness.New(paths.OpenCodeDB()), copilotharness.New(paths.CopilotDir()),
-		droidharness.New(paths.FactoryDir()))
+		droidharness.New(paths.FactoryDir()), hermesharness.New(paths.HermesDB()))
 	d.terminal = newTerminal(cfg.Daemon.Terminal, d.harnesses)
 	if os.Getenv("SMIF_NO_AGENT_SCAN") == "" { // e2e: the host's agents stay out of a test's list
 		d.scan.run = d.runScan

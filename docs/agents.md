@@ -15,8 +15,8 @@ This covers the session view. Forks stay on Claude Code. Mail works on Claude Co
 | **herdr** | The agent runs in a [herdr](https://herdr.dev) pane | Name, folder, herdr's state, focus. Typing only for an agent that a real session checked. No steps, no answer, no notifications |
 | **Listed** | smif knows its process name, and it sits on a terminal | Name and folder, state `unknown`, no typing |
 
-Claude Code (versions 2.1.316 to 2.1.318), Codex (0.166.0) and OpenCode (2.2.6) were checked against a real agent, and
-smif types into them. Every other agent is read only and shows as `unverified`.
+Claude Code (versions 2.1.316 to 2.1.318), Codex (0.166.0), OpenCode (2.2.6) and Hermes (0.23.0) were checked against a
+real agent, and smif types into them. Every other agent is read only and shows as `unverified`.
 
 Codex also joins the mail, see [messages.md](messages.md#codex). Codex has one limit: its files do not tell a running command from an approval prompt. A Codex that waits for your
 approval reads `busy` or `unknown`, so it does not get `needs you` or a notification. smif refuses to type into it
@@ -24,7 +24,8 @@ then, so a prompt can never answer that approval.
 
 OpenCode has the same limit: an approval lives in its server's memory, so the session reads `busy`. After you interrupt a
 run, its database keeps the run open, so the session reads `busy` until its next prompt, which you type in its own window.
-A new Codex or OpenCode session has no state until its first message, and smif does not type into it before that.
+Hermes reads the same way: its turn lease is live during an approval or a question, so the session reads `busy`.
+A new Codex, OpenCode or Hermes session has no state until its first message, and smif does not type into it before that.
 
 | Agent | In a herdr pane | Elsewhere | When herdr reads idle |
 |---|---|---|---|
@@ -32,7 +33,8 @@ A new Codex or OpenCode session has no state until its first message, and smif d
 | Codex | Full, read only until checked in herdr | Full, types when idle | Not used |
 | OpenCode V2 | Full, read only until checked in herdr | Full, types when idle | Not used |
 | Qwen Code, GitHub Copilot CLI, Factory Droid | Full, read only | Full, read only | Not used |
-| Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr | Listed | Idle |
+| Hermes | Full, read only until checked in herdr | Full, types when idle | Not used |
+| Devin, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr | Listed | Idle |
 | Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr | Listed | Idle if integrated, else `unknown` |
 | Gemini CLI, Cursor, Qoder, Antigravity | herdr | Listed | `unknown` |
 | Crush, Command Code, Prime Agent | herdr | Not shown | `unknown` |
@@ -62,7 +64,7 @@ command = "omnis"     # optional: what `n` starts
   such as `bin/x` passes the check, but the daemon looks for it from its own folder, and the new tab from the session's.
   Without `command`, `n` does not offer the agent.
 - A name in the table above may set `process` to add a process name, and `command` to change what `n` starts.
-- Claude Code, Codex, Qwen Code, OpenCode, Copilot and Droid have a provider: they may set `command` only.
+- Claude Code, Codex, Qwen Code, OpenCode, Copilot, Droid and Hermes have a provider: they may set `command` only.
   `[harnesses.claude] command` changes only what `n` starts. Workers keep `claude_command`.
 - A process name that a built-in agent or another harness owns is refused.
 

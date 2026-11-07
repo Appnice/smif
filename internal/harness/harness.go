@@ -205,7 +205,7 @@ func (r *Registry) Read(sessionID string, limit int) Reading {
 }
 
 // sessionIDRe allows _ for OpenCode's ses_ ids. Neither . nor / passes.
-var sessionIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{8,64}$`)
+var sessionIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{8,96}$`)
 
 // ValidID reports whether id is a session id: providers build paths from it.
 func ValidID(id string) bool { return sessionIDRe.MatchString(id) }

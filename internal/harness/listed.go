@@ -64,7 +64,7 @@ var builtinCommands = map[string]string{
 
 // builtinProviders are the agents with a provider in this repo. A test in
 // internal/daemon keeps the list in step with the daemon's registry.
-var builtinProviders = []string{ClaudeName, "qwen", "codex", "opencode", "copilot", "droid"}
+var builtinProviders = []string{ClaudeName, "qwen", "codex", "opencode", "copilot", "droid", "hermes"}
 
 // IsBuiltinProvider reports a name that a provider of this repo owns.
 func IsBuiltinProvider(name string) bool { return slices.Contains(builtinProviders, name) }
@@ -113,6 +113,11 @@ func ListedProcessWith(argv []string, extra map[string]string) string {
 	}
 	if base != "node" && base != "bun" && base != "sh" && !strings.HasPrefix(base, "python") {
 		return ""
+	}
+	// Hermes's launcher is a multi-line `python -I -c` script, and ps breaks
+	// it at the first newline. Its own Python tells it.
+	if strings.Contains(argv[0], "/.hermes/tools/python-") && slices.Contains(argv, "-c") {
+		return "hermes"
 	}
 	for _, a := range argv[1:] {
 		if strings.HasPrefix(a, "-") {

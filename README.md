@@ -154,7 +154,7 @@ Set it up with `smif install` and `smif init`. See [docs/messages.md](docs/messa
 
 ## Other agents
 
-Claude Code, Codex and OpenCode are checked against a real agent. The rest come from reading their source, so expect faults.
+Claude Code, Codex, OpenCode and Hermes are checked against a real agent. The rest come from reading their source, so expect faults.
 
 A new Codex or OpenCode session takes prompts from smif after its first message.
 
@@ -162,7 +162,7 @@ A new Codex or OpenCode session takes prompts from smif after its first message.
 |---|---|
 | Claude Code | Everything |
 | Codex | See, type when idle, queue. Cannot see an approval prompt, so no `needs you` |
-| OpenCode | See, type when idle, queue. An approval reads as busy, so no `needs you` |
+| OpenCode, Hermes | See, type when idle, queue. An approval reads as busy, so no `needs you` |
 | Qwen Code, GitHub Copilot CLI, Factory Droid | Read only, not verified |
 | 21 more, in a [herdr](https://herdr.dev) pane | Name, folder and state, not verified |
 | Any other agent, with `[harnesses.<name>]` in the config | Name and folder, see [docs/agents.md](docs/agents.md#add-an-agent) |
