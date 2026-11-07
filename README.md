@@ -9,7 +9,8 @@
 
 <p align="center">
   <b>Many sessions. Many machines. One place.</b><br>
-  See which Claude Code or Codex session waits for you, on any machine, and answer it without hunting for the tab.
+  See which Claude Code or Codex session waits for you, on any machine, and answer it without hunting for the tab.<br>
+  Keep your terminal. Nothing to migrate, and your sessions run with or without smif.
 </p>
 
 <p align="center">
