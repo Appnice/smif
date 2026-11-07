@@ -627,7 +627,7 @@ internal/harness/        Provider interface and registry: what the session view 
 internal/harness/claude/ Claude Code provider: session files, transcripts, file status, fork folder, process name
 internal/harness/qwen/   Qwen Code provider, read only: per-pid registry, transcript tree (unverified, from its source)
 internal/harness/codex/  Codex provider, read only: ps and folder matched to rollouts (unverified, from its source)
-internal/harness/opencode/ OpenCode V2 provider, read only: SQLite with mode=ro, ps and folder (unverified, from its source)
+internal/harness/opencode/ OpenCode V2 provider: SQLite with mode=ro, ps and folder (checked on 2.2.6)
 internal/harness/copilot/ Copilot CLI provider, read only: lock files, events.jsonl (unverified, from its schema)
 internal/harness/droid/  Droid provider, read only: ps and folder matched to transcripts (unverified, from its bundle)
 internal/mcpserver/      MCP tools

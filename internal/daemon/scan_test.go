@@ -426,7 +426,7 @@ func TestHerdrIntegrationGate(t *testing.T) {
 		})
 	}
 
-	// OpenCode has a read-only provider, so its gate is the state, not typing.
+	// OpenCode needs the integration too, for the state and so for typing.
 	t.Run("opencode not installed", func(t *testing.T) {
 		_, _, v := integrationCase(t, "opencode", "not installed")
 		if v.Turn != "unknown" || v.CanPrompt {
@@ -435,7 +435,7 @@ func TestHerdrIntegrationGate(t *testing.T) {
 	})
 	t.Run("opencode current", func(t *testing.T) {
 		_, _, v := integrationCase(t, "opencode", "current (v13)")
-		if v.Turn != "idle" || v.CanPrompt {
+		if v.Turn != "idle" || !v.CanPrompt {
 			t.Fatalf("row %+v", v)
 		}
 	})

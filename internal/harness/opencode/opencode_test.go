@@ -70,18 +70,18 @@ func deadPID(t *testing.T) int {
 	return c.Process.Pid
 }
 
-func TestUnverifiedAndNoWriteRoute(t *testing.T) {
+func TestVerifiedWithNoForkOrHooks(t *testing.T) {
 	var p harness.Provider = New(filepath.Join(t.TempDir(), "x.db"))
-	if p.Info().Verified || p.Info().Name != "opencode" {
+	if !p.Info().Verified || p.Info().Name != "opencode" {
 		t.Fatalf("info: %+v", p.Info())
 	}
 	if _, ok := p.(harness.Forker); ok {
-		t.Fatal("an unverified provider must have no fork")
+		t.Fatal("opencode has no safe fork")
 	}
 	if _, ok := p.(harness.Hooker); ok {
-		t.Fatal("an unverified provider must have no hooks")
+		t.Fatal("opencode has no hooks")
 	}
-	if why := harness.ReadOnly("opencode", p); !strings.Contains(why, "unverified") {
+	if why := harness.ReadOnly("opencode", p); why != "" {
 		t.Fatalf("read only: %q", why)
 	}
 }

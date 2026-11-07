@@ -1,8 +1,8 @@
 // Package opencode is the OpenCode V2 provider (ADR-0019). It is built from
-// a reading of OpenCode's source at commit 1e4ad075. No real session checked
-// it, so it is unverified: smif shows these sessions and never types into
-// them, forks them or installs hooks for them. OpenCode V1 has no session_v2
-// table and stays at the herdr and Listed levels.
+// a reading of OpenCode's source at commit 1e4ad075, and a real session checked
+// it on 2.2.6. smif types into an idle session, and never forks one or installs
+// hooks for it. OpenCode V1 has no session_v2 table and stays at the herdr and
+// Listed levels.
 //
 // One server serves every TUI, and no file or route links a TUI's pid to a
 // session, so smif matches like the Codex provider: an opencode process on
@@ -71,9 +71,11 @@ func NewWithProcs(db string, procs func() []harness.Proc) *Provider {
 	return &Provider{db: db, procs: procs, loads: map[string]load{}}
 }
 
-// Info names the provider. Verified stays false until a real session
-// checks it and docs/compat.md has a row with that version.
-func (p *Provider) Info() harness.Info { return harness.Info{Name: Name, Process: "opencode"} }
+// Info names the provider. Verified: a real session checked it on OpenCode
+// 2.2.6 (docs/compat.md). A pending approval reads busy, so smif does not type.
+func (p *Provider) Info() harness.Info {
+	return harness.Info{Name: Name, Process: "opencode", Verified: true}
+}
 
 // sessionProc reports a process that can be a human's TUI: a process with
 // no terminal is the server, and serve and run are no TUI.

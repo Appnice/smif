@@ -15,18 +15,23 @@ This covers the session view. Forks stay on Claude Code. Mail works on Claude Co
 | **herdr** | The agent runs in a [herdr](https://herdr.dev) pane | Name, folder, herdr's state, focus. Typing only for an agent that a real session checked. No steps, no answer, no notifications |
 | **Listed** | smif knows its process name, and it sits on a terminal | Name and folder, state `unknown`, no typing |
 
-Claude Code (versions 2.1.316 to 2.1.318) and Codex (0.166.0) were checked against a real agent, and smif types into
-both. Every other agent is read only and shows as `unverified`.
+Claude Code (versions 2.1.316 to 2.1.318), Codex (0.166.0) and OpenCode (2.2.6) were checked against a real agent, and
+smif types into them. Every other agent is read only and shows as `unverified`.
 
 Codex also joins the mail, see [messages.md](messages.md#codex). Codex has one limit: its files do not tell a running command from an approval prompt. A Codex that waits for your
 approval reads `busy` or `unknown`, so it does not get `needs you` or a notification. smif refuses to type into it
 then, so a prompt can never answer that approval.
 
+OpenCode has the same limit: an approval lives in its server's memory, so the session reads `busy`. After you interrupt a
+run, its database keeps the run open, so the session reads `busy` until its next prompt, which you type in its own window.
+A new Codex or OpenCode session has no state until its first message, and smif does not type into it before that.
+
 | Agent | In a herdr pane | Elsewhere | When herdr reads idle |
 |---|---|---|---|
 | Claude Code | Full | Full | Not used |
 | Codex | Full, read only until checked in herdr | Full, types when idle | Not used |
-| Qwen Code, OpenCode V2, GitHub Copilot CLI, Factory Droid | Full, read only | Full, read only | Not used |
+| OpenCode V2 | Full, read only until checked in herdr | Full, types when idle | Not used |
+| Qwen Code, GitHub Copilot CLI, Factory Droid | Full, read only | Full, read only | Not used |
 | Devin, Hermes, Letta, Grok, Amp, Cline, Maki, Kiro, Muse | herdr | Listed | Idle |
 | Kilo, Pi, Oh My Pi, Mastra Code, Kimi | herdr | Listed | Idle if integrated, else `unknown` |
 | Gemini CLI, Cursor, Qoder, Antigravity | herdr | Listed | `unknown` |

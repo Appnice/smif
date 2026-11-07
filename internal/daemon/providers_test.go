@@ -140,9 +140,23 @@ var unverifiedCases = []struct {
 	start                  func(*testing.T, *Daemon, string, string) string
 }{
 	{"qwen", "report-idle.jsonl", "report-working.jsonl", qwenSession},
-	{"opencode", "report-idle.sql", "report-working.sql", opencodeSession},
 	{"copilot", "report-idle.jsonl", "report-working.jsonl", copilotSession},
 	{"droid", "report-idle.jsonl", "report-working.jsonl", droidSession},
+}
+
+// OpenCode is verified, and a pending tool call still does not read idle: an
+// approval looks the same as a running tool.
+func TestOpenCodeStateGatesTyping(t *testing.T) {
+	d, _ := testDaemon(t)
+	v := viewOf(t, d, opencodeSession(t, d, "report-idle.sql", t.TempDir()))
+	if v.Unverified || v.Turn != "idle" || strings.Contains(v.Why, "unverified") {
+		t.Fatalf("idle: %+v", v)
+	}
+	d, _ = testDaemon(t)
+	v = viewOf(t, d, opencodeSession(t, d, "report-pending.sql", t.TempDir()))
+	if v.Turn == "idle" || v.CanPrompt {
+		t.Fatalf("pending: %+v", v)
+	}
 }
 
 // session.list shows them at the full level, with the mark and the answer,
@@ -298,7 +312,7 @@ func TestUnverifiedProviderNotifies(t *testing.T) {
 			notes := &watchNotes{}
 			d.notifier = notes
 			id := c.start(t, d, c.fixture, t.TempDir())
-			if v := viewOf(t, d, id); v.Unverified != (c.harness != "codex") {
+			if v := viewOf(t, d, id); v.Unverified != (c.harness != "codex" && c.harness != "opencode") {
 				t.Fatalf("view: %+v", v)
 			}
 			d.watchSessions(map[string]watchedSession{id: {turn: "busy", since: time.Unix(1, 0)}}, time.Now())
@@ -345,7 +359,7 @@ func TestDoctorUncheckedProviders(t *testing.T) {
 		t.Fatalf("providers: %+v", h.Providers)
 	}
 	for _, p := range h.Providers[1:] {
-		if verified := p.Name == "codex"; p.Verified != verified || !verified && p.State != "unchecked" {
+		if verified := p.Name == "codex" || p.Name == "opencode"; p.Verified != verified || !verified && p.State != "unchecked" {
 			t.Fatalf("no files: %+v", p)
 		}
 	}
