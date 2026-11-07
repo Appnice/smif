@@ -180,7 +180,7 @@ Conductor's cloud ends on November 20 and its Mac app winds down in 2027. smif i
 | Systems | macOS | macOS, Linux |
 | Other machines | Its cloud, ending November 20 | Yours, over ssh |
 | Code | No public repo | Open, MIT |
-| If it stops | Mac app winds down in 2027 | Your sessions keep running |
+| Future | Mac app winds down in 2027 | MIT, and your sessions run without it |
 
 As of November 2026.
 
