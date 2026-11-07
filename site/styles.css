@@ -324,6 +324,16 @@ p { margin: 0 0 12px; }
 .principle { padding: 26px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-2); }
 .principle p { color: var(--dim); margin: 0; font-size: 16px; }
 .principle__i { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 18px; border-radius: 12px; font-size: 20px; background: rgba(250, 189, 47, .1); color: var(--yellow); border: 1px solid rgba(250, 189, 47, .2); }
+.vs__lede { color: var(--dim); margin: 18px 0 0; max-width: 62ch; }
+.vs { margin-top: 36px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); overflow: hidden; }
+.vs table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.vs th, .vs td { padding: 14px 20px; text-align: left; vertical-align: top; font-size: 16px; font-weight: 400; line-height: 1.4; color: var(--dim); }
+.vs tbody tr { border-top: 1px solid var(--line); }
+.vs thead th { font: 700 14px/1.4 var(--mono); }
+.vs tbody th { color: var(--fg); }
+.vs .vs__us { color: var(--fg-hi); }
+.vs thead .vs__us { color: var(--yellow); }
+.vs__note { margin: 14px 0 0; font-size: 14px; color: var(--dim); }
 
 /* install */
 .install { margin-top: 36px; padding: 28px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--bg); }
@@ -417,6 +427,7 @@ p { margin: 0 0 12px; }
   .keys__board { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .keys__board .key--wide { grid-column: span 2; }
   .key { height: 54px; font-size: 15px; }
+  .vs th, .vs td { padding: 11px 10px; font-size: 14px; overflow-wrap: anywhere; }
   .chap { min-width: 84px; }
   .tab { flex-basis: 96px; }
 }

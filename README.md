@@ -166,6 +166,24 @@ Claude Code and Codex are checked against a real agent. The rest come from readi
 Mail also works between Claude Code and Codex, so one can ask the other to review a diff
 ([docs/messages.md](docs/messages.md#codex)). Forks work with Claude Code only. See [docs/agents.md](docs/agents.md).
 
+## Coming from Conductor?
+
+Conductor's cloud ends on November 20 and its Mac app winds down in 2027. smif is a different kind of tool: it does not create workspaces, it gives you one list of the sessions you already run.
+
+| | Conductor | smif |
+|---|---|---|
+| Sessions | Created inside the app | The ones you already have open |
+| Where you work | In the app | In your own terminal |
+| Workspaces | A git worktree per task | Any folder or worktree you use |
+| Review and merge | In the app | Your own git tools |
+| Agents | Claude Code, Codex, Cursor | Claude Code, Codex, more coming soon |
+| Systems | macOS | macOS, Linux |
+| Other machines | Its cloud, ending November 20 | Yours, over ssh |
+| Code | No public repo | Open, MIT |
+| If it stops | Mac app winds down in 2027 | Your sessions keep running |
+
+As of November 2026.
+
 ## How it works
 
 <p align="center">
