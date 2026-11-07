@@ -47,7 +47,7 @@ const logo = (id, size) => `<span style="display:inline-flex;width:${size}px;hei
 const q = new URLSearchParams(location.search);
 const kind = q.get("p") || "sessions";
 const clock = (s) => `${Math.floor(s / 60)}m${String(s % 60).padStart(2, "0")}s`;
-const line = (mark, name, right, color, on, cols) => `<div class="ln${on ? " on" : ""}" style="grid-template-columns:${cols}"><span style="color:${C[mark]}">${mark}</span><b>${name}</b><em style="color:${color}">${right}</em></div>`;
+const line = (mark, name, right, color, on, cols) => `<div class="ln${on ? " on" : ""}" style="grid-template-columns:${cols}"><span style="color:${C[mark]}">${mark}</span>${logo(AGENT[name], 40)}<b>${name}</b><em style="color:${color}">${right}</em></div>`;
 
 /* Many sessions: a pile of windows, then the one list. */
 const PILE = [
@@ -55,6 +55,7 @@ const PILE = [
   ["docs", 300, 280, 420, 260, -2], ["payments", 166, 396, 420, 240, 3], ["notes", 44, 430, 330, 220, -2],
   ["infra", 372, 410, 350, 236, -3], ["storefront", 214, 250, 400, 250, 1],
 ];
+const AGENT = { storefront: "claude", payments: "codex", docs: "opencode", firmware: "hermes", infra: "opencode", api: "codex", scraper: "hermes", notes: "claude" };
 const SESSIONS_MS = 6000;
 function sessions(t) {
   const sec = Math.floor(t / 1000);
@@ -63,11 +64,11 @@ function sessions(t) {
   let html = `<h1>Many sessions. <span>One place.</span></h1>`;
   for (const [name, x, y, w, h, r] of PILE) {
     const waits = name === "infra" || name === "storefront";
-    html += `<div class="win" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;transform:rotate(${r}deg)"><div class="bar"><i></i><i></i><i></i><b>${name}</b>${waits ? `<u style="background:var(--orange);opacity:${blink ? 1 : .25}"></u>` : ""}</div><div class="txt"><s style="width:82%"></s><s style="width:64%"></s><s style="width:74%"></s><s style="width:46%"></s><s style="width:60%"></s></div></div>`;
+    html += `<div class="win" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;transform:rotate(${r}deg)"><div class="bar">${logo(AGENT[name], 30)}<b>${name}</b>${waits ? `<u style="background:var(--orange);opacity:${blink ? 1 : .25}"></u>` : ""}</div><div class="txt"><s style="width:82%"></s><s style="width:64%"></s><s style="width:74%"></s><s style="width:46%"></s><s style="width:60%"></s></div></div>`;
   }
   html += `<div class="ask">Which tab needs you?</div>`;
   html += `<svg width="1600" height="780" fill="none"><path d="M766 440 H826 M804 416 L828 440 L804 464" stroke="#fabd2f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="arrow">smif</div>`;
-  const cols = "48px 1fr auto";
+  const cols = "44px 58px 1fr auto";
   const rows = [
     ["!", "storefront", "needs you", C["!"]], ["▶", "payments", clock(252 + sec), C["▶"]], ["●", "docs", "new", C["●"]],
     ["▶", "firmware", clock(2460 + sec), C["▶"]], ["!", "infra", "needs you", C["!"]], ["▶", "api", clock(134 + sec), C["▶"]],
