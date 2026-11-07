@@ -40,7 +40,7 @@
 - **[Other machines](#other-machines):** add a machine over ssh, and its sessions join the same list.
 - **[Stop watching the screen](#stop-watching-the-screen):** get a notification when a session starts to wait or answers after a long turn.
 - **[Send messages between projects](#send-messages-between-projects):** sessions ask each other things without interrupting yours.
-- **[Other agents](#other-agents):** Claude Code and Codex are checked against real agents, and others show up too.
+- **[Other agents](#other-agents):** Claude Code, Codex, OpenCode and Hermes are checked against real agents, and others show up too.
 - **[Coming from Conductor?](#coming-from-conductor):** keep your terminal, with nothing to migrate.
 
 ## Install
@@ -180,7 +180,7 @@ Conductor's cloud ends on November 20 and its Mac app winds down in 2027. smif i
 | Where you work | In the app | In your own terminal |
 | Workspaces | A git worktree per task | Any folder or worktree you use |
 | Review and merge | In the app | Your own git tools |
-| Agents | Claude Code, Codex, Cursor | Claude Code, Codex, more coming soon |
+| Agents | Claude Code, Codex, Cursor | Claude Code, Codex, OpenCode, Hermes, more coming soon |
 | Systems | macOS | macOS, Linux |
 | Other machines | Its cloud, ending November 20 | Yours, over ssh |
 | Code | No public repo | Open, MIT |
