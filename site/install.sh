@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs the latest smif release into ~/.local/bin, or $SMIF_INSTALL_DIR.
-# Source: https://github.com/appnice/smif/blob/main/site/install.sh
+# Source: https://github.com/smifdev/smif/blob/main/site/install.sh
 set -eu
 
 fail() {
@@ -12,12 +12,12 @@ main() {
   case $(uname -s) in
     Darwin) os=darwin ;;
     Linux) os=linux ;;
-    *) fail "no binary for $(uname -s): https://github.com/appnice/smif#install" ;;
+    *) fail "no binary for $(uname -s): https://github.com/smifdev/smif#install" ;;
   esac
   case $(uname -m) in
     x86_64 | amd64) arch=amd64 ;;
     arm64 | aarch64) arch=arm64 ;;
-    *) fail "no binary for $(uname -m): https://github.com/appnice/smif#install" ;;
+    *) fail "no binary for $(uname -m): https://github.com/smifdev/smif#install" ;;
   esac
   command -v curl >/dev/null || fail "curl is needed"
   if command -v sha256sum >/dev/null; then
@@ -29,7 +29,7 @@ main() {
   fi
 
   name="smif_${os}_${arch}.tar.gz"
-  url="https://github.com/appnice/smif/releases/latest/download"
+  url="https://github.com/smifdev/smif/releases/latest/download"
   dir="${SMIF_INSTALL_DIR:-$HOME/.local/bin}"
   tmp=$(mktemp -d)
   trap 'rm -rf "$tmp"' EXIT

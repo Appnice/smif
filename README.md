@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/appnice/smif/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/appnice/smif?color=fabd2f"></a>
+  <a href="https://github.com/smifdev/smif/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/smifdev/smif?color=fabd2f"></a>
   <a href="#install"><img alt="macOS and Linux" src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux-single%20binary-555"></a>
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-fabd2f"></a>
 </p>
@@ -65,7 +65,7 @@ The script puts `smif` in `~/.local/bin` and checks its checksum ([read it](site
 go install github.com/appnice/smif/cmd/smif@latest   # Go 1.27.2 or newer
 ```
 
-Binaries are on the [release page](https://github.com/appnice/smif/releases/latest). They are not notarized, so on
+Binaries are on the [release page](https://github.com/smifdev/smif/releases/latest). They are not notarized, so on
 macOS a file saved from a browser needs `xattr -d com.apple.quarantine smif`.
 
 </details>
