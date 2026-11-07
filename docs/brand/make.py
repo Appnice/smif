@@ -2,8 +2,7 @@
 
 python3 docs/brand/make.py  ->  mark.svg, logo-dark.svg (for dark backgrounds), logo-light.svg, icon.svg
 (the macOS app icon; docs/brand/icns.sh turns it into internal/notify/smif.icns)
-The mark: three stacked windows, the front one yellow with a status dot (many sessions, the one that needs
-you in front). The wordmark is Geist Bold (OFL, site/fonts), turned into paths so the SVGs need no font.
+The mark: one pair of wide, angular sunglasses on a yellow tile (the agent, deadpan). The wordmark is Geist Bold (OFL, site/fonts), turned into paths so the SVGs need no font.
 """
 import os
 from fontTools.ttLib import TTFont
@@ -18,12 +17,8 @@ YELLOW, INK, CREAM, DIM, MUTE = "#fabd2f", "#1d2021", "#ebdbb2", "#504945", "#7c
 
 def mark():
     return (
-        f'<rect width="64" height="64" rx="15" fill="{INK}"/>'
-        f'<rect x=".75" y=".75" width="62.5" height="62.5" rx="14.25" fill="none" stroke="{CREAM}" stroke-opacity=".16" stroke-width="1.5"/>'
-        f'<rect x="20" y="10" width="34" height="26" rx="6" fill="none" stroke="{DIM}" stroke-width="3.5"/>'
-        f'<rect x="15" y="18" width="34" height="26" rx="6" fill="{INK}" stroke="{MUTE}" stroke-width="3.5"/>'
-        f'<rect x="10" y="26" width="34" height="28" rx="6" fill="{YELLOW}"/>'
-        f'<circle cx="20" cy="40" r="4" fill="{INK}"/>'
+        f'<rect width="64" height="64" rx="13" fill="{YELLOW}"/>'
+        f'<path fill="{INK}" d="M6 25.5H28V27H36V25.5H58V36L54 40H40L36 36V31H28V36L24 40H10L6 36Z"/>'
     )
 
 

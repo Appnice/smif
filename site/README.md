@@ -32,6 +32,6 @@ The videos are real smif runs on staged sessions, recorded with [VHS](https://gi
 ## Logo
 
 `docs/brand/make.py` draws `mark.svg` (also `site/favicon.svg`), `logo-dark.svg` (also `site/logo.svg`) and
-`logo-light.svg`. The mark is three stacked windows, the front one yellow with a status dot; the wordmark is
+`logo-light.svg`. The mark is a pair of sunglasses on a yellow tile; the wordmark is
 Geist Bold as paths. `apple-touch-icon.png` and `og.png` are
 screenshots (`og.png` of `demo/og.html` at 1200x630).
