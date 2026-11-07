@@ -522,15 +522,23 @@ func cmdDoctor() *cobra.Command {
 					warn("claude_command is " + cc + "; the service PATH must contain " + filepath.Dir(p) + " (or set the absolute path)")
 				}
 			}
-			caps := claude.Probe(context.Background(), cc)
-			check(caps.OK(), "claude CLI "+caps.Version, strings.Join(caps.Problems, "; "))
-			for _, l := range caps.Lines() {
-				fmt.Println("       ", l)
+			_, noClaude := exec.LookPath(cc)
+			var caps *claude.Caps
+			if noClaude != nil {
+				// The session list works with any agent. Only mail, workers and forks need claude.
+				warn("no claude CLI: messages, workers and forks need Claude Code, the session list does not")
+				caps = claude.AssumedCaps()
+			} else {
+				caps = claude.Probe(context.Background(), cc)
+				check(caps.OK(), "claude CLI "+caps.Version, strings.Join(caps.Problems, "; "))
+				for _, l := range caps.Lines() {
+					fmt.Println("       ", l)
+				}
 			}
 			// The probe above checks every flag Smif needs, so a newer
 			// version only warns when it is a new minor line; an older one
 			// than the verified version always warns.
-			if v := caps.Version; v != "" {
+			if v := caps.Version; v != "" && noClaude == nil {
 				switch c := claude.CompareVersions(v, claude.VerifiedVersion); {
 				case c < 0:
 					warn("claude " + v + " is older than the verified " + claude.VerifiedVersion + "; update Claude Code")
@@ -562,7 +570,9 @@ func cmdDoctor() *cobra.Command {
 				c.Close()
 				if derr == nil {
 					check(h.OK, fmt.Sprintf("daemon %s pid %d, schema %d, db %s", h.Version, h.PID, h.SchemaVersion, h.DB), "")
-					check(h.ClaudeOK, "daemon sees claude", strings.Join(h.ClaudeProblems, "; "))
+					if noClaude == nil {
+						check(h.ClaudeOK, "daemon sees claude", strings.Join(h.ClaudeProblems, "; "))
+					}
 					for _, p := range h.Providers {
 						name := p.Name
 						if name == "claude" {

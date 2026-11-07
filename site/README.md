@@ -26,7 +26,7 @@ The videos are real smif runs on staged sessions, recorded with [VHS](https://gi
 - The README GIFs come from the same clips: for each of `hero` and `chat`,
   `ffmpeg -i site/media/hero.mp4 -vf "fps=15,scale=1280:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=none:diff_mode=rectangle" docs/img/hero.gif`.
   `docs/img/flow.gif` is the `.flow` diagram on the page, one 12 s loop shot frame by frame (animations paused and stepped, 15 fps).
-  `docs/img/many-sessions.gif` and `many-machines.gif` lead the README. `demo/posters.html?p=sessions|machines&t=<ms>` draws
+  `docs/img/many-sessions.gif` and `every-agent.gif` lead the README. `demo/posters.html?p=sessions|agents&t=<ms>` draws
   one frame: 6 s at 8 fps and 8.4 s at 12 fps, 1600x780, 64 colours. Keep the text large: GitHub shows them at about 830 px.
 
 ## Logo

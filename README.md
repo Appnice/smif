@@ -8,8 +8,8 @@
 </p>
 
 <p align="center">
-  <b>Many sessions. Many machines. One place.</b><br>
-  See which Claude Code or Codex session waits for you, on any machine, and answer it without hunting for the tab.<br>
+  <b>Every agent. Every machine. One terminal.</b><br>
+  Claude Code on your laptop, Codex on your desktop, OpenCode and Hermes next to them. One list, and you can write to any of them.<br>
   Keep your terminal. Nothing to migrate, and your sessions run with or without smif.
 </p>
 
@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  <img alt="Many machines. One place. A desktop, a server and a laptop join your laptop over ssh. Their sessions sit in one list, each row named after its machine, and a line typed there goes to the session on that machine." src="docs/img/many-machines.gif" width="100%">
+  <img alt="Every agent. Every machine. One terminal. Claude Code on a laptop, Codex on a desktop, OpenCode on a server and Hermes in an office, each with its logo, join one list in smif, and a line typed there goes to the session on that machine." src="docs/img/every-agent.gif" width="100%">
 </p>
 
 ## Features
@@ -50,7 +50,7 @@ curl -fsSL https://smif.dev/install.sh | sh
 smif
 ```
 
-smif finds your open sessions on its own, with no config. It needs Claude Code 2.1 and git, on macOS or Linux.
+smif finds your open sessions on its own, with no config. It needs one supported agent and git, on macOS or Linux. Messages, workers and forks need Claude Code 2.1.
 
 <details>
 <summary>Other ways to install</summary>
@@ -194,7 +194,7 @@ As of November 2026.
   <img alt="Claude Code's session files, transcripts and hooks feed the local smifd daemon (SQLite, a Unix socket with mode 0600, one per user), which feeds the smif view, the status line inside every session, notifications and your terminal tabs." src="docs/img/flow.gif" width="100%">
 </p>
 
-smif reads the files Claude Code already writes, and one local daemon keeps the state. Nothing leaves your machine:
+smif reads the files your agents already write, and one local daemon keeps the state. Nothing leaves your machine:
 no server, no cloud, no telemetry. The exceptions are the machines you add and a phone ping that you turn on with `daemon.notify_url`: it
 sends the agent or folder name and what happened, with no prompt or answer ([docs/safety.md](docs/safety.md)).
 
@@ -221,3 +221,5 @@ To work on smif, run `make check`, or `make check-linux` for Docker.
 ## License
 
 MIT
+
+Claude Code, Codex, OpenCode and Hermes belong to their makers. smif is an independent project, not affiliated with any of them.

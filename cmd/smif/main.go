@@ -34,7 +34,7 @@ func main() {
 	}
 	root := &cobra.Command{
 		Use:           "smif",
-		Short:         "Event-driven, hard-isolated messaging between Claude Code sessions",
+		Short:         "One terminal for every coding agent on every machine",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       daemon.Version,
