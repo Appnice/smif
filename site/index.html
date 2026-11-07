@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preload" href="fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -30,6 +30,7 @@
       <a href="#how">How it works</a>
       <a href="#features">Features</a>
       <a href="#machines">Machines</a>
+      <a href="#conductor">Conductor</a>
       <a href="#keys">Keys</a>
       <a href="#install">Install</a>
     </nav>
@@ -48,7 +49,7 @@
   <div class="wrap hero__copy">
     <p class="pill reveal"><span class="dot dot--live" aria-hidden="true"></span> live view for Claude Code and Codex</p>
     <h1 class="hero__title reveal">Many sessions. Many machines.<br><span class="hl">One place.</span></h1>
-    <p class="hero__lede reveal">smif shows every Claude Code and Codex session, on every machine you add, in one live list: which one works, which one waits for you and what it just said. Answer any of them without hunting for the tab. Keep your terminal. Nothing to migrate, and your sessions run with or without smif.</p>
+    <p class="hero__lede reveal">smif shows every Claude Code and Codex session, on every machine you add, in one live list: which one works, which one waits for you and what it just said. Answer any of them without hunting for the tab. Keep your terminal. <a href="#conductor">Nothing to migrate</a>, and your sessions run with or without smif.</p>
     <div class="hero__cta reveal">
       <div class="cmd" data-copy="curl -fsSL https://smif.dev/install.sh | sh">
         <span class="cmd__prompt" aria-hidden="true">$</span>
@@ -304,6 +305,46 @@
   </div>
 </section>
 
+<!-- ============ CONDUCTOR ============ -->
+<section class="section" id="conductor">
+  <div class="wrap wrap--narrow">
+    <p class="eyebrow reveal">Coming from Conductor?</p>
+    <h2 class="h2 reveal">Keep your terminal.<br><span class="dim">Nothing to migrate.</span></h2>
+    <p class="vs__lede reveal">Conductor's cloud ends on November 20 and its Mac app winds down in 2027. smif is a different kind of tool: it does not create workspaces, it gives you one list of the sessions you already run.</p>
+    <div class="vs reveal">
+      <table>
+        <thead><tr><td></td><th scope="col">Conductor</th><th scope="col" class="vs__us">smif</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Sessions</th><td>Created inside the app</td><td class="vs__us">The ones you already have open</td></tr>
+          <tr><th scope="row">Where you work</th><td>In the app</td><td class="vs__us">In your own terminal</td></tr>
+          <tr><th scope="row">Workspaces</th><td>A git worktree per task</td><td class="vs__us">Any folder or worktree you use</td></tr>
+          <tr><th scope="row">Review and merge</th><td>In the app</td><td class="vs__us">Your own git tools</td></tr>
+          <tr><th scope="row">Agents</th><td>Claude Code, Codex, Cursor</td><td class="vs__us">Claude Code, Codex, more coming soon</td></tr>
+          <tr><th scope="row">Systems</th><td>macOS</td><td class="vs__us">macOS, Linux</td></tr>
+          <tr><th scope="row">Other machines</th><td>Its cloud, ending November 20</td><td class="vs__us">Yours, over ssh</td></tr>
+          <tr><th scope="row">Code</th><td>No public repo</td><td class="vs__us">Open, MIT</td></tr>
+          <tr><th scope="row">Future</th><td>Mac app winds down in 2027</td><td class="vs__us">MIT, and your sessions run without it</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="vs__note reveal">As of November 2026.</p>
+  </div>
+</section>
+
+<!-- ============ PRINCIPLES ============ -->
+<section class="section section--alt" id="principles">
+  <div class="wrap">
+    <p class="eyebrow reveal">Principles</p>
+    <h2 class="h2 reveal">It stays out of the way.</h2>
+    <div class="grid4">
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><h3>Local only</h3><p>Files on disk and a Unix socket. No account, no telemetry, no server of ours.</p></article>
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 6l12 12" stroke="currentColor" stroke-width="1.8"/></svg></span><h3>Never answers for you</h3><p>A permission prompt or a question in a tab waits for you. smif shows it and brings the tab forward.</p></article>
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><h3>Zero setup</h3><p>No config file needed. Run it and every open session is there.</p></article>
+      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 5 6v5.5c0 4.4 3 8 7 9.5 4-1.5 7-5.1 7-9.5V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>Your config is the law</h3><p>Commands come from your config only. Nothing a message says can reach a shell.</p></article>
+    </div>
+  </div>
+</section>
+
 <!-- ============ KEYS ============ -->
 <section class="section" id="keys">
   <div class="wrap">
@@ -327,22 +368,8 @@
   </div>
 </section>
 
-<!-- ============ PRINCIPLES ============ -->
-<section class="section section--alt" id="principles">
-  <div class="wrap">
-    <p class="eyebrow reveal">Principles</p>
-    <h2 class="h2 reveal">It stays out of the way.</h2>
-    <div class="grid4">
-      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><h3>Local only</h3><p>Files on disk and a Unix socket. No account, no telemetry, no server of ours.</p></article>
-      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 6l12 12" stroke="currentColor" stroke-width="1.8"/></svg></span><h3>Never answers for you</h3><p>A permission prompt or a question in a tab waits for you. smif shows it and brings the tab forward.</p></article>
-      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span><h3>Zero setup</h3><p>No config file needed. Run it and every open session is there.</p></article>
-      <article class="principle reveal"><span class="principle__i"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 5 6v5.5c0 4.4 3 8 7 9.5 4-1.5 7-5.1 7-9.5V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>Your config is the law</h3><p>Commands come from your config only. Nothing a message says can reach a shell.</p></article>
-    </div>
-  </div>
-</section>
-
 <!-- ============ INSTALL ============ -->
-<section class="section" id="install">
+<section class="section section--alt" id="install">
   <div class="wrap wrap--narrow">
     <p class="eyebrow reveal">Install</p>
     <h2 class="h2 reveal">One binary. Two commands.</h2>
@@ -367,32 +394,6 @@
       </ol>
       <p class="install__req">The binary goes in <code>~/.local/bin</code> and its checksum is checked. <a href="https://github.com/appnice/smif/blob/main/site/install.sh">Read the script</a> or get the files from the <a href="https://github.com/appnice/smif/releases/latest">release page</a>. Needs Claude Code. Typing into tabs works in Terminal.app and iTerm2 on macOS, and in tmux and herdr anywhere. The view works in any terminal.</p>
     </div>
-  </div>
-</section>
-
-<!-- ============ CONDUCTOR ============ -->
-<section class="section section--alt" id="conductor">
-  <div class="wrap wrap--narrow">
-    <p class="eyebrow reveal">Coming from Conductor?</p>
-    <h2 class="h2 reveal">Keep your terminal.<br><span class="dim">Nothing to migrate.</span></h2>
-    <p class="vs__lede reveal">Conductor's cloud ends on November 20 and its Mac app winds down in 2027. smif is a different kind of tool: it does not create workspaces, it gives you one list of the sessions you already run.</p>
-    <div class="vs reveal">
-      <table>
-        <thead><tr><td></td><th scope="col">Conductor</th><th scope="col" class="vs__us">smif</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Sessions</th><td>Created inside the app</td><td class="vs__us">The ones you already have open</td></tr>
-          <tr><th scope="row">Where you work</th><td>In the app</td><td class="vs__us">In your own terminal</td></tr>
-          <tr><th scope="row">Workspaces</th><td>A git worktree per task</td><td class="vs__us">Any folder or worktree you use</td></tr>
-          <tr><th scope="row">Review and merge</th><td>In the app</td><td class="vs__us">Your own git tools</td></tr>
-          <tr><th scope="row">Agents</th><td>Claude Code, Codex, Cursor</td><td class="vs__us">Claude Code, Codex, more coming soon</td></tr>
-          <tr><th scope="row">Systems</th><td>macOS</td><td class="vs__us">macOS, Linux</td></tr>
-          <tr><th scope="row">Other machines</th><td>Its cloud, ending November 20</td><td class="vs__us">Yours, over ssh</td></tr>
-          <tr><th scope="row">Code</th><td>No public repo</td><td class="vs__us">Open, MIT</td></tr>
-          <tr><th scope="row">Future</th><td>Mac app winds down in 2027</td><td class="vs__us">MIT, and your sessions run without it</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="vs__note reveal">As of November 2026.</p>
   </div>
 </section>
 

@@ -41,6 +41,7 @@
 - **[Stop watching the screen](#stop-watching-the-screen):** get a notification when a session starts to wait or answers after a long turn.
 - **[Send messages between projects](#send-messages-between-projects):** sessions ask each other things without interrupting yours.
 - **[Other agents](#other-agents):** Claude Code and Codex are checked against real agents, and others show up too.
+- **[Coming from Conductor?](#coming-from-conductor):** keep your terminal, with nothing to migrate.
 
 ## Install
 
