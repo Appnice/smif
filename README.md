@@ -43,6 +43,8 @@
 - **[Other agents](#other-agents):** Claude Code, Codex, OpenCode and Hermes are checked against real agents, and others show up too.
 - **[Coming from Conductor?](#coming-from-conductor):** keep your terminal, with nothing to migrate.
 
+**Coming soon: Workflows.** One agent builds, another reviews, and they go round until it passes. Pick the agent for each step.
+
 ## Install
 
 ```sh

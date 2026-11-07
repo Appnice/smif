@@ -324,6 +324,9 @@ p { margin: 0 0 12px; }
 .principle { padding: 26px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-2); }
 .principle p { color: var(--dim); margin: 0; font-size: 16px; }
 .principle__i { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 18px; border-radius: 12px; font-size: 20px; background: rgba(250, 189, 47, .1); color: var(--yellow); border: 1px solid rgba(250, 189, 47, .2); }
+.soon { margin-top: 36px; padding: clamp(28px, 5vw, 52px); text-align: center; border: 1px solid rgba(250, 189, 47, .35); border-radius: var(--r-lg); background: rgba(250, 189, 47, .05); }
+.soon h3 { margin: 0; font: 700 clamp(40px, 7vw, 72px)/1.05 var(--display); letter-spacing: -.02em; color: var(--fg-hi); }
+.soon p:last-child { max-width: 58ch; margin: 14px auto 0; color: var(--dim); font-size: clamp(17px, 1.6vw, 20px); text-wrap: pretty; }
 .vs__lede { color: var(--dim); margin: 18px 0 0; max-width: 62ch; }
 .vs { margin-top: 36px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg-2); overflow: hidden; }
 .vs table { width: 100%; border-collapse: collapse; table-layout: fixed; }
